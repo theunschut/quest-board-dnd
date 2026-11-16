@@ -68,4 +68,22 @@
     justify-content: flex-end;
     gap: var(--qb-space-sm);
   }
+
+  /* ---------- Preview dialog ---------- */
+  .preview-note {
+    margin: 0 0 var(--qb-space-md);
+    font-size: var(--qb-text-sm);
+  }
+
+  /* The replica is the shop card at the width a desktop grid column gives it. It is for looking at: nothing in it
+     takes a click. */
+  .preview-card {
+    inline-size: min(100%, 23rem);
+    margin-inline: auto;
+  }
+
+  .preview-card .btn {
+    inline-size: 100%;
+    pointer-events: none;
+  }
 }

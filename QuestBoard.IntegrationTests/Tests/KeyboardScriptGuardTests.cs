@@ -110,6 +110,24 @@ public class KeyboardScriptGuardTests
     }
 
     [Fact]
+    public void ShopPreviewModule_BuildsTheCardFromATemplate()
+    {
+        var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/shop-item-preview.js");
+
+        script.Should().Contain("itemPreviewModal").And.Contain("show.bs.modal", "the card is built each time the dialog opens");
+        script.Should().Contain("template[data-preview-card]").And.Contain("cloneNode(true)", "the card is cloned from the server-rendered template");
+        script.Should().Contain("textContent").And.Contain("classList", "values are written as text and the chip by class");
+        script.Should().Contain("[data-preview-host]").And.Contain("replaceChildren", "the host is cleared before each card is placed");
+        script.Should().Contain("/markdown/preview").And.Contain("RequestVerificationToken", "the excerpt comes from the existing endpoint with the page's token");
+        script.Should().Contain("meta[name=\"request-verification-token\"]");
+        script.Should().Contain("DOMParser", "the server's answer is read as an inert document, never inserted");
+        Regex.IsMatch(script, @"requestId\s*===\s*latestRequestId").Should().BeTrue("only the latest answer is applied");
+        Regex.IsMatch(script, @"easyMDE[\s\S]*?\.value\(\)").Should().BeTrue("the editor's value is read when the dialog opens");
+        script.Should().NotMatchRegex(@"\.submit\(|requestSubmit|method:\s*['""](?!POST)", "the item form is never submitted");
+        Regex.Matches(script, @"fetch\(").Should().HaveCount(1, "the preview request is the only request the module makes");
+    }
+
+    [Fact]
     public void ContactNotes_EditOpensOneNoteAndCancelClosesItAndReturnsFocus()
     {
         var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/contact-notes.js");

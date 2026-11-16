@@ -189,4 +189,90 @@
     min-inline-size: 0;
     overflow-wrap: anywhere;
   }
+
+  /* ---------- The shop item card: the Preview replica and the grid cards share it ---------- */
+
+  .shop-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-sm);
+    min-inline-size: 0;
+    padding: var(--qb-space-md);
+  }
+
+  .shop-card__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--qb-space-sm);
+  }
+
+  /* A long name wraps to as many lines as it needs and never truncates. */
+  .shop-card__name {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+    margin: 0;
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+    overflow-wrap: anywhere;
+  }
+
+  .shop-card__head .badge {
+    flex: none;
+  }
+
+  .shop-card__excerpt {
+    margin: 0;
+    color: var(--qb-fg);
+    overflow-wrap: anywhere;
+  }
+
+  .shop-card__foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--qb-space-sm);
+    margin-block-start: auto;
+    padding-block-start: var(--qb-space-sm);
+    border-block-start: 1px solid var(--qb-surface-glass-border);
+  }
+
+  .shop-card__price {
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .shop-card__price .fas {
+    margin-inline-end: var(--qb-space-xs);
+    color: var(--qb-accent);
+  }
+
+  .shop-card__stock {
+    color: var(--qb-fg);
+    font-size: var(--qb-text-sm);
+  }
+
+  .shop-card__stock .fas {
+    margin-inline-end: var(--qb-space-xs);
+  }
+
+  .shop-card__stock--low {
+    color: var(--qb-warning-text);
+  }
+
+  .shop-card__stock--soldout {
+    color: var(--qb-danger-text);
+  }
+
+  .shop-card__stock--unlimited {
+    color: var(--qb-info-text);
+  }
+
+  /* The purchase control sits above a stretched name link on the grid cards, so a click on it never reaches the link. */
+  .shop-card__action {
+    position: relative;
+    z-index: 1;
+  }
 }

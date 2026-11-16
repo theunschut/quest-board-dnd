@@ -938,10 +938,84 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         row.Success.Should().BeTrue("the action row is the shared form-actions row");
         var back = BackToShopManagementLabel ? "Back to Shop Management" : "Cancel";
         Regex.IsMatch(row.Value, @"<a href=""/ShopManagement"" class=""btn btn-secondary"">\s*<i\b[^>]*></i>" + back).Should().BeTrue();
-        Regex.IsMatch(row.Value, @"<button type=""button"" class=""btn btn-info"">\s*<i class=""fas fa-eye me-2""[^>]*></i>Preview").Should().BeTrue(
-            "Preview is a filled info button with no handler in the markup");
+        Regex.IsMatch(row.Value, @"<button type=""button"" class=""btn btn-info""[^>]*>\s*<i class=""fas fa-eye me-2""[^>]*></i>Preview").Should().BeTrue(
+            "Preview is a filled info button that opens the dialog by data attributes, with no handler in the markup");
         Regex.IsMatch(row.Value, @"class=""btn btn-primary"">\s*<i\b[^>]*></i>Create Item").Should().BeTrue();
         row.Value.Should().NotContain("btn-outline");
+    }
+
+    [Fact]
+    public async Task ShopManagementCreate_Desktop_PreviewButtonOpensTheDialogByDataAttributes()
+    {
+        var client = await SeedCreatePageAsync("shopr_previewbutton");
+
+        var html = await GetAsync(client, "/ShopManagement/Create", DesktopUserAgent);
+
+        var button = Regex.Match(html, @"<button\b(?=[^>]*\bdata-bs-target=""#itemPreviewModal"")[^>]*>");
+        button.Success.Should().BeTrue("the Preview button names the dialog it opens");
+        button.Value.Should().Contain("data-bs-toggle=\"modal\"").And.Contain("type=\"button\"", "Preview never submits the form");
+        button.Value.Should().NotMatchRegex(@"\son[a-z]+\s*=", "no event handler is written into the markup");
+        Regex.Matches(html, @"data-bs-target=""#itemPreviewModal""").Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task ShopManagementCreate_Desktop_PreviewDialogHoldsTheNoteTheHostTheTemplateAndClose()
+    {
+        var client = await SeedCreatePageAsync("shopr_previewdialog");
+
+        var html = await GetAsync(client, "/ShopManagement/Create", DesktopUserAgent);
+
+        var dialog = Regex.Match(html, @"<div\b[^>]*\bid=""itemPreviewModal""[^>]*>[\s\S]*?</template>[\s\S]*?Close\s*</button>");
+        dialog.Success.Should().BeTrue("the dialog is on the page");
+        var opening = Regex.Match(dialog.Value, @"^<div\b[^>]*>").Value;
+        opening.Should().Contain("class=\"modal fade\"").And.Contain("aria-labelledby=\"itemPreviewTitle\"");
+        dialog.Value.Should().Contain("modal-dialog modal-dialog-centered");
+        Regex.IsMatch(dialog.Value, @"<h2\b[^>]*\bid=""itemPreviewTitle""[^>]*>\s*Item Preview\s*</h2>").Should().BeTrue("the title is an h2 that names the dialog");
+        dialog.Value.Should().Contain("This is how the card will look in the shop. Nothing is saved until you create the item.");
+        Regex.IsMatch(dialog.Value, @"<button\b[^>]*\bdata-bs-dismiss=""modal""[^>]*\baria-label=""Close""").Should().BeTrue("the header Close has a name");
+        Regex.IsMatch(dialog.Value, @"<button\b[^>]*\bclass=""btn btn-secondary""[^>]*\bdata-bs-dismiss=""modal""[^>]*>\s*Close\s*</button>").Should().BeTrue("the footer Close is the neutral button");
+        Regex.IsMatch(dialog.Value, @"<div\b[^>]*\bdata-preview-host\b[^>]*></div>").Should().BeTrue("the replica host starts empty");
+    }
+
+    [Fact]
+    public async Task ShopManagementCreate_Desktop_PreviewTemplateHoldsTheNewCardAndNothingLiveOrOldStyled()
+    {
+        var client = await SeedCreatePageAsync("shopr_previewtemplate");
+
+        var html = await GetAsync(client, "/ShopManagement/Create", DesktopUserAgent);
+
+        var template = Regex.Match(html, @"<template\b[^>]*\bdata-preview-card\b[^>]*>([\s\S]*?)</template>");
+        template.Success.Should().BeTrue("the card is cloned from a server-rendered template");
+        var card = template.Groups[1].Value;
+        Regex.IsMatch(card, @"class=""modern-card shop-card""").Should().BeTrue("the replica carries the new card classes");
+        card.Should().NotContain("item-card", "the old global sheet still styles that class, and it belongs to the real cards");
+        foreach (var slot in new[] { "data-preview-chip", "data-preview-name", "data-preview-excerpt", "data-preview-price", "data-preview-stock" })
+            card.Should().Contain(slot);
+        Regex.IsMatch(card, @"<span\b[^>]*\bclass=""btn btn-primary shop-card__action""[^>]*\baria-hidden=""true""[^>]*>").Should().BeTrue(
+            "Purchase is a span that cannot be activated and is hidden from assistive technology");
+        card.Should().NotMatchRegex(@"<(?:a|button|form|input)\b", "the replica holds no link, live button or form");
+    }
+
+    [Fact]
+    public async Task ShopManagementCreate_Desktop_LoadsThePreviewModuleAndKeepsTheOldPreviewRuleGone()
+    {
+        var client = await SeedCreatePageAsync("shopr_previewmodule");
+
+        var html = await GetAsync(client, "/ShopManagement/Create", DesktopUserAgent);
+
+        Regex.IsMatch(html, @"<script\b[^>]*\btype=""module""[^>]*\bsrc=""/js/shop-item-preview\.js(?:\?[^""]*)?""").Should().BeTrue();
+        html.Should().NotContain("id=\"item-preview\"").And.NotContain("#item-preview", "the old dead preview rule stays gone");
+        html.Should().NotContain("previewItem");
+    }
+
+    [Fact]
+    public async Task ShopManagementCreate_Phone_HasNoPreviewButtonOrDialog()
+    {
+        var client = await SeedCreatePageAsync("shopr_previewphone");
+
+        var html = await GetAsync(client, "/ShopManagement/Create", MobileUserAgent);
+
+        html.Should().NotContain("itemPreviewModal").And.NotContain("shop-item-preview").And.NotContain("data-preview");
     }
 
     [Fact]
@@ -958,7 +1032,7 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         main.Should().NotContain("<style", "the page's rules live in sheets");
         main.Should().NotMatchRegex(@"\son(?:click|change|submit)\s*=", "no event handler is written into the markup");
         Regex.Matches(main, @"<script\b(?![^>]*\bsrc\s*=)[^>]*>").Should().BeEmpty("the page holds no inline script");
-        main.Should().NotContain("legendary-glow").And.NotContain("item-preview");
+        main.Should().NotContain("legendary-glow").And.NotContain("id=\"item-preview\"").And.NotContain("#item-preview");
     }
 
     // ---- The phone forms: the same contract and module, with no price helpers and no Preview ------------------
