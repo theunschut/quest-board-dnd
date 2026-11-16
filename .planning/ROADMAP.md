@@ -2037,7 +2037,7 @@ Plans:
 **Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
 **Requirements**: TBD
 **Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
-**Plans:** 15/21 plans executed
+**Plans:** 16/21 plans executed
 
 **Scope:**
 
@@ -2150,7 +2150,7 @@ Plans:
 
 **Wave 16** *(blocked on Wave 15 completion)*
 
-- [ ] 99-16-PLAN.md — Shop/Index desktop: purchase history in flow with visible Return and Sell (the 24-hour read moved into the view model), the merchant in the operator's placement with an accessible toast and capped bob, click-throughs
+- [x] 99-16-PLAN.md — Shop/Index desktop: purchase history in flow with visible Return and Sell (the 24-hour read moved into the view model), the merchant in the operator's placement with an accessible toast and capped bob, click-throughs
 
 **Wave 17** *(blocked on Wave 16 completion)*
 
