@@ -1065,6 +1065,7 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         html.Should().Contain("Filter &amp; Sort");
         html.Should().Contain("shop-pages.css").And.Contain("shop-pages.mobile.css");
+        html.Should().NotContain("shop.mobile.css");
     }
 
     /// <summary>
