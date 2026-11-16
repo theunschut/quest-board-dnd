@@ -1561,4 +1561,208 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         html.Should().NotContain("purchase-btn");
         html.Should().NotContain(".innerHTML");
     }
+
+    // ---- Shop browse: hero, categories, the one filter card, stock, pager and empty states (desktop) ----
+
+    // The markup of the main landmark.
+    private static string MainOf(string html)
+    {
+        var start = html.IndexOf("<main", StringComparison.Ordinal);
+        start.Should().BeGreaterThan(-1, "the page has a main landmark");
+        var end = html.IndexOf("</main>", start, StringComparison.Ordinal);
+        return html[start..(end < 0 ? html.Length : end)];
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_HeroAndCategoryTabsAreTheConvertedShape()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_idxhero", 2);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        Regex.IsMatch(html, @"<div class=""shop-hero"">\s*<h1 class=""shop-hero__title"">\s*<i\b[^>]*aria-hidden=""true""></i>The Mystical Merchant's Emporium</h1>")
+            .Should().BeTrue("the title is the one h1 of the page, in the hero");
+        Regex.Matches(html, @"<h1\b").Should().HaveCount(1);
+        var nav = Regex.Match(html, @"<nav class=""category-tabs"" aria-label=""Item categories"">([\s\S]*?)</nav>");
+        nav.Success.Should().BeTrue("the categories are a named navigation");
+        var links = Regex.Matches(nav.Groups[1].Value, @"<a\b([^>]*)>([\s\S]*?)</a>").ToList();
+        links.Should().HaveCount(4);
+        links.Select(l => Regex.Replace(l.Groups[2].Value, @"<[^>]+>", "").Trim()).Should().Equal("All Items", "Equipment", "Magic Items", "Quest Items");
+        links.Count(l => l.Groups[1].Value.Contains("aria-current=\"page\"")).Should().Be(1, "exactly the current category is marked");
+        links[0].Groups[1].Value.Should().Contain("aria-current=\"page\"");
+        links[3].Groups[2].Value.Should().Contain("fa-scroll").And.NotContain("fa-magic", "Quest Items takes its own icon");
+        links.Should().OnlyContain(l => l.Groups[1].Value.Contains("class=\"category-btn\""));
+        links.Should().OnlyContain(l => l.Groups[2].Value.Contains("aria-hidden=\"true\""), "each icon is decorative beside its word");
+
+        var equipment = await GetAsync(client, "/Shop?type=Equipment", DesktopUserAgent);
+        var current = Regex.Matches(equipment, @"<a\b[^>]*\baria-current=""page""[^>]*>[\s\S]*?</a>").ToList();
+        current.Should().ContainSingle().Which.Value.Should().Contain("Equipment");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_FilterCardIsOneFormWithItsFieldsetAndNoFormAttributeTies()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_idxfilter", 2);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        var main = MainOf(html);
+        Regex.Matches(main, @"<form\b[^>]*\bid=""shop-filter-form""").Should().HaveCount(1);
+        main.Should().NotMatchRegex(@"\sform\s*=\s*""", "every control of the card is inside its form, none is tied to it from outside");
+        main.Should().NotMatchRegex(@"\sstyle\s*=", "no style attribute is written into the page");
+        var card = Regex.Match(main, @"<div class=""modern-card modern-card--aside shop-filter-card"">([\s\S]*?)<h2 class=""visually-hidden"">Items</h2>");
+        card.Success.Should().BeTrue("the filter is one aside card followed by the hidden Items heading");
+        var body = card.Groups[1].Value;
+        body.Should().MatchRegex(@"<h2>\s*<i\b[^>]*aria-hidden=""true""></i>Filter &amp; Sort\s*</h2>");
+        body.Should().MatchRegex(@"<fieldset class=""filter-rarity"">\s*<legend class=""shop-filter-label"">Rarity</legend>");
+        Regex.Matches(body, @"<label class=""filter-check"">\s*<input class=""form-check-input"" type=""checkbox"" name=""rarity"" value=""[A-Za-z]+""[^>]*>\s*<span class=""badge badge-rarity").Should().HaveCount(5,
+            "each of the five rarities is a checkbox labelled by its chip");
+        body.Should().MatchRegex(@"<label for=""shopSearch"" class=""visually-hidden"">Search items</label>\s*<input type=""text"" id=""shopSearch"" name=""search""");
+        body.Should().Contain("placeholder=\"Search items by name or description...\"");
+        body.Should().MatchRegex(@"<label for=""sortSelect"" class=""shop-filter-label"">Sort</label>");
+        Regex.Matches(body, @"<button type=""submit"" class=""btn btn-secondary"">").Should().HaveCount(2, "Search and Apply Filters are filled secondary buttons");
+        body.Should().Contain("Apply Filters").And.Contain("Search");
+        body.Should().NotContain("Active").And.NotContain("Clear Filters", "nothing is active");
+        body.Should().Contain("<input type=\"hidden\" name=\"page\" value=\"1\" />");
+    }
+
+    [Theory]
+    [InlineData("search=lantern")]
+    [InlineData("rarity=Rare")]
+    [InlineData("sort=price_asc")]
+    public async Task ShopIndex_Desktop_AnyActiveFilterShowsTheActiveBadgeAndClearFiltersAndKeepsTheCategory(string query)
+    {
+        var client = await SeedBrowseBoardAsync($"shopr_idxactive_{query[..4]}", 2);
+
+        var html = await GetAsync(client, $"/Shop?type=Equipment&{query}", DesktopUserAgent);
+
+        var card = Regex.Match(MainOf(html), @"<div class=""modern-card modern-card--aside shop-filter-card"">([\s\S]*?)<h2 class=""visually-hidden"">Items</h2>").Groups[1].Value;
+        card.Should().MatchRegex(@"<span class=""badge bg-secondary""><i\b[^>]*aria-hidden=""true""></i>Active</span>");
+        card.Should().MatchRegex(@"<a href=""/Shop\?type=Equipment"" class=""btn btn-secondary"">\s*<i\b[^>]*aria-hidden=""true""></i>Clear Filters\s*</a>");
+        card.Should().Contain("<input type=\"hidden\" name=\"type\" value=\"Equipment\" />", "applying a filter keeps the category");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_TheChosenRaritiesAndSortAndSearchComeBackSelected()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_idxkeep", 2);
+
+        var html = await GetAsync(client, "/Shop?rarity=Rare&rarity=Legendary&sort=price_desc&search=Item", DesktopUserAgent);
+
+        var main = MainOf(html);
+        Regex.Matches(main, @"<input class=""form-check-input"" type=""checkbox"" name=""rarity"" value=""(Rare|Legendary)"" checked").Should().HaveCount(2);
+        Regex.Matches(main, @"name=""rarity""[^>]*\bchecked\b").Should().HaveCount(2, "only the two chosen rarities are checked");
+        main.Should().Contain("<option value=\"price_desc\" selected=\"selected\">");
+        main.Should().Contain("value=\"Item\"", "the search text is written back, encoded by the view");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_StockLabelsKeepTheirWordsAndTakeTheirStateModifier()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_idxstock", 4, (i, entity) =>
+            entity.Quantity = i switch { 1 => -1, 2 => 0, 3 => 3, _ => 8 });
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        var cards = GridCards(html);
+        cards.Should().HaveCount(4);
+        Regex.IsMatch(cards[0], @"<span class=""shop-card__stock shop-card__stock--unlimited"">\s*<i class=""fas fa-infinity"" aria-hidden=""true""></i>Unlimited\s*</span>").Should().BeTrue();
+        Regex.IsMatch(cards[1], @"<span class=""shop-card__stock shop-card__stock--soldout"">\s*<i class=""fas fa-times-circle"" aria-hidden=""true""></i>Sold Out\s*</span>").Should().BeTrue();
+        Regex.IsMatch(cards[2], @"<span class=""shop-card__stock shop-card__stock--low"">\s*<i class=""fas fa-exclamation-triangle"" aria-hidden=""true""></i>3 left\s*</span>").Should().BeTrue();
+        Regex.IsMatch(cards[3], @"<span class=""shop-card__stock"">\s*<i class=""fas fa-box"" aria-hidden=""true""></i>8 in stock\s*</span>").Should().BeTrue();
+        cards[1].Should().MatchRegex(@"<button\b[^>]*\bdisabled\b[^>]*>\s*<i\b[^>]*></i>Purchase", "a sold-out item cannot be purchased");
+        cards[0].Should().NotMatchRegex(@"<button\b[^>]*\bdisabled\b");
+        Regex.IsMatch(cards[0], @"<span class=""shop-card__price""><i class=""fas fa-coins"" aria-hidden=""true""></i>11 gp</span>").Should().BeTrue("the price keeps the coin");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_LongDescriptionIsCutAtOneHundredAndTwentyCharacters()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_idxcut", 1, (_, entity) => entity.Description = new string('w', 200));
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        GridCards(html).Single().Should().Contain("<p class=\"shop-card__excerpt\">" + new string('w', 120) + "...</p>");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_PagerKeepsItsLabelAndClassesAndSaysWhichItemsAreShown()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_idxpager", 15);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        GridCards(html).Should().HaveCount(12, "twelve cards a page");
+        html.Should().Contain("<nav aria-label=\"Shop page navigation\">");
+        html.Should().Contain("page-item active");
+        html.Should().MatchRegex(@"<li class=""page-item disabled""><a class=""page-link"" href=""[^""]*"" aria-label=""Previous page"" aria-disabled=""true"" tabindex=""-1"">");
+        html.Should().MatchRegex(@"<li class=""page-item active""><span class=""page-link"" aria-current=""page"">1</span></li>");
+        html.Should().MatchRegex(@"<li class=""page-item""><a class=""page-link"" href=""/Shop\?page=2"">2</a></li>");
+        html.Should().MatchRegex(@"<p class=""shop-count"">\s*Showing 1&#8211;12\s+of 15 items\s*</p>");
+        html.Should().NotContain("shop-pagination", "the old pager classes are gone");
+
+        var second = await GetAsync(client, "/Shop?page=2", DesktopUserAgent);
+        GridCards(second).Should().HaveCount(3, "the 13th item makes page 2");
+        second.Should().MatchRegex(@"<li class=""page-item disabled""><a class=""page-link"" href=""[^""]*"" aria-label=""Next page"" aria-disabled=""true"" tabindex=""-1"">");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_OneItemKeepsOneCardAndNoPager()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_idxone", 1);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        GridCards(html).Should().HaveCount(1);
+        html.Should().NotContain("Shop page navigation");
+        html.Should().NotContain("shop-count");
+    }
+
+    [Theory]
+    [InlineData("/Shop?search=zzqx-nothing", "search", "No items match your search", "Try a different name or adjust your filters.", "Clear search")]
+    [InlineData("/Shop?rarity=Legendary", "filter", "No items match your filters", "Try removing some rarity filters or changing the sort order.", "Clear filters")]
+    [InlineData("/Shop?type=QuestItems", "empty", "The shop is currently empty", "Check back later for new items, or contact a Dungeon Master about stocking the shop.", null)]
+    public async Task ShopIndex_Desktop_EachEmptyStateIsACardWithItsOwnWordsUnderAHiddenItemsHeading(
+        string url, string kind, string heading, string sentence, string? action)
+    {
+        var client = await SeedBrowseBoardAsync($"shopr_idxempty_{kind}", 2);
+
+        var html = await GetAsync(client, url, DesktopUserAgent);
+
+        var main = MainOf(html);
+        var block = Regex.Match(main, @"<h2 class=""visually-hidden"">Items</h2>\s*<div class=""modern-card"">\s*<div class=""empty-state"">([\s\S]*?)</div>\s*</div>");
+        block.Success.Should().BeTrue("an empty list shows one empty state in a card under the hidden Items heading");
+        block.Groups[1].Value.Should().MatchRegex(@"<h3 class=""empty-state-heading"">" + Regex.Escape(heading) + "</h3>");
+        block.Groups[1].Value.Should().Contain($"<p class=\"empty-state-text\">{sentence}</p>");
+        if (action != null)
+            block.Groups[1].Value.Should().MatchRegex(@"<a href=""[^""]*"" class=""btn btn-secondary"">\s*<i\b[^>]*aria-hidden=""true""></i>" + action + @"\s*</a>");
+        else
+            block.Groups[1].Value.Should().NotContain("<a ").And.NotContain("<button");
+        main.Should().NotContain("inventory-grid");
+        main.Should().NotContain("Shop page navigation");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_ClearSearchKeepsTheCategoryAndTheOtherFilters()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_idxclearsearch", 2);
+
+        var html = await GetAsync(client, "/Shop?type=Equipment&rarity=Legendary&search=zzqx-nothing", DesktopUserAgent);
+
+        Regex.IsMatch(MainOf(html), @"<a href=""/Shop\?type=Equipment&amp;rarity=Legendary"" class=""btn btn-secondary"">\s*<i\b[^>]*></i>Clear search\s*</a>")
+            .Should().BeTrue("Clear search drops only the search text");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_LinksTheShopSheetAndLoadsNoOldBrowseClasses()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_idxold", 2);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        var main = MainOf(html);
+        foreach (var old in new[] { "shop-header", "shop-categories", "shop-inventory", "filter-apply-btn", "filter-clear-btn", "shop-filter-row", "shop-search", "purchase-btn", "empty-shop-state", "shop-pagination" })
+            main.Should().NotContain(old, $"the old {old} markup is gone");
+        main.Should().Contain("id=\"inventory-grid\"").And.Contain("class=\"inventory-grid\"");
+    }
 }

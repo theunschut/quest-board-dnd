@@ -399,6 +399,37 @@ public class ShopConversionGuardTests
         return gaps;
     }
 
+    // The classes the converted browse half of the shop page no longer uses. The old unscoped sheets hold no rule that
+    // names one of them, so nothing can restyle the new cards, tabs, filter card or pager by accident.
+    private static readonly string[] RetiredBrowseClasses =
+    [
+        "shop-header", "shop-categories", "category-btn", "shop-inventory", "inventory-grid", "item-card", "item-header",
+        "item-name", "item-description", "item-footer", "item-price", "item-stock", "purchase-btn", "empty-shop",
+        "shop-filter-row", "filter-rarity-group", "filter-sort-group", "filter-sort-select", "shop-pagination",
+        "shop-pagination-count", "shop-page-link",
+    ];
+
+    // The selector parts in a stylesheet that name a retired class, and a bare .shop-container rule: only the
+    // .shop-container.with-panel offset that the purchase history panel still needs may remain.
+    private static List<string> RetiredBrowseRules(string css)
+    {
+        var withoutComments = Regex.Replace(css, @"/\*[\s\S]*?\*/", " ");
+        var named = new Regex(@"\.(?:" + string.Join("|", RetiredBrowseClasses.Select(Regex.Escape)) + @")(?![\w-])");
+        return Regex.Matches(withoutComments, @"(?<selectors>[^{}]+)\{")
+            .SelectMany(rule => rule.Groups["selectors"].Value.Split(','))
+            .Select(part => part.Trim())
+            .Where(part => named.IsMatch(part) || part == ".shop-container")
+            .ToList();
+    }
+
+    // The words and shapes of the old card sweep and the old magic shimmer and shine.
+    private static List<string> OldCardMotion(string css)
+    {
+        var withoutComments = Regex.Replace(css, @"/\*[\s\S]*?\*/", " ");
+        return Regex.Matches(withoutComments, @"shimmer|shine|left\s*:\s*-100%|transition\s*:\s*left\b")
+            .Select(m => m.Value).ToList();
+    }
+
     // ---- Guards ---------------------------------------------------------------------------------
 
     [Fact]
@@ -608,6 +639,31 @@ public class ShopConversionGuardTests
         EndlessMotionBreaks(".chip { transition-property: all; }").Should().HaveCount(1);
         EndlessMotionBreaks(".chip { transition: color 0.2s ease, box-shadow 0.2s ease; animation: fade 1s ease 1; }").Should().BeEmpty();
         EndlessMotionBreaks("/* transition: all 1s; */ .chip { box-shadow: 0 0 4px var(--qb-warning); }").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void OldSheets_HoldNoRuleForTheConvertedBrowseClassesAndNoCardSweepOrShimmer()
+    {
+        foreach (var path in new[] { "QuestBoard.Service/wwwroot/css/shop.css", "QuestBoard.Service/wwwroot/css/legacy-pages.css", "QuestBoard.Service/wwwroot/css/shop.mobile.css" })
+        {
+            var css = ReadRepoFile(path);
+            RetiredBrowseRules(css).Should().BeEmpty($"{path} must hold no rule for the converted cards, tabs, filter card or pager");
+            OldCardMotion(css).Should().BeEmpty($"{path} must hold no card sweep, shimmer or shine");
+        }
+    }
+
+    [Fact]
+    public void RetiredBrowseScanner_FlagsEachRetiredClassAndAllowsTheHistoryOffsetAndOtherNames()
+    {
+        RetiredBrowseRules(".item-card:hover { transform: none; }").Should().HaveCount(1);
+        RetiredBrowseRules(".a, .category-btn.active { color: red; }").Should().ContainSingle().Which.Should().Be(".category-btn.active");
+        RetiredBrowseRules(".shop-container { padding: 0; }").Should().HaveCount(1);
+        RetiredBrowseRules(".shop-container.with-panel { margin-left: 280px; }").Should().BeEmpty("the history panel still needs its offset");
+        RetiredBrowseRules(".shop-item-name { margin: 0; } .shop-header-card h5 { margin: 0; }").Should().BeEmpty("the phone sheet's own names are not the retired ones");
+        RetiredBrowseRules("/* .item-card { } */ .x { color: red; }").Should().BeEmpty("a comment is not a rule");
+        OldCardMotion(".c::before { left: -100%; transition: left 0.5s; }").Should().HaveCount(2);
+        OldCardMotion("@keyframes magic-shimmer { to { opacity: 1; } }").Should().HaveCount(1);
+        OldCardMotion(".c { transition: color 0.2s; }").Should().BeEmpty();
     }
 
     [Fact]

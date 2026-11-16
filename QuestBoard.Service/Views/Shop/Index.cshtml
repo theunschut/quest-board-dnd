@@ -180,115 +180,103 @@
 }
 
 <div class="shop-container @(User.Identity?.IsAuthenticated == true ? "with-panel" : "")">
-    <!-- Shop Header -->
-    <div class="shop-header">
-        <h1><i class="fas fa-store me-3"></i>The Mystical Merchant's Emporium</h1>
-        <p class="mb-0 text-light">"Welcome, adventurer! Browse my wares and find what you seek..."</p>
-    </div>
-
-    <!-- Category Filter -->
-    <div class="shop-categories text-center">
-        <a href="@BuildTabUrl(null, Model.SelectedRarities, Model.SelectedSort, Model.SearchQuery)" class="category-btn @(Model.SelectedType == null ? "active" : "")">
-            <i class="fas fa-list me-2"></i>All Items
-        </a>
-        <a href="@BuildTabUrl(ItemType.Equipment, Model.SelectedRarities, Model.SelectedSort, Model.SearchQuery)"
-           class="category-btn @(Model.SelectedType == ItemType.Equipment ? "active" : "")">
-            <i class="fas fa-shield-alt me-2"></i>Equipment
-        </a>
-        <a href="@BuildTabUrl(ItemType.MagicItem, Model.SelectedRarities, Model.SelectedSort, Model.SearchQuery)"
-           class="category-btn @(Model.SelectedType == ItemType.MagicItem ? "active" : "")">
-            <i class="fas fa-magic me-2"></i>Magic Items
-        </a>
-        <a href="@BuildTabUrl(ItemType.QuestItems, Model.SelectedRarities, Model.SelectedSort, Model.SearchQuery)"
-           class="category-btn @(Model.SelectedType == ItemType.QuestItems ? "active" : "")">
-            <i class="fas fa-magic me-2"></i>Quest Items
-        </a>
-    </div>
-
-    <!-- Filter Row -->
-    @{
-        var allRarities = Enum.GetValues<ItemRarity>();
-    }
-    <form method="get" action="@Url.Action("Index", "Shop")" class="shop-filter-row mb-3" id="shop-filter-form">
-        @if (Model.SelectedType != null)
-        {
-            <input type="hidden" name="type" value="@Model.SelectedType" />
-        }
-        <input type="hidden" name="page" value="1" />
-
-        <!-- Rarity checkboxes -->
-        <div class="filter-rarity-group">
-            <span class="filter-label">Rarity:</span>
-            @foreach (var r in allRarities)
-            {
-                <label class="filter-check-label">
-                    <input type="checkbox" name="rarity" value="@r"
-                           @(Model.SelectedRarities.Contains(r) ? "checked" : "") />
-                    <partial name="_ShopRarityChip" model="r" />
-                </label>
-            }
+    <div class="shop-page">
+        <div class="shop-hero">
+            <h1 class="shop-hero__title"><i class="fas fa-store" aria-hidden="true"></i>The Mystical Merchant's Emporium</h1>
+            <p class="shop-hero__sub">"Welcome, adventurer! Browse my wares and find what you seek..."</p>
         </div>
 
-        <!-- Sort select -->
-        <div class="filter-sort-group">
-            <label for="sortSelect" class="filter-label">Sort:</label>
-            <select id="sortSelect" name="sort" class="form-select form-select-sm filter-sort-select">
-                @if (Model.SelectedSort == null || Model.SelectedSort == "")
-                {
-                    <option value="" selected="selected">Default</option>
-                }
-                else
-                {
-                    <option value="">Default</option>
-                }
-                @if (Model.SelectedSort == "price_asc")
-                {
-                    <option value="price_asc" selected="selected">Price &#8593;</option>
-                }
-                else
-                {
-                    <option value="price_asc">Price &#8593;</option>
-                }
-                @if (Model.SelectedSort == "price_desc")
-                {
-                    <option value="price_desc" selected="selected">Price &#8595;</option>
-                }
-                else
-                {
-                    <option value="price_desc">Price &#8595;</option>
-                }
-            </select>
-        </div>
-
-        <!-- Submit -->
-        <button type="submit" class="btn btn-sm filter-apply-btn">
-            <i class="fas fa-filter me-1"></i>Apply Filters
-        </button>
-
-        <!-- Clear (only rendered when active filters exist) -->
-        @if (Model.SelectedRarities.Any() || Model.SelectedSort != null)
-        {
-            <a href="@Url.Action("Index", "Shop", Model.SelectedType != null ? new { type = Model.SelectedType } : null)"
-               class="btn btn-sm filter-clear-btn">
-                <i class="fas fa-times me-1"></i>Clear Filters
+        <nav class="category-tabs" aria-label="Item categories">
+            <a href="@BuildTabUrl(null, Model.SelectedRarities, Model.SelectedSort, Model.SearchQuery)" class="category-btn"
+               aria-current="@(Model.SelectedType == null ? "page" : null)">
+                <i class="fas fa-list" aria-hidden="true"></i>All Items
             </a>
+            <a href="@BuildTabUrl(ItemType.Equipment, Model.SelectedRarities, Model.SelectedSort, Model.SearchQuery)" class="category-btn"
+               aria-current="@(Model.SelectedType == ItemType.Equipment ? "page" : null)">
+                <i class="fas fa-shield-alt" aria-hidden="true"></i>Equipment
+            </a>
+            <a href="@BuildTabUrl(ItemType.MagicItem, Model.SelectedRarities, Model.SelectedSort, Model.SearchQuery)" class="category-btn"
+               aria-current="@(Model.SelectedType == ItemType.MagicItem ? "page" : null)">
+                <i class="fas fa-magic" aria-hidden="true"></i>Magic Items
+            </a>
+            <a href="@BuildTabUrl(ItemType.QuestItems, Model.SelectedRarities, Model.SelectedSort, Model.SearchQuery)" class="category-btn"
+               aria-current="@(Model.SelectedType == ItemType.QuestItems ? "page" : null)">
+                <i class="fas fa-scroll" aria-hidden="true"></i>Quest Items
+            </a>
+        </nav>
+
+        @{
+            var allRarities = Enum.GetValues<ItemRarity>();
         }
-    </form>
+        <div class="modern-card modern-card--aside shop-filter-card">
+            <div class="modern-card-header">
+                <h2><i class="fas fa-filter me-2" aria-hidden="true"></i>Filter &amp; Sort</h2>
+                @if (Model.HasActiveFilters)
+                {
+                    <span class="badge bg-secondary"><i class="fas fa-filter me-1" aria-hidden="true"></i>Active</span>
+                }
+            </div>
+            <div class="modern-card-body">
+                <form method="get" action="@Url.Action("Index", "Shop")" id="shop-filter-form">
+                    @if (Model.SelectedType != null)
+                    {
+                        <input type="hidden" name="type" value="@Model.SelectedType" />
+                    }
 
-    <!-- Shop Search Bar -->
-    <div class="shop-search mb-3">
-        <div class="input-group justify-content-center" style="max-width: 700px; margin: 0 auto;">
-            <input type="text" name="search" class="form-control"
-                   placeholder="Search items by name or description..."
-                   value="@Model.SearchQuery" autocomplete="off" form="shop-filter-form" />
-            <button type="submit" class="btn filter-apply-btn" form="shop-filter-form">
-                <i class="fas fa-search me-1"></i>Search
-            </button>
+                    <fieldset class="filter-rarity">
+                        <legend class="shop-filter-label">Rarity</legend>
+                        <div class="filter-rarity__grid">
+                            @foreach (var r in allRarities)
+                            {
+                                <label class="filter-check">
+                                    <input class="form-check-input" type="checkbox" name="rarity" value="@r" @(Model.SelectedRarities.Contains(r) ? "checked" : "") />
+                                    <partial name="_ShopRarityChip" model="r" />
+                                </label>
+                            }
+                        </div>
+                    </fieldset>
+
+                    <div class="filter-controls">
+                        <div class="filter-search">
+                            <div class="input-group">
+                                <label for="shopSearch" class="visually-hidden">Search items</label>
+                                <input type="text" id="shopSearch" name="search" class="form-control"
+                                       placeholder="Search items by name or description..."
+                                       value="@Model.SearchQuery" autocomplete="off" />
+                                <button type="submit" class="btn btn-secondary">
+                                    <i class="fas fa-search me-2" aria-hidden="true"></i>Search
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="filter-sort">
+                            <label for="sortSelect" class="shop-filter-label">Sort</label>
+                            <select id="sortSelect" name="sort" class="form-select">
+                                <option value="" selected="@(string.IsNullOrEmpty(Model.SelectedSort))">Default</option>
+                                <option value="price_asc" selected="@(Model.SelectedSort == "price_asc")">Price &#8593;</option>
+                                <option value="price_desc" selected="@(Model.SelectedSort == "price_desc")">Price &#8595;</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-actions">
+                            <button type="submit" class="btn btn-secondary">
+                                <i class="fas fa-filter me-2" aria-hidden="true"></i>Apply Filters
+                            </button>
+                            @if (Model.HasActiveFilters)
+                            {
+                                <a href="@Url.Action("Index", "Shop", Model.SelectedType != null ? new { type = Model.SelectedType } : null)" class="btn btn-secondary">
+                                    <i class="fas fa-times me-2" aria-hidden="true"></i>Clear Filters
+                                </a>
+                            }
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="page" value="1" />
+                </form>
+            </div>
         </div>
-    </div>
 
-    <!-- Shop Inventory -->
-    <div class="shop-inventory">
+        <h2 class="visually-hidden">Items</h2>
         @if (Model.Items?.Any() == true)
         {
             <div class="inventory-grid" id="inventory-grid">
@@ -353,76 +341,69 @@
                     </div>
                 }
             </div>
-
         }
         else
         {
-            <div class="empty-shop-state text-center p-4">
-                @if (Model.HasActiveSearch)
-                {
-                    <h3>No items match your search</h3>
-                    <p>Try a different name or adjust your filters.</p>
-                    <a href="@BuildTabUrl(Model.SelectedType, Model.SelectedRarities, Model.SelectedSort, null)" class="btn filter-apply-btn">
-                        <i class="fas fa-times me-1"></i>Clear search
-                    </a>
-                }
-                else if (Model.HasActiveFilters)
-                {
-                    <h3>No items match your filters</h3>
-                    <p>Try removing some rarity filters or changing the sort order.</p>
-                    <a href="@Url.Action("Index", "Shop")" class="btn filter-apply-btn">
-                        <i class="fas fa-times me-1"></i>Clear filters
-                    </a>
-                }
-                else
-                {
-                    <h3>The shop is currently empty</h3>
-                    <p>Check back later for new items, or contact a Dungeon Master about stocking the shop.</p>
-                }
-            </div>
-        }
-    </div>
-
-    @if (Model.TotalPages > 1)
-    {
-        <nav aria-label="Shop page navigation" class="shop-pagination mt-3 mb-4 text-center">
-            <ul class="pagination justify-content-center">
-                <li class="page-item @(Model.CurrentPage <= 1 ? "disabled" : "")">
-                    <a class="page-link shop-page-link" href="@BuildPageUrl(Model.CurrentPage - 1)"
-                       aria-label="Previous page">
-                        <i class="fas fa-chevron-left me-1"></i>Previous
-                    </a>
-                </li>
-
-                @foreach (var p in PageWindow(Model.CurrentPage, Model.TotalPages))
-                {
-                    if (p == null)
+            <div class="modern-card">
+                <div class="empty-state">
+                    @if (Model.HasActiveSearch)
                     {
-                        <li class="page-item disabled"><span class="page-link">&#8230;</span></li>
+                        <i class="fas fa-search empty-state-icon" aria-hidden="true"></i>
+                        <h3 class="empty-state-heading">No items match your search</h3>
+                        <p class="empty-state-text">Try a different name or adjust your filters.</p>
+                        <a href="@BuildTabUrl(Model.SelectedType, Model.SelectedRarities, Model.SelectedSort, null)" class="btn btn-secondary">
+                            <i class="fas fa-times me-2" aria-hidden="true"></i>Clear search
+                        </a>
                     }
-                    else if (p == Model.CurrentPage)
+                    else if (Model.HasActiveFilters)
                     {
-                        <li class="page-item active"><span class="page-link">@p</span></li>
+                        <i class="fas fa-filter empty-state-icon" aria-hidden="true"></i>
+                        <h3 class="empty-state-heading">No items match your filters</h3>
+                        <p class="empty-state-text">Try removing some rarity filters or changing the sort order.</p>
+                        <a href="@Url.Action("Index", "Shop")" class="btn btn-secondary">
+                            <i class="fas fa-times me-2" aria-hidden="true"></i>Clear filters
+                        </a>
                     }
                     else
                     {
-                        <li class="page-item"><a class="page-link shop-page-link" href="@BuildPageUrl(p.Value)">@p</a></li>
+                        <i class="fas fa-store-slash empty-state-icon" aria-hidden="true"></i>
+                        <h3 class="empty-state-heading">The shop is currently empty</h3>
+                        <p class="empty-state-text">Check back later for new items, or contact a Dungeon Master about stocking the shop.</p>
                     }
-                }
+                </div>
+            </div>
+        }
 
-                <li class="page-item @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")">
-                    <a class="page-link shop-page-link" href="@BuildPageUrl(Model.CurrentPage + 1)"
-                       aria-label="Next page">
-                        Next<i class="fas fa-chevron-right ms-1"></i>
-                    </a>
-                </li>
-            </ul>
-            <p class="shop-pagination-count text-muted mb-0">
-                Showing @((Model.CurrentPage - 1) * 12 + 1)&#8211;@(Math.Min(Model.CurrentPage * 12, Model.TotalItems))
-                of @Model.TotalItems items
-            </p>
-        </nav>
-    }
+        @if (Model.TotalPages > 1)
+        {
+            var onFirstPage = Model.CurrentPage <= 1;
+            var onLastPage = Model.CurrentPage >= Model.TotalPages;
+            <nav aria-label="Shop page navigation">
+                <ul class="pagination shop-pager">
+                    <li class="page-item@(onFirstPage ? " disabled" : "")"><a class="page-link" href="@BuildPageUrl(Model.CurrentPage - 1)" aria-label="Previous page" aria-disabled="@(onFirstPage ? "true" : null)" tabindex="@(onFirstPage ? "-1" : null)"><i class="fas fa-chevron-left me-1" aria-hidden="true"></i>Previous</a></li>
+
+                    @foreach (var p in PageWindow(Model.CurrentPage, Model.TotalPages))
+                    {
+                        if (p == null)
+                        {
+                            <li class="page-item disabled"><span class="page-link">&#8230;</span></li>
+                        }
+                        else if (p == Model.CurrentPage)
+                        {
+                            <li class="page-item active"><span class="page-link" aria-current="page">@p</span></li>
+                        }
+                        else
+                        {
+                            <li class="page-item"><a class="page-link" href="@BuildPageUrl(p.Value)">@p</a></li>
+                        }
+                    }
+
+                    <li class="page-item@(onLastPage ? " disabled" : "")"><a class="page-link" href="@BuildPageUrl(Model.CurrentPage + 1)" aria-label="Next page" aria-disabled="@(onLastPage ? "true" : null)" tabindex="@(onLastPage ? "-1" : null)">Next<i class="fas fa-chevron-right ms-1" aria-hidden="true"></i></a></li>
+                </ul>
+            </nav>
+            <p class="shop-count">Showing @((Model.CurrentPage - 1) * 12 + 1)&#8211;@(Math.Min(Model.CurrentPage * 12, Model.TotalItems)) of @Model.TotalItems items</p>
+        }
+    </div>
 
     <!-- Floating Merchant -->
     <div class="shop-merchant" title="Mystical Merchant" onclick="showMerchantDialog()">

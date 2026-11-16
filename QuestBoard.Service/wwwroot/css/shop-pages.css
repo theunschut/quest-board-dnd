@@ -296,6 +296,206 @@
     z-index: 1;
   }
 
+  /* ---------- Shop browse: hero, categories, the filter card, the grid and the pager ---------- */
+
+  .shop-hero {
+    margin-block-end: var(--qb-space-lg);
+    padding: var(--qb-space-lg);
+    border: 2px solid var(--qb-accent);
+    border-radius: var(--qb-radius-lg);
+    background: var(--qb-surface-overlay);
+    color: var(--qb-fg);
+    box-shadow: var(--qb-shadow-rest);
+    text-align: center;
+  }
+
+  .shop-hero__title {
+    margin: 0;
+    font-size: var(--qb-text-xl);
+    line-height: var(--qb-leading-heading);
+    color: var(--qb-accent);
+    overflow-wrap: anywhere;
+  }
+
+  .shop-hero__title .fas {
+    margin-inline-end: var(--qb-space-md);
+  }
+
+  .shop-hero__sub {
+    margin: var(--qb-space-sm) 0 0;
+    color: var(--qb-fg);
+  }
+
+  /* The four categories are links, each at least as tall as the touch target step, the current one on paper. */
+  .category-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--qb-space-sm);
+    margin-block-end: var(--qb-space-lg);
+  }
+
+  .category-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    min-block-size: var(--qb-hit-min);
+    padding: 0 var(--qb-space-md);
+    border: 1px solid var(--qb-border-strong);
+    border-radius: var(--qb-radius-md);
+    background: var(--qb-surface-overlay);
+    color: var(--qb-fg);
+    font-weight: var(--qb-weight-strong);
+    text-decoration: none;
+    transition: background-color var(--qb-dur-fast) var(--qb-ease), color var(--qb-dur-fast) var(--qb-ease), border-color var(--qb-dur-fast) var(--qb-ease);
+  }
+
+  .category-btn:hover {
+    background: var(--qb-surface-paper-alt);
+    color: var(--qb-ink);
+  }
+
+  .category-btn[aria-current="page"],
+  .category-btn[aria-current="page"]:hover {
+    border-color: var(--qb-surface-paper);
+    background: var(--qb-surface-paper);
+    color: var(--qb-ink);
+  }
+
+  /* One filter card across the whole width: the rarity choices share equal columns, and under a rule the search field
+     takes the flexible width, the sort select a fixed share, and Apply and Clear sit at the row end. When the row is too
+     narrow the sort and the actions drop to their own line and the actions stay at the end. */
+  .shop-filter-card {
+    margin-block-end: var(--qb-space-lg);
+  }
+
+  .shop-filter-card .modern-card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--qb-space-sm);
+  }
+
+  .shop-filter-card .modern-card-header h2 {
+    margin: 0;
+  }
+
+  .shop-filter-card .modern-card-body {
+    padding: var(--qb-space-md) var(--qb-space-lg);
+  }
+
+  .filter-rarity {
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .shop-filter-label {
+    float: none;
+    inline-size: auto;
+    margin: 0 var(--qb-space-sm) 0 0;
+    padding: 0;
+    font-size: var(--qb-text-base);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .filter-rarity .shop-filter-label {
+    margin-block-end: var(--qb-space-sm);
+  }
+
+  .filter-rarity__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: var(--qb-space-sm) var(--qb-space-md);
+  }
+
+  .filter-check {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    min-inline-size: 0;
+    min-block-size: calc(var(--qb-hit-min) - var(--qb-space-sm) - var(--qb-space-xs));
+    cursor: pointer;
+  }
+
+  .filter-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--qb-space-md);
+    margin-block-start: var(--qb-space-md);
+    padding-block-start: var(--qb-space-md);
+    border-block-start: 1px solid var(--qb-surface-glass-border);
+  }
+
+  .filter-search {
+    flex: 1 1 22rem;
+    min-inline-size: 0;
+  }
+
+  .filter-sort {
+    display: flex;
+    flex: 0 0 14rem;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    min-inline-size: 0;
+  }
+
+  .filter-sort .form-select {
+    flex: 1 1 auto;
+    inline-size: auto;
+    min-inline-size: 0;
+  }
+
+  .filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--qb-space-sm);
+    margin-inline-start: auto;
+  }
+
+  /* The grid fills the width with columns at least 280px wide, so one card keeps its column width and a long name
+     wraps inside its card. The interactive cards carry no blur. */
+  .inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+    gap: var(--qb-space-md);
+    align-items: stretch;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* The pager takes its colours from the pagination variables Bootstrap reads, all from tokens. */
+  .shop-pager {
+    --bs-pagination-bg: var(--qb-surface-overlay);
+    --bs-pagination-color: var(--qb-fg);
+    --bs-pagination-border-color: var(--qb-surface-glass-border);
+    --bs-pagination-hover-bg: var(--qb-surface-paper-alt);
+    --bs-pagination-hover-color: var(--qb-ink);
+    --bs-pagination-hover-border-color: var(--qb-surface-glass-border);
+    --bs-pagination-focus-bg: var(--qb-surface-paper-alt);
+    --bs-pagination-focus-color: var(--qb-ink);
+    --bs-pagination-active-bg: var(--qb-surface-paper);
+    --bs-pagination-active-color: var(--qb-ink);
+    --bs-pagination-active-border-color: var(--qb-surface-paper);
+    --bs-pagination-disabled-bg: var(--qb-surface-overlay);
+    --bs-pagination-disabled-color: var(--qb-fg-muted);
+    --bs-pagination-disabled-border-color: var(--qb-surface-glass-border);
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: var(--qb-space-lg) 0 var(--qb-space-sm);
+  }
+
+  .shop-count {
+    margin: 0 0 var(--qb-space-lg);
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-sm);
+    text-align: center;
+  }
+
   /* ---------- Shop management: the lists, the rows and the phone slips ---------- */
 
   .mgmt-bar {
