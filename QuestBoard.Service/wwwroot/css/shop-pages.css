@@ -258,16 +258,19 @@
     margin-inline-end: var(--qb-space-xs);
   }
 
+  /* The state colours are the status text colours pulled halfway to the card's own text colour, because the grid card
+     is translucent and the plain status text measures a little under 4.5:1 over the brightest board. The icon and the
+     words carry the state, so the colour only reinforces it. */
   .shop-card__stock--low {
-    color: var(--qb-warning-text);
+    color: color-mix(in srgb, var(--qb-warning-text) 50%, var(--qb-fg));
   }
 
   .shop-card__stock--soldout {
-    color: var(--qb-danger-text);
+    color: color-mix(in srgb, var(--qb-danger-text) 50%, var(--qb-fg));
   }
 
   .shop-card__stock--unlimited {
-    color: var(--qb-info-text);
+    color: color-mix(in srgb, var(--qb-info-text) 50%, var(--qb-fg));
   }
 
   /* On the grid cards the name is a real link stretched over the whole card, so the card is one target for the mouse
