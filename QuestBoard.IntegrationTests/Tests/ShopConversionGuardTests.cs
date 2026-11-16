@@ -94,6 +94,7 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/Views/Shop/Details.Mobile.cshtml",
         "QuestBoard.Service/Views/Shared/_ShopItemDetailsContent.cshtml",
         "QuestBoard.Service/Views/ShopManagement/Edit.cshtml",
+        "QuestBoard.Service/Views/ShopManagement/Create.cshtml",
     ];
 
     // For each view, the sheets it must link from its Styles section, by file name. The details partial links nothing:
@@ -105,6 +106,7 @@ public class ShopConversionGuardTests
         ["QuestBoard.Service/Views/Shop/Index.cshtml"] = ["shop-pages.css", "markdown-content.css"],
         ["QuestBoard.Service/Views/Shop/Index.Mobile.cshtml"] = ["shop-pages.css", "shop-pages.mobile.css", "markdown-content.css"],
         ["QuestBoard.Service/Views/ShopManagement/Edit.cshtml"] = ["shop-pages.css", "shop-form.css"],
+        ["QuestBoard.Service/Views/ShopManagement/Create.cshtml"] = ["shop-pages.css", "shop-form.css"],
     };
 
     // Files this work retires; each is deleted and must stay deleted, because its content moved into the shared sheets.
@@ -150,6 +152,8 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/Views/Shared/_ShopTypeChip.cshtml",
         "QuestBoard.Service/Views/ShopManagement/Edit.cshtml",
         "QuestBoard.Service/Views/ShopManagement/Edit.Mobile.cshtml",
+        "QuestBoard.Service/Views/ShopManagement/Create.cshtml",
+        "QuestBoard.Service/Views/ShopManagement/Create.Mobile.cshtml",
         "QuestBoard.Service/wwwroot/css/shop-pages.mobile.css",
         "QuestBoard.IntegrationTests/Mobile/MobileViewsTests.cs",
         "QuestBoard.Service/wwwroot/css/shop-form.css",

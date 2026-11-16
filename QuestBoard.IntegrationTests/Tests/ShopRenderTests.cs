@@ -881,4 +881,83 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         Regex.Matches(main, @"<script\b(?![^>]*\bsrc\s*=)[^>]*>").Should().BeEmpty("the page holds no inline script");
         main.Should().NotContain("legendary-glow");
     }
+
+    // ---- Create: the form contract and the shared module, on both layouts ------------------------------------
+
+    private async Task<HttpClient> SeedCreatePageAsync(string handle)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory, handle, $"{handle}@example.com");
+        return client;
+    }
+
+    private static string RequiredLabel(string text) =>
+        @"<label\b[^>]*>\s*" + text + @"\s*<span class=""text-danger"" aria-hidden=""true"">\*</span><span class=""visually-hidden""> \(required\)</span>";
+
+    [Fact]
+    public async Task ShopManagementCreate_Desktop_WiresThePricingThroughDataAttributesAndTheSharedModule()
+    {
+        var client = await SeedCreatePageAsync("shopr_createmodule");
+
+        var html = await GetAsync(client, "/ShopManagement/Create", DesktopUserAgent);
+
+        Regex.IsMatch(html, @"<form\b[^>]*\bdata-shop-item-form\b[^>]*>").Should().BeTrue("the module binds the item form by its data attribute");
+        Regex.IsMatch(html, @"<button\b[^>]*\bid=""randomPriceBtn""[^>]*\bdata-random-price\b").Should().BeTrue();
+        Regex.IsMatch(html, @"<button\b[^>]*\bid=""calculatedPriceBtn""[^>]*\bdata-calculated-price\b").Should().BeTrue();
+        Regex.IsMatch(html, @"<input\b[^>]*\bid=""enableAvailabilityWindow""[^>]*\bdata-availability-toggle\b").Should().BeTrue();
+        Regex.IsMatch(html, @"<script\b[^>]*\btype=""module""[^>]*\bsrc=""/js/shop-item-form\.js(?:\?[^""]*)?""").Should().BeTrue(
+            "the module is a file loaded by the page, not an inline script");
+        Regex.IsMatch(html, @"<div\b[^>]*\bid=""price-suggestion""[^>]*\baria-live=""polite""").Should().BeTrue("the hint is announced politely when the module rewrites it");
+        Regex.IsMatch(html, @"<button\b[^>]*\bid=""randomPriceBtn""[^>]*\bdisabled\b").Should().BeTrue("the helpers start disabled until a rarity is chosen");
+    }
+
+    [Fact]
+    public async Task ShopManagementCreate_Desktop_RequiredFieldsCarryTheMarkerAndItsHiddenWord()
+    {
+        var client = await SeedCreatePageAsync("shopr_createmarks");
+
+        var html = await GetAsync(client, "/ShopManagement/Create", DesktopUserAgent);
+
+        foreach (var label in new[] { "Item Name", "Item Type", "Description", "Rarity", "Price \\(Gold Pieces\\)" })
+            Regex.IsMatch(html, RequiredLabel(label)).Should().BeTrue($"{label} is required and says so to a screen reader too");
+        html.Should().Contain("form-page");
+        Regex.IsMatch(html, @"<span\b(?=[^>]*data-valmsg-for=""Name"")[^>]*\bclass=""field-validation-valid""").Should().BeTrue(
+            "the message spans come from the validation tag helper, which adds field-validation-error only on a field in error");
+        html.Should().NotMatchRegex(@"<span\b[^>]*data-valmsg-for=""Name""[^>]*class=""text-danger""");
+    }
+
+    [Fact]
+    public async Task ShopManagementCreate_Desktop_ActionRowHoldsTheExitPreviewAndTheCommit()
+    {
+        var client = await SeedCreatePageAsync("shopr_createactions");
+
+        var html = await GetAsync(client, "/ShopManagement/Create", DesktopUserAgent);
+
+        var row = Regex.Match(html, @"<div class=""form-actions"">[\s\S]*?Create Item\s*</button>");
+        row.Success.Should().BeTrue("the action row is the shared form-actions row");
+        var back = BackToShopManagementLabel ? "Back to Shop Management" : "Cancel";
+        Regex.IsMatch(row.Value, @"<a href=""/ShopManagement"" class=""btn btn-secondary"">\s*<i\b[^>]*></i>" + back).Should().BeTrue();
+        Regex.IsMatch(row.Value, @"<button type=""button"" class=""btn btn-info"">\s*<i class=""fas fa-eye me-2""[^>]*></i>Preview").Should().BeTrue(
+            "Preview is a filled info button with no handler in the markup");
+        Regex.IsMatch(row.Value, @"class=""btn btn-primary"">\s*<i\b[^>]*></i>Create Item").Should().BeTrue();
+        row.Value.Should().NotContain("btn-outline");
+    }
+
+    [Fact]
+    public async Task ShopManagementCreate_Desktop_CarriesTheThemeLinksItsSheetsAndHoldsNoInlineCode()
+    {
+        var client = await SeedCreatePageAsync("shopr_createsheets");
+
+        var html = await GetAsync(client, "/ShopManagement/Create", DesktopUserAgent);
+
+        HtmlOpeningTag(html).Should().Contain("data-theme=\"shop\"");
+        Regex.IsMatch(html, @"<link\b[^>]*\bhref=""/css/shop-pages\.css(?:\?[^""]*)?""").Should().BeTrue();
+        Regex.IsMatch(html, @"<link\b[^>]*\bhref=""/css/shop-form\.css(?:\?[^""]*)?""").Should().BeTrue();
+        var main = html[html.IndexOf("<main", StringComparison.Ordinal)..];
+        main.Should().NotContain("<style", "the page's rules live in sheets");
+        main.Should().NotMatchRegex(@"\son(?:click|change|submit)\s*=", "no event handler is written into the markup");
+        Regex.Matches(main, @"<script\b(?![^>]*\bsrc\s*=)[^>]*>").Should().BeEmpty("the page holds no inline script");
+        main.Should().NotContain("legendary-glow").And.NotContain("item-preview");
+    }
 }
