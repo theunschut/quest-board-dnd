@@ -275,7 +275,7 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
 
         var html = await GetAsync(client, "/Shop", AgentFor(mobile));
 
-        var cards = CardChips(html, mobile ? "class=\"shop-item-card-mobile\"" : "class=\"item-card\"");
+        var cards = CardChips(html, mobile ? "class=\"shop-item-card-mobile\"" : "data-item-card");
         cards.Should().HaveCount(Rarities.Length, "each rarity has one card");
         cards.Select(c => c.Key).Should().BeEquivalentTo(Rarities.Select(r => ShopItemDisplay.RarityKey(r.Rarity)));
         foreach (var (rarity, key, word) in Rarities)
@@ -1277,7 +1277,7 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         template.Success.Should().BeTrue("the card is cloned from a server-rendered template");
         var card = template.Groups[1].Value;
         Regex.IsMatch(card, @"class=""modern-card shop-card""").Should().BeTrue("the replica carries the new card classes");
-        card.Should().NotContain("item-card", "the old global sheet still styles that class, and it belongs to the real cards");
+        card.Should().NotContain("item-card", "item-card is the hook of the real grid cards, which the replica does not carry");
         foreach (var slot in new[] { "data-preview-chip", "data-preview-name", "data-preview-excerpt", "data-preview-price", "data-preview-stock" })
             card.Should().Contain(slot);
         Regex.IsMatch(card, @"<span\b[^>]*\bclass=""btn btn-primary shop-card__action""[^>]*\baria-hidden=""true""[^>]*>").Should().BeTrue(
@@ -1427,5 +1427,138 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
         (await context.ShopItems.IgnoreQueryFilters().CountAsync(TestContext.Current.CancellationToken)).Should().Be(0, "nothing is saved");
+    }
+
+    // ---- Shop browse: the item cards and the details dialog (desktop) ----------------------------------
+
+    // The recorded answer on whether the details dialog shows a sentence and a link when its item cannot be loaded.
+    // Changing the answer means changing this constant, the view and the module together.
+    private static readonly bool ItemDialogShowsLoadError = false;
+
+    // A signed-in member and the given number of Published items named "Browse Item NN".
+    private async Task<HttpClient> SeedBrowseBoardAsync(string handle, int count, Action<int, ShopItemEntity>? shape = null)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+        var keeper = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, $"{handle}_keeper", $"{handle}_keeper@example.com");
+        for (var i = 1; i <= count; i++)
+        {
+            var item = await TestDataHelper.CreateShopItemAsync(factory.Services, keeper.Id, $"Browse Item {i:00}", 10m + i, 5);
+            if (shape != null)
+                await UpdateItemAsync(item.Id, entity => shape(i, entity));
+        }
+
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, handle, $"{handle}@example.com", name: "Shop Render Member");
+        return client;
+    }
+
+    // The markup of each grid card: from its marker to the next card, the last one stopping where the pager or the
+    // merchant begins.
+    private static List<string> GridCards(string html)
+    {
+        var chunks = html.Split("data-item-card").Skip(1).ToList();
+        if (chunks.Count == 0)
+            return chunks;
+
+        var last = chunks[^1];
+        var stops = new[] { "Shop page navigation", "shop-merchant", "id=\"itemDetailsModal\"" }
+            .Select(stop => last.IndexOf(stop, StringComparison.Ordinal)).Where(i => i >= 0).ToList();
+        chunks[^1] = stops.Count > 0 ? last[..stops.Min()] : last;
+        return chunks;
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_CarriesTheShopThemeOnHtmlNotBody()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_idxtheme", 1);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        HtmlOpeningTag(html).Should().Contain("data-theme=\"shop\"");
+        BodyOpeningTag(html).Should().NotContain("data-theme");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_EachCardIsAKeyboardCardWithANameLinkAndAPurchaseButton()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_idxcard", 3);
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var ids = await context.ShopItems.IgnoreQueryFilters().OrderBy(i => i.Name).Select(i => i.Id).ToListAsync(TestContext.Current.CancellationToken);
+
+        var cards = GridCards(html);
+        cards.Should().HaveCount(3);
+        for (var i = 0; i < cards.Count; i++)
+        {
+            var card = cards[i];
+            var id = ids[i];
+            card.Should().Contain($"data-item-url=\"/Shop/Details/{id}?isModal=True\"", "the dialog is filled from the address the server wrote");
+            Regex.IsMatch(card, @"<h3\b[^>]*>\s*<a\b(?=[^>]*\bclass=""row-nav-link"")(?=[^>]*\bhref=""/Shop/Details/" + id + @"""" + @")(?=[^>]*\bdata-bs-toggle=""modal"")(?=[^>]*\bdata-bs-target=""#itemDetailsModal"")[^>]*>\s*Browse Item \d\d\s*</a>\s*</h3>")
+                .Should().BeTrue("the name is a real link to the details page that also opens the dialog");
+            Regex.IsMatch(card, @"<button\b(?=[^>]*\bclass=""btn btn-primary w-100 shop-card__action"")(?=[^>]*\bdata-bs-toggle=""modal"")(?=[^>]*\bdata-bs-target=""#itemDetailsModal"")(?=[^>]*\bdata-item-url="")[^>]*>\s*<i\b[^>]*></i>Purchase\s*</button>")
+                .Should().BeTrue("Purchase is a filled primary button that opens the same dialog");
+            card.Should().NotMatchRegex(@"\son[a-z]+\s*=", "no inline handler sits on a card");
+            card.Should().NotContain("stopPropagation");
+        }
+
+        Regex.Matches(html, @"<div\b[^>]*class=""modern-card modern-card--interactive shop-card item-card""[^>]*\bdata-item-card\b").Should().HaveCount(3,
+            "each card is an interactive card on the shared card block, hooked by its data attribute");
+        html.Should().NotContain("class=\"item-card\"", "the old exact class attribute is gone");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_DetailsDialogIsTheFoundationShellNamedByItsTitleWithAScrollingBody()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_idxdlg", 1);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        var start = html.IndexOf("id=\"itemDetailsModal\"", StringComparison.Ordinal);
+        start.Should().BeGreaterThan(-1);
+        var end = html.IndexOf("id=\"itemDetailsBody\"", start, StringComparison.Ordinal);
+        end.Should().BeGreaterThan(start);
+        var shell = html[(start - 40)..(end + 40)];
+        shell.Should().Contain("aria-labelledby=\"itemDetailsTitle\"");
+        shell.Should().Contain("modal-dialog modal-lg modal-dialog-scrollable", "a tall item scrolls inside the dialog instead of the page");
+        shell.Should().MatchRegex(@"<h2 class=""modal-title"" id=""itemDetailsTitle"">Item Details</h2>");
+        shell.Should().MatchRegex(@"<button type=""button"" class=""btn-close"" data-bs-dismiss=""modal"" aria-label=""Close""></button>");
+        shell.Should().NotContain("bg-dark").And.NotContain("text-light").And.NotContain("border-secondary").And.NotContain("btn-close-white");
+        shell.Should().NotContain("style=");
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_LoadErrorTemplate_FollowsTheRecordedAnswer()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_idxerr", 1);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        if (ItemDialogShowsLoadError)
+        {
+            html.Should().Contain("Could not load this item.").And.Contain("Open the item page");
+            Regex.IsMatch(html, @"<template\b[^>]*\bdata-item-error\b").Should().BeTrue("the line is cloned from a server-rendered template");
+        }
+        else
+        {
+            html.Should().NotContain("Could not load this item.").And.NotContain("Open the item page");
+            html.Should().NotContain("data-item-error");
+        }
+    }
+
+    [Fact]
+    public async Task ShopIndex_Desktop_LoadsTheDialogModuleAndKeepsNoDialogCodeInline()
+    {
+        var client = await SeedBrowseBoardAsync("shopr_idxmod", 1);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        Regex.IsMatch(html, @"<script\b[^>]*\btype=""module""[^>]*\bsrc=""/js/shop-item-modal\.js(?:\?[^""]*)?""").Should().BeTrue(
+            "the dialog is filled by a module");
+        html.Should().NotContain("show.bs.modal", "the page holds no dialog script of its own");
+        html.Should().NotContain("purchase-btn");
+        html.Should().NotContain(".innerHTML");
     }
 }

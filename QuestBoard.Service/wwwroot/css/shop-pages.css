@@ -270,6 +270,26 @@
     color: var(--qb-info-text);
   }
 
+  /* On the grid cards the name is a real link stretched over the whole card, so the card is one target for the mouse
+     and the name link is the way in for the keyboard and for assistive technology. The focus ring is drawn on the
+     card, where it can be seen, instead of on the small name. */
+  .shop-card .row-nav-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  .shop-card:has(.row-nav-link:focus-visible) {
+    outline: var(--qb-focus-width) solid var(--qb-focus-outer);
+    outline-offset: var(--qb-focus-offset);
+    box-shadow: 0 0 0 var(--qb-focus-offset) var(--qb-focus-inner);
+  }
+
+  .shop-card .row-nav-link:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
   /* The purchase control sits above a stretched name link on the grid cards, so a click on it never reaches the link. */
   .shop-card__action {
     position: relative;

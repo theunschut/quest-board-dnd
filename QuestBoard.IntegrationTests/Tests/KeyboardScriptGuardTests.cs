@@ -146,6 +146,23 @@ public class KeyboardScriptGuardTests
     }
 
     [Fact]
+    public void ShopItemModalModule_ClearsTheBodyAndIgnoresStaleResponses()
+    {
+        var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/shop-item-modal.js");
+
+        script.Should().Contain("itemDetailsModal").And.Contain("itemDetailsBody").And.Contain("show.bs.modal", "the body is filled each time the dialog opens");
+        script.Should().Contain("relatedTarget").And.Contain("dataset.itemUrl", "the address comes from the trigger's data attribute");
+        script.Should().Contain("replaceChildren()", "the body is emptied before the fetch starts");
+        script.Should().Contain("aria-busy", "the dialog says it is loading until the fragment arrives");
+        Regex.IsMatch(script, @"requestId\s*!==\s*latestRequestId").Should().BeTrue("an answer that is not for the latest request is ignored");
+        script.Should().Contain("DOMParser", "the fragment is read as an inert document, never inserted as a string");
+        script.Should().Contain("replaceChildren(...", "only the parsed nodes are moved into the body");
+        script.Should().NotMatchRegex(@"innerHTML|outerHTML|insertAdjacentHTML|document\.write", "no markup is built from strings");
+        script.Should().NotMatchRegex(@"window\.\w+\s*=", "nothing is exposed globally");
+        Regex.Matches(script, @"fetch\(").Should().HaveCount(1, "the details address is the only request the module makes");
+    }
+
+    [Fact]
     public void ShopManagementModule_LoadsTheDenyDialogFromItsTrigger()
     {
         var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/shop-management.js");

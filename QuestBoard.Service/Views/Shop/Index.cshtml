@@ -5,6 +5,7 @@
 @inject QuestBoard.Domain.Interfaces.IMarkdownService MarkdownService
 @{
     ViewData["Title"] = "The Mystical Merchant's Emporium";
+    ViewData["Theme"] = "shop";
 }
 
 @section Styles {
@@ -293,66 +294,60 @@
             <div class="inventory-grid" id="inventory-grid">
                 @foreach (var item in Model.Items)
                 {
-                    <div class="item-card"
-                         data-bs-toggle="modal" data-bs-target="#itemDetailsModal"
-                         data-item-url="@Url.Action("Details", "Shop", new { id = item.Id, isModal = true })">
+                    var detailsUrl = Url.Action("Details", "Shop", new { id = item.Id, isModal = true });
+                    var stockModifier = item.Quantity == -1 ? "unlimited" : (item.Quantity == 0 ? "soldout" : (item.Quantity <= 5 ? "low" : null));
+                    var plainDescription = MarkdownService.ExtractPlainText(item.Description);
+                    var shortDescription = plainDescription.Length > 120
+                        ? plainDescription.Substring(0, 120) + "..."
+                        : plainDescription;
 
-                        <!-- Item Header -->
-                        <div class="item-header">
-                            <h5 class="item-name text-light">@item.Name</h5>
+                    <div class="modern-card modern-card--interactive shop-card item-card" data-item-card data-item-url="@detailsUrl">
+                        <div class="shop-card__head">
+                            <h3 class="shop-card__name">
+                                <a class="row-nav-link" href="@Url.Action("Details", "Shop", new { id = item.Id })"
+                                   data-bs-toggle="modal" data-bs-target="#itemDetailsModal"
+                                   data-item-url="@detailsUrl">@item.Name</a>
+                            </h3>
                             <partial name="_ShopRarityChip" model="item.Rarity" />
                         </div>
 
-                        <!-- Item Description -->
-                        <div class="item-description">
-                            @{
-                                var plainDescription = MarkdownService.ExtractPlainText(item.Description);
-                                var shortDescription = plainDescription.Length > 120
-                                    ? plainDescription.Substring(0, 120) + "..."
-                                    : plainDescription;
-                            }
-                            @shortDescription
-                        </div>
+                        <p class="shop-card__excerpt">@shortDescription</p>
 
-                        <!-- Item Footer -->
-                        <div class="item-footer">
-                            <div class="item-price">
-                                <i class="fas fa-coins me-1"></i>@item.Price gp
-                            </div>
-                            <div class="item-stock @(item.Quantity == -1 ? "unlimited" : (item.Quantity == 0 ? "sold-out" : (item.Quantity <= 5 ? "low" : "")))">
+                        <div class="shop-card__foot">
+                            <span class="shop-card__price"><i class="fas fa-coins" aria-hidden="true"></i>@item.Price gp</span>
+                            <span class="shop-card__stock@(stockModifier != null ? $" shop-card__stock--{stockModifier}" : "")">
                                 @if (item.Quantity == -1)
                                 {
-                                    <i class="fas fa-infinity me-1"></i><text>Unlimited</text>
+                                    <i class="fas fa-infinity" aria-hidden="true"></i><text>Unlimited</text>
                                 }
                                 else if (item.Quantity == 0)
                                 {
-                                    <i class="fas fa-times-circle me-1"></i><text>Sold Out</text>
+                                    <i class="fas fa-times-circle" aria-hidden="true"></i><text>Sold Out</text>
                                 }
                                 else if (item.Quantity <= 5)
                                 {
-                                    <i class="fas fa-exclamation-triangle me-1"></i><text>@item.Quantity left</text>
+                                    <i class="fas fa-exclamation-triangle" aria-hidden="true"></i><text>@item.Quantity left</text>
                                 }
                                 else
                                 {
-                                    <i class="fas fa-box me-1"></i><text>@item.Quantity in stock</text>
+                                    <i class="fas fa-box" aria-hidden="true"></i><text>@item.Quantity in stock</text>
                                 }
-                            </div>
+                            </span>
                         </div>
 
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            <button type="button" class="purchase-btn"
+                            <button type="button" class="btn btn-primary w-100 shop-card__action"
                                     data-bs-toggle="modal" data-bs-target="#itemDetailsModal"
-                                    data-item-url="@Url.Action("Details", "Shop", new { id = item.Id, isModal = true })"
-                                    onclick="event.stopPropagation()"
+                                    data-item-url="@detailsUrl"
                                     @(item.Status != QuestBoard.Domain.Enums.ItemStatus.Published || item.Quantity == 0 ? "disabled" : "")>
-                                <i class="fas fa-shopping-cart me-1"></i>Purchase
+                                <i class="fas fa-shopping-cart me-2" aria-hidden="true"></i>Purchase
                             </button>
                         }
                         else
                         {
-                            <a href="@Url.Action("Login", "Account")" class="purchase-btn" title="Login required" onclick="event.stopPropagation()">
-                                <i class="fas fa-lock me-1"></i>Login to Purchase
+                            <a href="@Url.Action("Login", "Account")" class="btn btn-primary w-100 shop-card__action" title="Login required">
+                                <i class="fas fa-lock me-2" aria-hidden="true"></i>Login to Purchase
                             </a>
                         }
                     </div>
@@ -435,47 +430,23 @@
     </div>
 </div>
 
-<!-- Item Details Modal -->
-<div class="modal fade" id="itemDetailsModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content bg-dark text-light">
-            <div class="modal-header border-secondary">
-                <h5 class="modal-title" id="itemDetailsTitle">Item Details</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+@* The details dialog. shop-item-modal.js fills the body from the address on the card or button that opened it. *@
+<div class="modal fade" id="itemDetailsModal" tabindex="-1" aria-labelledby="itemDetailsTitle">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="itemDetailsTitle">Item Details</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" id="itemDetailsBody">
-                <!-- Content will be loaded via AJAX -->
-            </div>
+            <div class="modal-body" id="itemDetailsBody"></div>
         </div>
     </div>
 </div>
 
 @section Scripts {
     <script type="module" src="~/js/shop-item-sell.js" asp-append-version="true"></script>
+    <script type="module" src="~/js/shop-item-modal.js" asp-append-version="true"></script>
     <script>
-        // Minimal script for modal loading (Bootstrap 5 doesn't have remote modal)
-        document.getElementById('itemDetailsModal').addEventListener('show.bs.modal', function (event) {
-            const button = event.relatedTarget;
-            if (!button) return;
-            const itemUrl = button.getAttribute('data-item-url');
-            if (itemUrl) {
-                fetch(itemUrl)
-                    .then(response => response.text())
-                    .then(html => document.getElementById('itemDetailsBody').innerHTML = html)
-                    .catch(() => {}); // silently ignore fetch errors
-            }
-        });
-
-        // Handle purchase button clicks separately from card clicks
-        document.addEventListener('DOMContentLoaded', function() {
-            const purchaseButtons = document.querySelectorAll('.purchase-btn[data-bs-toggle="modal"]');
-            purchaseButtons.forEach(button => {
-                button.addEventListener('click', function(event) {
-                    event.stopPropagation(); // Prevent card click from also triggering
-                });
-            });
-        });
-
         // Show merchant dialog
         function showMerchantDialog() {
             const messages = [

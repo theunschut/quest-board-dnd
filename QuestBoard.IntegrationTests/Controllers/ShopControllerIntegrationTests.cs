@@ -281,7 +281,7 @@ public class ShopControllerIntegrationTests : IClassFixture<WebApplicationFactor
         var response = await client.GetAsync("/Shop", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        var matches = System.Text.RegularExpressions.Regex.Matches(content, @"class=""item-card""");
+        var matches = System.Text.RegularExpressions.Regex.Matches(content, @"data-item-card");
         matches.Count.Should().Be(12);
     }
 
