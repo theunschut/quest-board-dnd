@@ -84,6 +84,7 @@ public class ShopConversionGuardTests
     private static readonly string[] ShopModules =
     [
         "QuestBoard.Service/wwwroot/js/shop-item-sell.js",
+        "QuestBoard.Service/wwwroot/js/shop-item-form.js",
     ];
 
     // Views and partials that carry no inline code, repository-relative. Grows as each view is converted.
@@ -92,6 +93,7 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/Views/Shop/Details.cshtml",
         "QuestBoard.Service/Views/Shop/Details.Mobile.cshtml",
         "QuestBoard.Service/Views/Shared/_ShopItemDetailsContent.cshtml",
+        "QuestBoard.Service/Views/ShopManagement/Edit.cshtml",
     ];
 
     // For each view, the sheets it must link from its Styles section, by file name. The details partial links nothing:
@@ -102,6 +104,7 @@ public class ShopConversionGuardTests
         ["QuestBoard.Service/Views/Shop/Details.Mobile.cshtml"] = ["shop-pages.css", "shop-pages.mobile.css", "markdown-content.css"],
         ["QuestBoard.Service/Views/Shop/Index.cshtml"] = ["shop-pages.css", "markdown-content.css"],
         ["QuestBoard.Service/Views/Shop/Index.Mobile.cshtml"] = ["shop-pages.css", "shop-pages.mobile.css", "markdown-content.css"],
+        ["QuestBoard.Service/Views/ShopManagement/Edit.cshtml"] = ["shop-pages.css", "shop-form.css"],
     };
 
     // Files this work retires; each is deleted and must stay deleted, because its content moved into the shared sheets.
@@ -149,6 +152,9 @@ public class ShopConversionGuardTests
         "QuestBoard.Service/Views/ShopManagement/Edit.Mobile.cshtml",
         "QuestBoard.Service/wwwroot/css/shop-pages.mobile.css",
         "QuestBoard.IntegrationTests/Mobile/MobileViewsTests.cs",
+        "QuestBoard.Service/wwwroot/css/shop-form.css",
+        "QuestBoard.Service/wwwroot/js/shop-item-form.js",
+        "QuestBoard.Service/Views/Shared/_MarkdownEditor.cshtml",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it
