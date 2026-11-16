@@ -2037,7 +2037,7 @@ Plans:
 **Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
 **Requirements**: TBD
 **Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
-**Plans:** 8/21 plans executed
+**Plans:** 9/21 plans executed
 
 **Scope:**
 
@@ -2122,7 +2122,7 @@ Plans:
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
-- [ ] 99-09-PLAN.md — Status badges and type words on the management list and Edit, the management chips, the last old rarity rules deleted, the shop motion guard
+- [x] 99-09-PLAN.md — Status badges and type words on the management list and Edit, the management chips, the last old rarity rules deleted, the shop motion guard
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
