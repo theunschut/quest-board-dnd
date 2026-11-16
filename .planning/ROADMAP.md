@@ -2037,7 +2037,7 @@ Plans:
 **Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
 **Requirements**: TBD
 **Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
-**Plans:** 12/21 plans executed
+**Plans:** 13/21 plans executed
 
 **Scope:**
 
@@ -2138,7 +2138,7 @@ Plans:
 
 **Wave 13** *(blocked on Wave 12 completion)*
 
-- [ ] 99-13-PLAN.md — Preview dialog on desktop Create (on Edit only on a Gate 1 yes): card replica from the form, existing Markdown preview endpoint, nothing saved
+- [x] 99-13-PLAN.md — Preview dialog on desktop Create (on Edit only on a Gate 1 yes): card replica from the form, existing Markdown preview endpoint, nothing saved
 
 **Wave 14** *(blocked on Wave 13 completion)*
 
