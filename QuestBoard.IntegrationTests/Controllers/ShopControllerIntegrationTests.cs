@@ -1,3 +1,4 @@
+using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.IntegrationTests.Helpers;
 using System.Net;
@@ -347,5 +348,110 @@ public class ShopControllerIntegrationTests : IClassFixture<WebApplicationFactor
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         content.Should().Contain("page-item active");
+    }
+
+    private const string QuantityRefusal = "Quantity must be at least 1.";
+
+    // A signed-in member and one Published item with the given stock, for the crafted-post facts.
+    private async Task<(HttpClient Client, UserEntity User, int ItemId)> SeedMemberAndItemAsync(int stock)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        _factory.TestGroupContext.ActiveGroupId = 1;
+
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var shopkeeper = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, $"qtykeeper_{suffix}", $"qtykeeper_{suffix}@example.com");
+        var item = await TestDataHelper.CreateShopItemAsync(_factory.Services, shopkeeper.Id, "Plain Lantern", 40m, stock);
+        var (client, user) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"qtybuyer_{suffix}", $"qtybuyer_{suffix}@example.com");
+        return (client, user, item.Id);
+    }
+
+    private async Task<int> SeedPurchaseAsync(int userId, int itemId, double hoursAgo, int quantity)
+    {
+        await using var ctx = _factory.Database.CreateContext();
+        var purchase = new UserTransactionEntity
+        {
+            UserId = userId,
+            ShopItemId = itemId,
+            TransactionType = (int)TransactionType.Purchase,
+            Price = 40m * quantity,
+            Quantity = quantity,
+            TransactionDate = DateTime.UtcNow.AddHours(-hoursAgo),
+        };
+        ctx.UserTransactions.Add(purchase);
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return purchase.Id;
+    }
+
+    private async Task<(int Stock, int Rows)> ReadStockAndRowsAsync(int userId, int itemId)
+    {
+        await using var ctx = _factory.Database.CreateContext();
+        var stock = await ctx.ShopItems.IgnoreQueryFilters().Where(i => i.Id == itemId).Select(i => i.Quantity)
+            .SingleAsync(TestContext.Current.CancellationToken);
+        var rows = await ctx.UserTransactions.IgnoreQueryFilters().CountAsync(t => t.UserId == userId, TestContext.Current.CancellationToken);
+        return (stock, rows);
+    }
+
+    // The form fields a signed-in member's browser would send, with a token read from a real page of the shop.
+    private static async Task<HttpResponseMessage> PostWithTokenAsync(HttpClient client, int detailsItemId, string url, Dictionary<string, string> fields)
+    {
+        var page = await client.GetAsync($"/Shop/Details/{detailsItemId}", TestContext.Current.CancellationToken);
+        page.StatusCode.Should().Be(HttpStatusCode.OK);
+        var (token, _) = await AntiForgeryHelper.ExtractAntiForgeryTokenAsync(page);
+        var content = AntiForgeryHelper.CreateFormContentWithAntiForgeryToken(fields, token);
+        return await client.PostAsync(url, content, TestContext.Current.CancellationToken);
+    }
+
+    [Theory]
+    [InlineData("Purchase", 0)]
+    [InlineData("Purchase", -1)]
+    [InlineData("Sell", 0)]
+    [InlineData("Sell", -1)]
+    [InlineData("SellToShop", 0)]
+    [InlineData("SellToShop", -1)]
+    public async Task Post_QuantityBelowOne_IsRefusedWithTheErrorAndChangesNothing(string action, int quantity)
+    {
+        var (client, user, itemId) = await SeedMemberAndItemAsync(5);
+        var id = action == "Sell" ? await SeedPurchaseAsync(user.Id, itemId, 2, 2) : itemId;
+        var (stockBefore, rowsBefore) = await ReadStockAndRowsAsync(user.Id, itemId);
+
+        var response = await PostWithTokenAsync(client, itemId, $"/Shop/{action}",
+            new Dictionary<string, string> { ["id"] = id.ToString(), ["quantity"] = quantity.ToString() });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect, "a refused quantity is an error toast, never a 400 or a 500");
+        var expectedLocation = action == "Sell" ? "/Shop" : $"/Shop/Details/{itemId}";
+        response.Headers.Location!.OriginalString.TrimEnd('/').Should().Be(expectedLocation);
+
+        var landed = await client.GetAsync(response.Headers.Location!.OriginalString, TestContext.Current.CancellationToken);
+        landed.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = System.Net.WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        html.Should().Contain(QuantityRefusal);
+
+        var (stockAfter, rowsAfter) = await ReadStockAndRowsAsync(user.Id, itemId);
+        stockAfter.Should().Be(stockBefore, "a refused request moves no stock");
+        rowsAfter.Should().Be(rowsBefore, "a refused request records no transaction");
+    }
+
+    [Theory]
+    [InlineData(5, 4)]
+    [InlineData(-1, -1)]
+    public async Task Purchase_OfOne_StillGoesThroughAndKeepsTheStockConvention(int stockBefore, int stockAfter)
+    {
+        var (client, user, itemId) = await SeedMemberAndItemAsync(stockBefore);
+
+        var response = await PostWithTokenAsync(client, itemId, "/Shop/Purchase",
+            new Dictionary<string, string> { ["id"] = itemId.ToString(), ["quantity"] = "1" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.TrimEnd('/').Should().Be("/Shop");
+
+        var (stock, rows) = await ReadStockAndRowsAsync(user.Id, itemId);
+        stock.Should().Be(stockAfter);
+        rows.Should().Be(1);
+        await using var ctx = _factory.Database.CreateContext();
+        var purchase = await ctx.UserTransactions.IgnoreQueryFilters().SingleAsync(t => t.UserId == user.Id, TestContext.Current.CancellationToken);
+        purchase.TransactionType.Should().Be((int)TransactionType.Purchase);
+        purchase.Quantity.Should().Be(1);
     }
 }

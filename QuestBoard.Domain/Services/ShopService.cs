@@ -72,9 +72,21 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
         }
     }
 
+    // A hand-made post can carry any number; the forms' minimum is only a browser hint. Checked before any repository
+    // read so a refused request reads, changes and records nothing.
+    private static void EnsureQuantityIsAtLeastOne(int quantity)
+    {
+        if (quantity < 1)
+        {
+            throw new InvalidOperationException("Quantity must be at least 1.");
+        }
+    }
+
     /// <inheritdoc/>
     public async Task<UserTransaction> PurchaseItemAsync(int itemId, int quantity, User user, CancellationToken token = default)
     {
+        EnsureQuantityIsAtLeastOne(quantity);
+
         var item = await repository.GetByIdAsync(itemId, token);
         if (item == null || item.Status != ItemStatus.Published)
         {
@@ -119,6 +131,8 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
     /// <inheritdoc/>
     public async Task<UserTransaction> ReturnOrSellItemAsync(int transactionId, int quantity, User user, CancellationToken token = default)
     {
+        EnsureQuantityIsAtLeastOne(quantity);
+
         var originalTransaction = await transactionRepository.GetTransactionWithDetailsAsync(transactionId, token);
         if (originalTransaction == null || originalTransaction.UserId != user.Id || originalTransaction.TransactionType != TransactionType.Purchase)
         {
@@ -177,6 +191,8 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
     /// <inheritdoc/>
     public async Task<UserTransaction> SellItemToShopAsync(int itemId, int quantity, User user, CancellationToken token = default)
     {
+        EnsureQuantityIsAtLeastOne(quantity);
+
         var item = await repository.GetByIdAsync(itemId, token);
         if (item == null || item.Status != ItemStatus.Published)
         {

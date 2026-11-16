@@ -48,18 +48,19 @@ public interface IShopService : IBaseService<ShopItem>
 
     /// <summary>
     /// Purchases a quantity of a published item for the user, decrementing stock (unless unlimited) and recording a transaction.
-    /// Throws InvalidOperationException if the item is unpublished, sold out, or has insufficient stock.
+    /// Throws InvalidOperationException if the requested quantity is below 1, or the item is unpublished, sold out, or has insufficient stock.
     /// </summary>
     Task<UserTransaction> PurchaseItemAsync(int itemId, int quantity, User user, CancellationToken token = default);
 
     /// <summary>
     /// Returns or sells back a previously purchased quantity, refunding full price within 24 hours or half price after.
-    /// Throws InvalidOperationException if the original transaction is invalid or the quantity exceeds what remains unreturned.
+    /// Throws InvalidOperationException if the requested quantity is below 1, the original transaction is invalid, or the quantity exceeds what remains unreturned.
     /// </summary>
     Task<UserTransaction> ReturnOrSellItemAsync(int transactionId, int quantity, User user, CancellationToken token = default);
 
     /// <summary>
     /// Sells a quantity of an item to the shop at half its listed price, without an originating purchase.
+    /// Throws InvalidOperationException if the requested quantity is below 1 or the item is unpublished.
     /// </summary>
     Task<UserTransaction> SellItemToShopAsync(int itemId, int quantity, User user, CancellationToken token = default);
 
