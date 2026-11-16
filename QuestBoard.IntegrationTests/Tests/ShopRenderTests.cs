@@ -1032,4 +1032,37 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         block.Value.Should().NotContain("text-muted", "the Item ID line takes the alert's own colour, not a faded one");
         Regex.IsMatch(html, @"<h1\b[^>]*>\s*<i\b[^>]*></i>\s*Edit Item\s*</h1>").Should().BeTrue();
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopManagementCreate_BothLayouts_AnInvalidPostShowsEachMessageOnItsFieldAndSavesNothing(bool mobile)
+    {
+        var client = await SeedCreatePageAsync($"shopr_createerr_{(mobile ? "m" : "d")}");
+        var form = await GetAsync(client, "/ShopManagement/Create", AgentFor(mobile));
+        var token = Regex.Match(form, @"name=""__RequestVerificationToken""[^>]*\bvalue=""([^""]+)""").Groups[1].Value;
+        token.Should().NotBeEmpty("the form posts with an antiforgery token");
+
+        var fields = new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["Name"] = "",
+            ["Description"] = "",
+            ["Type"] = "",
+            ["Rarity"] = "",
+            ["Price"] = "5",
+            ["Quantity"] = "1",
+        };
+        var response = await SendAsync(client, HttpMethod.Post, "/ShopManagement/Create", AgentFor(mobile), new FormUrlEncodedContent(fields));
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, "an invalid form is shown again, not redirected");
+        Regex.IsMatch(html, @"<span\b(?=[^>]*data-valmsg-for=""Name"")[^>]*\bclass=""field-validation-error""[^>]*>The Item Name field is required\.</span>")
+            .Should().BeTrue("the sentence appears on its field in the validation error class");
+        Regex.IsMatch(html, @"<input\b(?=[^>]*\bname=""Name"")[^>]*\binput-validation-error").Should().BeTrue("the field in error carries the error class for its danger border");
+        Regex.IsMatch(html, @"<span\b(?=[^>]*data-valmsg-for=""Rarity"")[^>]*\bclass=""field-validation-error""").Should().BeTrue();
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        (await context.ShopItems.IgnoreQueryFilters().CountAsync(TestContext.Current.CancellationToken)).Should().Be(0, "nothing is saved");
+    }
 }
