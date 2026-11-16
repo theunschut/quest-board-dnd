@@ -2037,7 +2037,7 @@ Plans:
 **Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
 **Requirements**: TBD
 **Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
-**Plans:** 1/20 plans executed
+**Plans:** 2/20 plans executed
 
 **Scope:**
 
@@ -2094,7 +2094,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 99-02-PLAN.md — p99 accounts and the two P99 boards, every item, status, stock and empty state through the app forms (Draft and Denied fixtures Rare or higher), day-0 aging purchases for the 24-hour Sell state, fresh-purchase and sell-status modes, each key checked under both User-Agents
+- [x] 99-02-PLAN.md — p99 accounts and the two P99 boards, every item, status, stock and empty state through the app forms (Draft and Denied fixtures Rare or higher), day-0 aging purchases for the 24-hour Sell state, fresh-purchase and sell-status modes, each key checked under both User-Agents
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
