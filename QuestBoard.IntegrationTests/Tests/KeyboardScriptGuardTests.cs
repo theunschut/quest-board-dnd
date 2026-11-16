@@ -95,6 +95,21 @@ public class KeyboardScriptGuardTests
     }
 
     [Fact]
+    public void ShopSellModule_ConfirmsOnSubmitAndUpdatesTheTotal()
+    {
+        var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/shop-item-sell.js");
+
+        Regex.IsMatch(script, @"document\.addEventListener\('submit'").Should().BeTrue("the question is asked on submit, from the document, so a form written into the dialog is covered");
+        Regex.IsMatch(script, @"document\.addEventListener\('input'").Should().BeTrue("the total follows the quantity as it is typed");
+        script.Should().Contain("form[data-sell-form]", "only forms marked for selling are touched");
+        script.Should().Contain("dataset.itemName", "the name is read as plain text from the data attribute");
+        script.Should().Contain("[data-sell-total]").And.Contain("textContent", "the total is written as text");
+        script.Should().Contain("confirm(");
+        Regex.IsMatch(script, @"if \(!confirm\(message\)\) \{\s*event\.preventDefault\(\);\s*\}")
+            .Should().BeTrue("answering no must cancel the submit and answering yes must leave it alone");
+    }
+
+    [Fact]
     public void ContactNotes_EditOpensOneNoteAndCancelClosesItAndReturnsFocus()
     {
         var script = ReadRepoFile("QuestBoard.Service/wwwroot/js/contact-notes.js");

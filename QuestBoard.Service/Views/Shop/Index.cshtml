@@ -115,7 +115,7 @@
                                     <div class="return-sell-buttons position-absolute">
                                         @if (canReturn)
                                         {
-                                            <form method="post" action="@Url.Action("Sell", "Shop")" class="d-inline">
+                                            <form method="post" asp-controller="Shop" asp-action="Sell" class="d-inline">
                                                 <input type="hidden" name="id" value="@purchase.Id" />
                                                 <input type="hidden" name="quantity" value="@purchase.RemainingQuantity" />
                                                 <button type="submit" class="btn btn-success btn-sm me-1" title="Return @purchase.RemainingQuantity item(s) for full price (within 24h)">
@@ -125,7 +125,7 @@
                                         }
                                         else
                                         {
-                                            <form method="post" action="@Url.Action("Sell", "Shop")" class="d-inline">
+                                            <form method="post" asp-controller="Shop" asp-action="Sell" class="d-inline">
                                                 <input type="hidden" name="id" value="@purchase.Id" />
                                                 <input type="hidden" name="quantity" value="@purchase.RemainingQuantity" />
                                                 <button type="submit" class="btn btn-warning btn-sm" title="Sell @purchase.RemainingQuantity item(s) for 50% of original price">

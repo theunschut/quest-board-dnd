@@ -160,4 +160,66 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         Regex.IsMatch(html, @"<script\b[^>]*\btype=""module""[^>]*\bsrc=""/js/shop-item-sell\.js(?:\?[^""]*)?""").Should().BeTrue(
             "the sell confirmation and total come from one module");
     }
+
+    // A purchase the member made the given number of hours ago, still fully in hand.
+    private async Task SeedPurchaseAsync(int userId, int itemId, double hoursAgo, int quantity = 2, decimal price = 80m)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        ctx.UserTransactions.Add(new UserTransactionEntity
+        {
+            UserId = userId,
+            ShopItemId = itemId,
+            TransactionType = (int)TransactionType.Purchase,
+            Price = price,
+            Quantity = quantity,
+            TransactionDate = DateTime.UtcNow.AddHours(-hoursAgo),
+        });
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    // Every post form on the page that targets the shop's Sell action, with its fields as the browser would send them.
+    private static List<(string Label, Dictionary<string, string> Fields)> RowForms(string html)
+    {
+        var forms = new List<(string, Dictionary<string, string>)>();
+        foreach (Match form in Regex.Matches(html, @"<form\b[^>]*\baction=""/Shop/Sell""[^>]*>([\s\S]*?)</form>", RegexOptions.IgnoreCase))
+        {
+            var body = form.Groups[1].Value;
+            var fields = new Dictionary<string, string>();
+            foreach (Match input in Regex.Matches(body, @"<input\b[^>]*>", RegexOptions.IgnoreCase))
+            {
+                var name = Regex.Match(input.Value, @"\bname=""([^""]*)""").Groups[1].Value;
+                var value = System.Net.WebUtility.HtmlDecode(Regex.Match(input.Value, @"\bvalue=""([^""]*)""").Groups[1].Value);
+                if (name.Length > 0)
+                    fields[name] = value;
+            }
+
+            var label = body.Contains("Return (", StringComparison.Ordinal) ? "Return" : body.Contains("Sell (", StringComparison.Ordinal) ? "Sell" : "unknown";
+            forms.Add((label, fields));
+        }
+
+        return forms;
+    }
+
+    [Theory]
+    [InlineData(2, "Return")]
+    [InlineData(30, "Sell")]
+    public async Task HistoryRowForm_CarriesAnAntiforgeryTokenAndPostsToARedirect(double hoursAgo, string expectedKind)
+    {
+        var (client, user, itemId) = await SeedMemberAndItemAsync($"shopr_row_{expectedKind.ToLowerInvariant()}", price: 40m);
+        await SeedPurchaseAsync(user.Id, itemId, hoursAgo);
+
+        var html = await GetAsync(client, "/Shop", DesktopUserAgent);
+
+        var rows = RowForms(html);
+        rows.Should().ContainSingle(r => r.Label == expectedKind, $"a purchase made {hoursAgo} hours ago offers {expectedKind}");
+        var (_, fields) = rows.Single(r => r.Label == expectedKind);
+        fields.Should().ContainKey("__RequestVerificationToken", "the form posts with an antiforgery token");
+        fields.Should().ContainKey("id");
+        fields.Should().ContainKey("quantity");
+
+        var response = await SendAsync(client, HttpMethod.Post, "/Shop/Sell", DesktopUserAgent, new FormUrlEncodedContent(fields));
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.BadRequest, "a missing token is answered with 400");
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+    }
 }
