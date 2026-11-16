@@ -960,4 +960,76 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         Regex.Matches(main, @"<script\b(?![^>]*\bsrc\s*=)[^>]*>").Should().BeEmpty("the page holds no inline script");
         main.Should().NotContain("legendary-glow").And.NotContain("item-preview");
     }
+
+    // ---- The phone forms: the same contract and module, with no price helpers and no Preview ------------------
+
+    [Theory]
+    [InlineData("/ShopManagement/Create")]
+    [InlineData("/ShopManagement/Edit/{id}")]
+    public async Task ShopManagementForms_Phone_RunOnTheSharedModuleWithNoPriceHelpersAndNoPreview(string route)
+    {
+        var (client, itemId) = await SeedEditablePageAsync($"shopr_phoneform_{route.Length}", ItemStatus.Draft);
+
+        var html = await GetAsync(client, route.Replace("{id}", itemId.ToString()), MobileUserAgent);
+
+        html.Should().Contain("mobile-layout");
+        HtmlOpeningTag(html).Should().Contain("data-theme=\"shop\"");
+        Regex.IsMatch(html, @"<form\b[^>]*\bdata-shop-item-form\b[^>]*>").Should().BeTrue();
+        Regex.IsMatch(html, @"<link\b[^>]*\bhref=""/css/shop-form\.css(?:\?[^""]*)?""").Should().BeTrue();
+        Regex.IsMatch(html, @"<link\b[^>]*\bhref=""/css/shop-pages\.mobile\.css(?:\?[^""]*)?""").Should().BeTrue();
+        Regex.IsMatch(html, @"<script\b[^>]*\btype=""module""[^>]*\bsrc=""/js/shop-item-form\.js(?:\?[^""]*)?""").Should().BeTrue();
+        html.Should().NotContain("randomPriceBtn").And.NotContain("calculatedPriceBtn", "the phone forms keep no price helper buttons");
+        html.Should().NotContain("Preview", "the phone Create has no Preview and the phone Edit never had one");
+        html.Should().NotContain("shop-mgmt-").And.NotContain("shop-management-create.mobile").And.NotContain("shop-management-edit.mobile");
+        Regex.IsMatch(html, @"<input\b[^>]*\bid=""enableAvailabilityWindow""[^>]*\bdata-availability-toggle\b").Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("/ShopManagement/Create")]
+    [InlineData("/ShopManagement/Edit/{id}")]
+    public async Task ShopManagementForms_Phone_StartTheHintOnTheShortLineAndMarkTheRequiredFields(string route)
+    {
+        var (client, itemId) = await SeedEditablePageAsync($"shopr_phonehint_{route.Length}", ItemStatus.Published);
+
+        var html = await GetAsync(client, route.Replace("{id}", itemId.ToString()), MobileUserAgent);
+
+        Regex.IsMatch(html, @"<div\b[^>]*\bid=""price-suggestion""[^>]*\baria-live=""polite""[^>]*>\s*Select a rarity to see pricing suggestions\.\s*</div>")
+            .Should().BeTrue("both phone forms start on the same short line");
+        foreach (var label in new[] { "Item Name", "Item Type", "Description", "Rarity", "Price \\(Gold Pieces\\)" })
+            Regex.IsMatch(html, RequiredLabel(label)).Should().BeTrue($"{label} is required and says so to a screen reader too");
+        html.Should().Contain("form-page");
+    }
+
+    [Theory]
+    [InlineData("/ShopManagement/Create", "Cancel", "Create Item")]
+    [InlineData("/ShopManagement/Edit/{id}", "Back to Management", "Save Changes")]
+    public async Task ShopManagementForms_Phone_ActionRowHoldsTheRecordedExitAndOneCommit(string route, string exit, string commit)
+    {
+        var (client, itemId) = await SeedEditablePageAsync($"shopr_phoneactions_{route.Length}", ItemStatus.Published);
+
+        var html = await GetAsync(client, route.Replace("{id}", itemId.ToString()), MobileUserAgent);
+
+        var row = Regex.Match(html, @"<div class=""form-actions[^""]*"">[\s\S]*?" + commit + @"\s*</button>");
+        row.Success.Should().BeTrue("the action row is the shared form-actions row");
+        if (BackToShopManagementLabel)
+            exit = "Back to Shop Management";
+        Regex.IsMatch(row.Value, @"<a href=""/ShopManagement"" class=""btn btn-secondary"">\s*<i\b[^>]*></i>" + exit).Should().BeTrue();
+        Regex.IsMatch(row.Value, @"class=""btn btn-primary"">\s*<i\b[^>]*></i>" + commit).Should().BeTrue();
+        row.Value.Should().NotContain("btn-outline");
+    }
+
+    [Fact]
+    public async Task ShopManagementEdit_Phone_StatusBlockShowsTheSharedBadgeAndAReadableItemId()
+    {
+        var (client, itemId) = await SeedEditablePageAsync("shopr_phonestatus", ItemStatus.Draft);
+
+        var html = await GetAsync(client, $"/ShopManagement/Edit/{itemId}", MobileUserAgent);
+
+        var block = Regex.Match(html, @"<div class=""alert alert-info shop-form__status"">[\s\S]*?Item ID: #\d+</span>\s*</div>");
+        block.Success.Should().BeTrue("the phone status block is the same info alert as the desktop one");
+        HasStatusBadge(block.Value, "bg-warning", "fa-hourglass-half", "Pending Review").Should().BeTrue();
+        block.Value.Should().Contain("This item is awaiting DM approval").And.Contain($"Item ID: #{itemId}");
+        block.Value.Should().NotContain("text-muted", "the Item ID line takes the alert's own colour, not a faded one");
+        Regex.IsMatch(html, @"<h1\b[^>]*>\s*<i\b[^>]*></i>\s*Edit Item\s*</h1>").Should().BeTrue();
+    }
 }

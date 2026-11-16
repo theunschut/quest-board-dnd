@@ -1542,9 +1542,9 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /ShopManagement/Create renders shop-mgmt-create-card-mobile glass card
-    /// and links shop-management-create.mobile.css. Requires DungeonMaster role authentication.
-    /// Starts RED — ShopManagement/Create.Mobile.cshtml does not exist yet; goes GREEN when Plan 04 lands.
+    /// Mobile UA on /ShopManagement/Create renders the phone layout around the shared item form (the form contract
+    /// card, bound to the shared form module) and links the form and phone sheets. Requires DungeonMaster role
+    /// authentication.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_ShopManagementCreate_ReturnsSuccessAndMobileLayout()
@@ -1559,8 +1559,10 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("shop-mgmt-create-card-mobile");
-        html.Should().Contain("shop-management-create.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().MatchRegex(@"<form\b[^>]*\bdata-shop-item-form\b");
+        html.Should().Contain("shop-form.css");
+        html.Should().Contain("shop-pages.mobile.css");
     }
 
     // -----------------------------------------------------------------------
@@ -1568,9 +1570,9 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /ShopManagement/Edit/{id} renders shop-mgmt-edit-card-mobile glass
-    /// card and links shop-management-edit.mobile.css. Requires DungeonMaster role authentication.
-    /// Starts RED — ShopManagement/Edit.Mobile.cshtml does not exist yet; goes GREEN when Plan 04 lands.
+    /// Mobile UA on /ShopManagement/Edit/{id} renders the phone layout around the shared item form (the form
+    /// contract card, bound to the shared form module) and links the form and phone sheets. Requires DungeonMaster
+    /// role authentication.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_ShopManagementEdit_ReturnsSuccessAndMobileLayout()
@@ -1587,8 +1589,10 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("shop-mgmt-edit-card-mobile");
-        html.Should().Contain("shop-management-edit.mobile.css");
+        html.Should().Contain("mobile-layout");
+        html.Should().MatchRegex(@"<form\b[^>]*\bdata-shop-item-form\b");
+        html.Should().Contain("shop-form.css");
+        html.Should().Contain("shop-pages.mobile.css");
     }
 
     // -----------------------------------------------------------------------
