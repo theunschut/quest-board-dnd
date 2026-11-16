@@ -832,8 +832,8 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
             Regex.IsMatch(html, @"<label\b[^>]*>\s*" + label + @"\s*<span class=""text-danger"" aria-hidden=""true"">\*</span><span class=""visually-hidden""> \(required\)</span>")
                 .Should().BeTrue($"{label} is required and says so to a screen reader too");
         html.Should().Contain("form-page", "the page is a form page, so the marker and the messages sit on the overlay chip");
-        Regex.IsMatch(html, @"<span\b(?=[^>]*data-valmsg-for=""Name"")[^>]*\bclass=""[^""]*\bfield-validation-error\b")
-            .Should().BeTrue("the messages are field-validation spans");
+        Regex.IsMatch(html, @"<span\b(?=[^>]*data-valmsg-for=""Name"")[^>]*\bclass=""field-validation-valid""")
+            .Should().BeTrue("the message spans come from the validation tag helper, which marks a field in error with field-validation-error and leaves a valid one unstyled");
     }
 
     [Theory]

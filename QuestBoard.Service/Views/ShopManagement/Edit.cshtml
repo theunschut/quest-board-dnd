@@ -40,7 +40,7 @@
                 <div class="mb-3">
                     <label asp-for="Name" class="form-label">Item Name <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span></label>
                     <input asp-for="Name" class="form-control" />
-                    <span asp-validation-for="Name" class="field-validation-error"></span>
+                    <span asp-validation-for="Name"></span>
                 </div>
                 <div class="mb-3">
                     <label asp-for="Type" class="form-label">Item Type <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span></label>
@@ -49,7 +49,7 @@
                         <option value="MagicItem" selected="@(Model.Type == ItemType.MagicItem)">Magic Item</option>
                         <option value="QuestItems" selected="@(Model.Type == ItemType.QuestItems)">Quest Item</option>
                     </select>
-                    <span asp-validation-for="Type" class="field-validation-error"></span>
+                    <span asp-validation-for="Type"></span>
                 </div>
             </div>
 
@@ -72,7 +72,7 @@
                         <option value="VeryRare" selected="@(Model.Rarity == ItemRarity.VeryRare)">Very Rare</option>
                         <option value="Legendary" selected="@(Model.Rarity == ItemRarity.Legendary)">Legendary</option>
                     </select>
-                    <span asp-validation-for="Rarity" class="field-validation-error"></span>
+                    <span asp-validation-for="Rarity"></span>
                     @if (Model.Status == ItemStatus.Draft)
                     {
                         <div class="form-text">
@@ -84,7 +84,7 @@
                 <div class="mb-3">
                     <label asp-for="Quantity" class="form-label"></label>
                     <input asp-for="Quantity" type="number" class="form-control" min="-1" aria-describedby="Quantity-help" />
-                    <span asp-validation-for="Quantity" class="field-validation-error"></span>
+                    <span asp-validation-for="Quantity"></span>
                     <div id="Quantity-help" class="form-text">Set to -1 for unlimited stock, 0 means sold out, positive numbers for limited stock</div>
                 </div>
             </div>
@@ -101,13 +101,13 @@
                             <i class="fas fa-hat-wizard" aria-hidden="true"></i>
                         </button>
                     </div>
-                    <span asp-validation-for="Price" class="field-validation-error"></span>
+                    <span asp-validation-for="Price"></span>
                     <div class="form-text shop-form__hint" id="price-suggestion" aria-live="polite">Select a rarity to see pricing suggestions.</div>
                 </div>
                 <div class="mb-3">
                     <label asp-for="ReferenceUrl" class="form-label"></label>
                     <input asp-for="ReferenceUrl" type="url" class="form-control" aria-describedby="ReferenceUrl-help" />
-                    <span asp-validation-for="ReferenceUrl" class="field-validation-error"></span>
+                    <span asp-validation-for="ReferenceUrl"></span>
                     <div id="ReferenceUrl-help" class="form-text">Optional D&amp;D Beyond link for reference</div>
                 </div>
             </div>
@@ -126,12 +126,12 @@
                 <div class="mb-3">
                     <label asp-for="AvailableFrom" class="form-label"></label>
                     <input asp-for="AvailableFrom" type="datetime-local" class="form-control" disabled="@(!hasAvailabilityWindow)" />
-                    <span asp-validation-for="AvailableFrom" class="field-validation-error"></span>
+                    <span asp-validation-for="AvailableFrom"></span>
                 </div>
                 <div class="mb-3">
                     <label asp-for="AvailableUntil" class="form-label"></label>
                     <input asp-for="AvailableUntil" type="datetime-local" class="form-control" disabled="@(!hasAvailabilityWindow)" />
-                    <span asp-validation-for="AvailableUntil" class="field-validation-error"></span>
+                    <span asp-validation-for="AvailableUntil"></span>
                 </div>
             </div>
 

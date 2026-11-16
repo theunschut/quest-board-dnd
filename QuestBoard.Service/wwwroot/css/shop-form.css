@@ -59,7 +59,7 @@
   .shop-form__hint {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--qb-space-xs);
+    gap: var(--qb-space-xs) var(--qb-space-md);
   }
 
   .shop-form__actions-end {
