@@ -2037,7 +2037,7 @@ Plans:
 **Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
 **Requirements**: TBD
 **Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
-**Plans:** 23/23 plans executed
+**Plans:** 23/24 plans executed
 
 **Scope:**
 
@@ -2179,6 +2179,10 @@ Plans:
 **Wave 23** *(blocked on Wave 22 completion)*
 
 - [x] 99-23-PLAN.md — Stock, review and availability gaps (operator: "Fix + 2 gaps"): limited-stock Return and Sell from the purchase history refund and restock again (the shop domain-to-entity maps stop writing navigations over tracked entities; the four skipped reproduction cases run); Archive accepts only a Published item, so Archive then Reopen can no longer publish an unreviewed Draft or Denied item; one availability rule on the board clock for the shop list, Details, Purchase and Sell to Shop (a member gets 404 for an item whose sale has not started, a closed item stays open like Archived, Return and Sell from history unchanged); the cross-board deep-link switch and the 24-hour Return edge recorded as known debt
+
+**Wave 24** *(blocked on Wave 23 completion)*
+
+- [ ] 99-24-PLAN.md — Shop edit-review and delete-ownership gaps (operator: "Fix first", from the phase security audit's residual note): an edit never publishes, so a Draft or Denied item stays in review whatever rarity it is edited to, and an edit that leaves a Published or Archived item at Rare or above sends it back to review (Create still publishes Common and Uncommon at once; one shared review rule); the Edit toast says when an item went back to review; a Dungeon Master who is not an Admin may delete only their own Draft or Denied item, while Admins and SuperAdmins keep every right through the AdminOnly policy; both management lists, desktop and phone, offer Delete only where the server accepts it and keep every Edit link; a Dungeon Master publishing their own edit of another keeper's item left open for the operator's choice
 
 ### Phase 100: Admin and Platform UI conversion
 
