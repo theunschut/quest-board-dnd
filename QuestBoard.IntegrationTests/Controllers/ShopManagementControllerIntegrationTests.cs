@@ -360,7 +360,7 @@ public class ShopManagementControllerIntegrationTests(WebApplicationFactoryBase 
         (await ReadStatusAsync(itemId)).Should().Be(ItemStatus.Published);
     }
 
-    // ---- Edit: an edit never publishes, and edited content that needs review goes back to review ----------
+    // ---- Edit: an edit never publishes, and an item raised into a rarity that needs review goes back to review --
 
     public enum Viewer
     {
@@ -408,27 +408,37 @@ public class ShopManagementControllerIntegrationTests(WebApplicationFactoryBase 
     [InlineData(ItemStatus.Draft, ItemRarity.Rare, ItemRarity.Common, ItemStatus.Draft)]
     [InlineData(ItemStatus.Draft, ItemRarity.Rare, ItemRarity.Uncommon, ItemStatus.Draft)]
     [InlineData(ItemStatus.Draft, ItemRarity.Rare, ItemRarity.Rare, ItemStatus.Draft)]
-    [InlineData(ItemStatus.Draft, ItemRarity.Rare, ItemRarity.VeryRare, ItemStatus.Draft)]
     [InlineData(ItemStatus.Draft, ItemRarity.Rare, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Draft, ItemRarity.Common, ItemRarity.Uncommon, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Draft, ItemRarity.Uncommon, ItemRarity.Rare, ItemStatus.Draft)]
     [InlineData(ItemStatus.Denied, ItemRarity.Rare, ItemRarity.Common, ItemStatus.Draft)]
     [InlineData(ItemStatus.Denied, ItemRarity.Rare, ItemRarity.Uncommon, ItemStatus.Draft)]
     [InlineData(ItemStatus.Denied, ItemRarity.Rare, ItemRarity.Rare, ItemStatus.Draft)]
-    [InlineData(ItemStatus.Denied, ItemRarity.Rare, ItemRarity.VeryRare, ItemStatus.Draft)]
     [InlineData(ItemStatus.Denied, ItemRarity.Rare, ItemRarity.Legendary, ItemStatus.Draft)]
-    [InlineData(ItemStatus.Published, ItemRarity.Rare, ItemRarity.Common, ItemStatus.Published)]
-    [InlineData(ItemStatus.Published, ItemRarity.Rare, ItemRarity.Uncommon, ItemStatus.Published)]
-    [InlineData(ItemStatus.Published, ItemRarity.Rare, ItemRarity.Rare, ItemStatus.Draft)]
-    [InlineData(ItemStatus.Published, ItemRarity.Rare, ItemRarity.VeryRare, ItemStatus.Draft)]
-    [InlineData(ItemStatus.Published, ItemRarity.Rare, ItemRarity.Legendary, ItemStatus.Draft)]
-    [InlineData(ItemStatus.Archived, ItemRarity.Rare, ItemRarity.Common, ItemStatus.Archived)]
-    [InlineData(ItemStatus.Archived, ItemRarity.Rare, ItemRarity.Uncommon, ItemStatus.Archived)]
-    [InlineData(ItemStatus.Archived, ItemRarity.Rare, ItemRarity.Rare, ItemStatus.Draft)]
-    [InlineData(ItemStatus.Archived, ItemRarity.Rare, ItemRarity.VeryRare, ItemStatus.Draft)]
-    [InlineData(ItemStatus.Archived, ItemRarity.Rare, ItemRarity.Legendary, ItemStatus.Draft)]
-    [InlineData(ItemStatus.Published, ItemRarity.Common, ItemRarity.Common, ItemStatus.Published)]
+    [InlineData(ItemStatus.Denied, ItemRarity.Common, ItemRarity.Uncommon, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Denied, ItemRarity.Uncommon, ItemRarity.Rare, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Published, ItemRarity.Common, ItemRarity.Uncommon, ItemStatus.Published)]
+    [InlineData(ItemStatus.Published, ItemRarity.Uncommon, ItemRarity.Common, ItemStatus.Published)]
+    [InlineData(ItemStatus.Published, ItemRarity.Common, ItemRarity.Rare, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Published, ItemRarity.Uncommon, ItemRarity.Rare, ItemStatus.Draft)]
     [InlineData(ItemStatus.Published, ItemRarity.Common, ItemRarity.Legendary, ItemStatus.Draft)]
-    [InlineData(ItemStatus.Archived, ItemRarity.Common, ItemRarity.Common, ItemStatus.Archived)]
+    [InlineData(ItemStatus.Published, ItemRarity.Uncommon, ItemRarity.VeryRare, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Published, ItemRarity.Rare, ItemRarity.Rare, ItemStatus.Published)]
+    [InlineData(ItemStatus.Published, ItemRarity.Rare, ItemRarity.Legendary, ItemStatus.Published)]
+    [InlineData(ItemStatus.Published, ItemRarity.Legendary, ItemRarity.Rare, ItemStatus.Published)]
+    [InlineData(ItemStatus.Published, ItemRarity.Rare, ItemRarity.Uncommon, ItemStatus.Published)]
+    [InlineData(ItemStatus.Published, ItemRarity.Legendary, ItemRarity.Common, ItemStatus.Published)]
+    [InlineData(ItemStatus.Archived, ItemRarity.Common, ItemRarity.Uncommon, ItemStatus.Archived)]
+    [InlineData(ItemStatus.Archived, ItemRarity.Uncommon, ItemRarity.Common, ItemStatus.Archived)]
     [InlineData(ItemStatus.Archived, ItemRarity.Common, ItemRarity.Rare, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Archived, ItemRarity.Uncommon, ItemRarity.Rare, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Archived, ItemRarity.Common, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Archived, ItemRarity.Uncommon, ItemRarity.VeryRare, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Archived, ItemRarity.Rare, ItemRarity.Rare, ItemStatus.Archived)]
+    [InlineData(ItemStatus.Archived, ItemRarity.Rare, ItemRarity.Legendary, ItemStatus.Archived)]
+    [InlineData(ItemStatus.Archived, ItemRarity.Legendary, ItemRarity.Rare, ItemStatus.Archived)]
+    [InlineData(ItemStatus.Archived, ItemRarity.Rare, ItemRarity.Uncommon, ItemStatus.Archived)]
+    [InlineData(ItemStatus.Archived, ItemRarity.Legendary, ItemRarity.Common, ItemStatus.Archived)]
     public async Task Edit_Post_ByTheItemsCreator_LeavesTheStatusTheReviewRuleGives(
         ItemStatus fromStatus, ItemRarity storedRarity, ItemRarity newRarity, ItemStatus expectedStatus)
     {
@@ -459,37 +469,49 @@ public class ShopManagementControllerIntegrationTests(WebApplicationFactoryBase 
     }
 
     [Theory]
-    [InlineData(Viewer.DungeonMaster, ItemStatus.Draft, ItemRarity.Common, ItemStatus.Draft)]
-    [InlineData(Viewer.DungeonMaster, ItemStatus.Draft, ItemRarity.Legendary, ItemStatus.Draft)]
-    [InlineData(Viewer.DungeonMaster, ItemStatus.Denied, ItemRarity.Common, ItemStatus.Draft)]
-    [InlineData(Viewer.DungeonMaster, ItemStatus.Denied, ItemRarity.Legendary, ItemStatus.Draft)]
-    [InlineData(Viewer.DungeonMaster, ItemStatus.Published, ItemRarity.Common, ItemStatus.Published)]
-    [InlineData(Viewer.DungeonMaster, ItemStatus.Published, ItemRarity.Legendary, ItemStatus.Draft)]
-    [InlineData(Viewer.DungeonMaster, ItemStatus.Archived, ItemRarity.Common, ItemStatus.Archived)]
-    [InlineData(Viewer.DungeonMaster, ItemStatus.Archived, ItemRarity.Legendary, ItemStatus.Draft)]
-    [InlineData(Viewer.Admin, ItemStatus.Draft, ItemRarity.Common, ItemStatus.Draft)]
-    [InlineData(Viewer.Admin, ItemStatus.Draft, ItemRarity.Legendary, ItemStatus.Draft)]
-    [InlineData(Viewer.Admin, ItemStatus.Denied, ItemRarity.Common, ItemStatus.Draft)]
-    [InlineData(Viewer.Admin, ItemStatus.Denied, ItemRarity.Legendary, ItemStatus.Draft)]
-    [InlineData(Viewer.Admin, ItemStatus.Published, ItemRarity.Common, ItemStatus.Published)]
-    [InlineData(Viewer.Admin, ItemStatus.Published, ItemRarity.Legendary, ItemStatus.Draft)]
-    [InlineData(Viewer.Admin, ItemStatus.Archived, ItemRarity.Common, ItemStatus.Archived)]
-    [InlineData(Viewer.Admin, ItemStatus.Archived, ItemRarity.Legendary, ItemStatus.Draft)]
-    [InlineData(Viewer.SuperAdmin, ItemStatus.Draft, ItemRarity.Common, ItemStatus.Draft)]
-    [InlineData(Viewer.SuperAdmin, ItemStatus.Draft, ItemRarity.Legendary, ItemStatus.Draft)]
-    [InlineData(Viewer.SuperAdmin, ItemStatus.Denied, ItemRarity.Common, ItemStatus.Draft)]
-    [InlineData(Viewer.SuperAdmin, ItemStatus.Denied, ItemRarity.Legendary, ItemStatus.Draft)]
-    [InlineData(Viewer.SuperAdmin, ItemStatus.Published, ItemRarity.Common, ItemStatus.Published)]
-    [InlineData(Viewer.SuperAdmin, ItemStatus.Published, ItemRarity.Legendary, ItemStatus.Draft)]
-    [InlineData(Viewer.SuperAdmin, ItemStatus.Archived, ItemRarity.Common, ItemStatus.Archived)]
-    [InlineData(Viewer.SuperAdmin, ItemStatus.Archived, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Draft, ItemRarity.Rare, ItemRarity.Common, ItemStatus.Draft)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Draft, ItemRarity.Common, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Denied, ItemRarity.Rare, ItemRarity.Common, ItemStatus.Draft)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Denied, ItemRarity.Common, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Published, ItemRarity.Common, ItemRarity.Common, ItemStatus.Published)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Published, ItemRarity.Common, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Published, ItemRarity.Rare, ItemRarity.Legendary, ItemStatus.Published)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Published, ItemRarity.Legendary, ItemRarity.Common, ItemStatus.Published)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Archived, ItemRarity.Common, ItemRarity.Common, ItemStatus.Archived)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Archived, ItemRarity.Common, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Archived, ItemRarity.Rare, ItemRarity.Legendary, ItemStatus.Archived)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Archived, ItemRarity.Legendary, ItemRarity.Common, ItemStatus.Archived)]
+    [InlineData(Viewer.Admin, ItemStatus.Draft, ItemRarity.Rare, ItemRarity.Common, ItemStatus.Draft)]
+    [InlineData(Viewer.Admin, ItemStatus.Draft, ItemRarity.Common, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.Admin, ItemStatus.Denied, ItemRarity.Rare, ItemRarity.Common, ItemStatus.Draft)]
+    [InlineData(Viewer.Admin, ItemStatus.Denied, ItemRarity.Common, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.Admin, ItemStatus.Published, ItemRarity.Common, ItemRarity.Common, ItemStatus.Published)]
+    [InlineData(Viewer.Admin, ItemStatus.Published, ItemRarity.Common, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.Admin, ItemStatus.Published, ItemRarity.Rare, ItemRarity.Legendary, ItemStatus.Published)]
+    [InlineData(Viewer.Admin, ItemStatus.Published, ItemRarity.Legendary, ItemRarity.Common, ItemStatus.Published)]
+    [InlineData(Viewer.Admin, ItemStatus.Archived, ItemRarity.Common, ItemRarity.Common, ItemStatus.Archived)]
+    [InlineData(Viewer.Admin, ItemStatus.Archived, ItemRarity.Common, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.Admin, ItemStatus.Archived, ItemRarity.Rare, ItemRarity.Legendary, ItemStatus.Archived)]
+    [InlineData(Viewer.Admin, ItemStatus.Archived, ItemRarity.Legendary, ItemRarity.Common, ItemStatus.Archived)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Draft, ItemRarity.Rare, ItemRarity.Common, ItemStatus.Draft)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Draft, ItemRarity.Common, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Denied, ItemRarity.Rare, ItemRarity.Common, ItemStatus.Draft)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Denied, ItemRarity.Common, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Published, ItemRarity.Common, ItemRarity.Common, ItemStatus.Published)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Published, ItemRarity.Common, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Published, ItemRarity.Rare, ItemRarity.Legendary, ItemStatus.Published)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Published, ItemRarity.Legendary, ItemRarity.Common, ItemStatus.Published)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Archived, ItemRarity.Common, ItemRarity.Common, ItemStatus.Archived)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Archived, ItemRarity.Common, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Archived, ItemRarity.Rare, ItemRarity.Legendary, ItemStatus.Archived)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Archived, ItemRarity.Legendary, ItemRarity.Common, ItemStatus.Archived)]
     public async Task Edit_Post_OnAnotherKeepersItem_IsSavedButNeverPublishedByTheEdit(
-        Viewer viewer, ItemStatus fromStatus, ItemRarity newRarity, ItemStatus expectedStatus)
+        Viewer viewer, ItemStatus fromStatus, ItemRarity storedRarity, ItemRarity newRarity, ItemStatus expectedStatus)
     {
-        var handle = $"shop_edit_other_{viewer}_{fromStatus}_{newRarity}".ToLowerInvariant();
+        var handle = $"shop_edit_other_{viewer}_{fromStatus}_{storedRarity}_{newRarity}".ToLowerInvariant();
         var (client, _) = await SeedViewerAsync(handle, viewer);
         var keeper = await AuthenticationHelper.CreateTestUserAsync(factory.Services, $"{handle}_keeper", $"{handle}_keeper@example.com");
-        var itemId = await SeedItemAsync(keeper.Id, "Keepers Item", fromStatus);
+        var itemId = await SeedItemAsync(keeper.Id, "Keepers Item", fromStatus, storedRarity);
 
         await PostEditAsync(client, itemId, "Edited By Another", newRarity);
 
@@ -502,17 +524,25 @@ public class ShopManagementControllerIntegrationTests(WebApplicationFactoryBase 
     public enum EditChain
     {
         DraftToCommonThenToLegendary,
-        PublishedCommonToLegendary
+        PublishedCommonToLegendary,
+        PublishedUncommonToRare,
+        ArchivedCommonToVeryRare
     }
 
     [Theory]
     [InlineData(Viewer.DungeonMaster, EditChain.DraftToCommonThenToLegendary)]
     [InlineData(Viewer.DungeonMaster, EditChain.PublishedCommonToLegendary)]
+    [InlineData(Viewer.DungeonMaster, EditChain.PublishedUncommonToRare)]
+    [InlineData(Viewer.DungeonMaster, EditChain.ArchivedCommonToVeryRare)]
     [InlineData(Viewer.Admin, EditChain.DraftToCommonThenToLegendary)]
     [InlineData(Viewer.Admin, EditChain.PublishedCommonToLegendary)]
+    [InlineData(Viewer.Admin, EditChain.PublishedUncommonToRare)]
+    [InlineData(Viewer.Admin, EditChain.ArchivedCommonToVeryRare)]
     [InlineData(Viewer.SuperAdmin, EditChain.DraftToCommonThenToLegendary)]
     [InlineData(Viewer.SuperAdmin, EditChain.PublishedCommonToLegendary)]
-    public async Task EditThenPublish_ByTheItemsCreator_NeverPutsAnUnreviewedItemOnSale(Viewer viewer, EditChain chain)
+    [InlineData(Viewer.SuperAdmin, EditChain.PublishedUncommonToRare)]
+    [InlineData(Viewer.SuperAdmin, EditChain.ArchivedCommonToVeryRare)]
+    public async Task EditThenPublish_ByTheItemsCreator_NeverPutsAnItemRaisedIntoReviewOnSale(Viewer viewer, EditChain chain)
     {
         var handle = $"shop_edit_chain_{viewer}_{chain}".ToLowerInvariant();
         var (client, creator) = await SeedViewerAsync(handle, viewer);
@@ -526,10 +556,16 @@ public class ShopManagementControllerIntegrationTests(WebApplicationFactoryBase 
         }
         else
         {
-            itemId = await SeedItemAsync(creator.Id, "Chained Item", ItemStatus.Published, ItemRarity.Common);
-            await PostEditAsync(client, itemId, "Chained Item", ItemRarity.Legendary);
+            var (fromStatus, fromRarity, toRarity) = chain switch
+            {
+                EditChain.PublishedCommonToLegendary => (ItemStatus.Published, ItemRarity.Common, ItemRarity.Legendary),
+                EditChain.PublishedUncommonToRare => (ItemStatus.Published, ItemRarity.Uncommon, ItemRarity.Rare),
+                _ => (ItemStatus.Archived, ItemRarity.Common, ItemRarity.VeryRare)
+            };
+            itemId = await SeedItemAsync(creator.Id, "Chained Item", fromStatus, fromRarity);
+            await PostEditAsync(client, itemId, "Chained Item", toRarity);
         }
-        (await ReadStatusAsync(itemId)).Should().Be(ItemStatus.Draft, "edited content that needs review waits for review");
+        (await ReadStatusAsync(itemId)).Should().Be(ItemStatus.Draft, "an item raised into a rarity that needs review waits for review");
 
         // The creator's own Publish is refused as it always has been; only what it leaves behind matters here.
         var ownForm = await BuildAntiForgeryFormAsync(client, "/ShopManagement", []);

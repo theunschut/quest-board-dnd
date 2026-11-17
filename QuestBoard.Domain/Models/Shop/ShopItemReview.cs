@@ -28,18 +28,25 @@ public static class ShopItemReview
         NeedsReview(rarity) ? ItemStatus.Draft : ItemStatus.Published;
 
     /// <summary>
-    /// The status an item is left in after an edit that sets its rarity to <paramref name="newRarity"/>.
+    /// The status an item is left in after an edit that changes its rarity from <paramref name="oldRarity"/>, the rarity
+    /// stored before the edit, to <paramref name="newRarity"/>.
     /// </summary>
     /// <remarks>
-    /// An edit never publishes. A draft stays a draft, and editing a denied item resubmits it as a draft. An edit at a
-    /// rarity that needs review is new content nobody has reviewed, so it goes back to review even when the item was on
-    /// sale or archived: an archived item left as it is would go back on sale unreviewed through Reopen. An item edited
-    /// at a rarity that needs no review keeps its published or archived status.
+    /// An edit never publishes. A draft stays a draft, and editing a denied item resubmits it as a draft. A published or
+    /// archived item goes back to review only when the edit raises it from a rarity that needs no review into one that
+    /// does: nobody has reviewed it at that rarity, and an archived item left as it is would go back on sale through
+    /// Reopen. An item that was already at a rarity that needs review was published by another Dungeon Master at that
+    /// level, so an edit that keeps or lowers it there, a restock or a typo fix, leaves it on sale or archived. The
+    /// price of that choice is that the content of a reviewed item can change while it stays on sale; that is accepted
+    /// so that routine upkeep does not take items off the shelf.
     /// </remarks>
-    public static ItemStatus StatusAfterEdit(ItemStatus current, ItemRarity newRarity) => current switch
+    public static ItemStatus StatusAfterEdit(ItemStatus current, ItemRarity oldRarity, ItemRarity newRarity) => current switch
     {
-        ItemStatus.Published => NeedsReview(newRarity) ? ItemStatus.Draft : ItemStatus.Published,
-        ItemStatus.Archived => NeedsReview(newRarity) ? ItemStatus.Draft : ItemStatus.Archived,
+        ItemStatus.Published or ItemStatus.Archived when RaisedIntoReview(oldRarity, newRarity) => ItemStatus.Draft,
+        ItemStatus.Published or ItemStatus.Archived => current,
         _ => ItemStatus.Draft
     };
+
+    private static bool RaisedIntoReview(ItemRarity oldRarity, ItemRarity newRarity) =>
+        !NeedsReview(oldRarity) && NeedsReview(newRarity);
 }

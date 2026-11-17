@@ -139,6 +139,10 @@ public class ShopManagementController(
             return Challenge();
         }
 
+        // Read before the posted values are copied over, so the rule can tell whether the edit raised the rarity.
+        var previousStatus = item.Status;
+        var previousRarity = item.Rarity;
+
         item.Name = viewModel.Name;
         item.Description = viewModel.Description;
         item.Type = viewModel.Type;
@@ -149,8 +153,6 @@ public class ShopManagementController(
         item.AvailableFrom = viewModel.AvailableFrom;
         item.AvailableUntil = viewModel.AvailableUntil;
 
-        var previousStatus = item.Status;
-
         // Editing a denied item resubmits it, so the old denial no longer applies.
         if (previousStatus == ItemStatus.Denied)
         {
@@ -158,9 +160,9 @@ public class ShopManagementController(
             item.DeniedAt = null;
         }
 
-        // An edit never publishes. Edited content at a rarity that needs review waits for another Dungeon Master's
-        // Publish, even when the item was on sale or archived, and the message says whether the item went back to review.
-        item.Status = ShopItemReview.StatusAfterEdit(previousStatus, item.Rarity);
+        // An edit never publishes. An item on sale or archived goes back to review only when the edit raises it into a
+        // rarity that needs review; it then waits for another Dungeon Master's Publish, and the message says so.
+        item.Status = ShopItemReview.StatusAfterEdit(previousStatus, previousRarity, item.Rarity);
 
         await shopService.UpdateAsync(item, token);
 
