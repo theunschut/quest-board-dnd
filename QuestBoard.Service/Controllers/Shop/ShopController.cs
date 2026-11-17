@@ -10,7 +10,12 @@ namespace QuestBoard.Service.Controllers.Shop;
 
 [Authorize]
 [BoardPage(BoardPage.Shop)]
-public class ShopController(IShopService shopService, IUserService userService, IMapper mapper) : Controller
+public class ShopController(
+    IShopService shopService,
+    IUserService userService,
+    IMapper mapper,
+    IAuthorizationService authorizationService
+    ) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(
@@ -66,7 +71,12 @@ public class ShopController(IShopService shopService, IUserService userService, 
     public async Task<IActionResult> Details(int id, bool isModal = false, CancellationToken token = default)
     {
         var item = await shopService.GetItemWithDetailsAsync(id, token);
-        if (item == null)
+
+        // Draft and Denied items have never been on sale, so only the board's Dungeon Masters and Admins may open
+        // them. Anyone else gets the same not-found answer as an id that does not exist, so a guessed id reveals
+        // nothing. Archived items stay open to members: they were on sale once, and a purchase refused because the
+        // item was just archived lands on this page.
+        if (item == null || (IsUnreleased(item.Status) && !await MayReviewUnreleasedItemsAsync()))
         {
             return NotFound();
         }
@@ -81,6 +91,12 @@ public class ShopController(IShopService shopService, IUserService userService, 
 
         return View(viewModel);
     }
+
+    private static bool IsUnreleased(ItemStatus status) =>
+        status == ItemStatus.Draft || status == ItemStatus.Denied;
+
+    private async Task<bool> MayReviewUnreleasedItemsAsync() =>
+        (await authorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded;
 
     [HttpPost]
     [ValidateAntiForgeryToken]

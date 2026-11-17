@@ -833,8 +833,8 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
     [InlineData(true, ItemStatus.Draft, "This item is currently under review and not available for purchase.")]
     public async Task ShopDetailsPage_DraftItem_ShowsBothReviewSentencesOnBothLayouts(bool mobile, ItemStatus status, string sentence)
     {
-        var (client, _, itemId) = await SeedMemberAndItemAsync($"shopr_draft_{(mobile ? "m" : "d")}_{sentence.Length}");
-        await SetStatusAsync(itemId, status);
+        // A Draft opens only for the board's Dungeon Masters and Admins, so the viewer is the item's own Dungeon Master.
+        var (client, itemId) = await SeedEditablePageAsync($"shopr_draft_{(mobile ? "m" : "d")}_{sentence.Length}", status);
 
         var html = await GetAsync(client, $"/Shop/Details/{itemId}", AgentFor(mobile));
 
@@ -983,8 +983,20 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
     [InlineData(false, ItemStatus.Published)]
     public async Task ShopDetails_NotAvailableNotice_FollowsTheRecordedAnswer(bool mobile, ItemStatus status)
     {
-        var (client, _, itemId) = await SeedMemberAndItemAsync($"shopr_notice_{(mobile ? "m" : "d")}_{status}");
-        await SetStatusAsync(itemId, status);
+        // A Denied item opens only for the board's Dungeon Masters and Admins, so its rows are viewed by the item's own
+        // Dungeon Master. Archived and Published stay open to a plain member, who still sees the notice on Archived.
+        HttpClient client;
+        int itemId;
+        var handle = $"shopr_notice_{(mobile ? "m" : "d")}_{status}";
+        if (status == ItemStatus.Denied)
+        {
+            (client, itemId) = await SeedEditablePageAsync(handle, status);
+        }
+        else
+        {
+            (client, _, itemId) = await SeedMemberAndItemAsync(handle);
+            await SetStatusAsync(itemId, status);
+        }
 
         var html = await GetAsync(client, $"/Shop/Details/{itemId}", AgentFor(mobile));
 

@@ -350,6 +350,74 @@ public class ShopControllerIntegrationTests : IClassFixture<WebApplicationFactor
         content.Should().Contain("page-item active");
     }
 
+    private const string UnreleasedItemName = "Unreleased Relic";
+
+    private static string DetailsUrl(int itemId, bool dialog) =>
+        dialog ? $"/Shop/Details/{itemId}?isModal=true" : $"/Shop/Details/{itemId}";
+
+    // The shop item with the given status, written straight to the store because the helper only makes Published ones.
+    private async Task SetItemStatusAsync(int itemId, ItemStatus status)
+    {
+        await using var ctx = _factory.Database.CreateContext();
+        var tracked = await ctx.ShopItems.IgnoreQueryFilters().SingleAsync(i => i.Id == itemId, TestContext.Current.CancellationToken);
+        tracked.Status = (int)status;
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    // An item of the active board, made by a separate keeper, with the given status.
+    private async Task<int> SeedKeeperItemAsync(string suffix, ItemStatus status)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        _factory.TestGroupContext.ActiveGroupId = 1;
+
+        var keeper = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, $"accesskeeper_{suffix}", $"accesskeeper_{suffix}@example.com");
+        var item = await TestDataHelper.CreateShopItemAsync(_factory.Services, keeper.Id, UnreleasedItemName, 25m, 1);
+        await SetItemStatusAsync(item.Id, status);
+        return item.Id;
+    }
+
+    [Theory]
+    [InlineData(ItemStatus.Draft, false)]
+    [InlineData(ItemStatus.Draft, true)]
+    [InlineData(ItemStatus.Denied, false)]
+    [InlineData(ItemStatus.Denied, true)]
+    public async Task Details_DraftOrDeniedItem_IsNotFoundForAPlainMember(ItemStatus status, bool dialog)
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var itemId = await SeedKeeperItemAsync(suffix, status);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"accessmember_{suffix}", $"accessmember_{suffix}@example.com");
+
+        var response = await client.GetAsync(DetailsUrl(itemId, dialog), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound, $"a {status} item has never been on sale and is not a member's to read");
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().NotContain(UnreleasedItemName);
+    }
+
+    [Theory]
+    [InlineData(ItemStatus.Draft, false)]
+    [InlineData(ItemStatus.Draft, true)]
+    [InlineData(ItemStatus.Denied, false)]
+    [InlineData(ItemStatus.Denied, true)]
+    public async Task Details_DraftOrDeniedItem_OpensForItsCreatingDungeonMaster(ItemStatus status, bool dialog)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        _factory.TestGroupContext.ActiveGroupId = 1;
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var (client, dm) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(
+            _factory, $"accesscreator_{suffix}", $"accesscreator_{suffix}@example.com");
+        var item = await TestDataHelper.CreateShopItemAsync(_factory.Services, dm.Id, UnreleasedItemName, 25m, 1);
+        await SetItemStatusAsync(item.Id, status);
+
+        var response = await client.GetAsync(DetailsUrl(item.Id, dialog), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, $"the Edit page's View Details link for a {status} item must not dead-end");
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain(UnreleasedItemName);
+    }
+
     private const string QuantityRefusal = "Quantity must be at least 1.";
 
     // A signed-in member and one Published item with the given stock, for the crafted-post facts.
