@@ -2037,7 +2037,7 @@ Plans:
 **Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
 **Requirements**: TBD
 **Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
-**Plans:** 22/23 plans executed
+**Plans:** 23/23 plans executed
 
 **Scope:**
 
@@ -2178,7 +2178,7 @@ Plans:
 
 **Wave 23** *(blocked on Wave 22 completion)*
 
-- [ ] 99-23-PLAN.md — Stock, review and availability gaps (operator: "Fix + 2 gaps"): limited-stock Return and Sell from the purchase history refund and restock again (the shop domain-to-entity maps stop writing navigations over tracked entities; the four skipped reproduction cases run); Archive accepts only a Published item, so Archive then Reopen can no longer publish an unreviewed Draft or Denied item; one availability rule on the board clock for the shop list, Details, Purchase and Sell to Shop (a member gets 404 for an item whose sale has not started, a closed item stays open like Archived, Return and Sell from history unchanged); the cross-board deep-link switch and the 24-hour Return edge recorded as known debt
+- [x] 99-23-PLAN.md — Stock, review and availability gaps (operator: "Fix + 2 gaps"): limited-stock Return and Sell from the purchase history refund and restock again (the shop domain-to-entity maps stop writing navigations over tracked entities; the four skipped reproduction cases run); Archive accepts only a Published item, so Archive then Reopen can no longer publish an unreviewed Draft or Denied item; one availability rule on the board clock for the shop list, Details, Purchase and Sell to Shop (a member gets 404 for an item whose sale has not started, a closed item stays open like Archived, Return and Sell from history unchanged); the cross-board deep-link switch and the 24-hour Return edge recorded as known debt
 
 ### Phase 100: Admin and Platform UI conversion
 

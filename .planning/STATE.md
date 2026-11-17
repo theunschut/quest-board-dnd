@@ -5,15 +5,15 @@ milestone_name: Rolling Improvements
 current_phase: 99
 current_phase_name: Shop and Shop management UI conversion
 status: executing
-stopped_at: Completed 99-22-PLAN.md
-last_updated: "2026-11-17T17:12:00.784Z"
+stopped_at: Completed 99-23-PLAN.md
+last_updated: "2026-11-17T18:48:54.865Z"
 last_activity: 2026-11-17
-last_activity_desc: "Phase 99: 22/22 plans complete, Draft Details access gap closed (99-22), ready for the v6.4.0 release hand-off"
+last_activity_desc: "Phase 99: 23/23 plans complete, limited-stock Return/Sell, Archive review bypass and availability window fixed (99-23), ready for the v6.4.0 release hand-off"
 progress:
   total_phases: 31
   completed_phases: 26
-  total_plans: 292
-  completed_plans: 283
+  total_plans: 293
+  completed_plans: 284
   percent: 84
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
@@ -30,10 +30,10 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 ## Current Position
 
 Phase: 99 (Shop and Shop management UI conversion) — EXECUTING
-Plan: 22 of 22
-Status: Phase plans complete — Gate 2 approved and the Draft Details access gap closed; ready for verification and the v6.4.0 release
+Plan: 23 of 23
+Status: Phase plans complete — Gate 2 approved, the Draft Details access gap closed and the stock, review and availability gaps fixed; ready for verification and the v6.4.0 release
 Not complete in this milestone: Phases 78, 79 and 90, and 98 onward.
-Last activity: 2026-11-17 — Phase 99: all 22 plans complete; 99-22 closed the Draft Details access gap (Shop/Details answers 404 to non-reviewers for Draft and Denied items, like a missing id) on the operator's go-ahead after Gate 2 (gate2-v1, WINDOWS 33 waived); v6.4.0 hand-off through the operator's pull request; verification steps not run
+Last activity: 2026-11-17 — Phase 99: all 23 plans complete; 99-23 (operator: "Fix + 2 gaps") fixed limited-stock Return and Sell from the purchase history (shop domain-to-entity maps leave navigations to the store; the 4 reproduction cases run green), limited Archive to Published items so Archive then Reopen cannot skip review, and put the shop availability window on the board clock for the list, Details, Purchase and Sell to Shop; 99-VALIDATION nyquist_compliant; unit 1489 passed, integration 2649 passed, 16 skipped; v6.4.0 hand-off through the operator's pull request; verification steps not run
 
 **Phases 96 and 97 complete 2026-11-13.** Shipped as v6.1.0 (PR #170) and v6.2.0 (PR #171); the post-deploy UAT items (96: 7, 97: 5) were confirmed by the operator against production ("i think everything works. so mark as completed").
 
@@ -287,8 +287,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-17T17:12:00.746Z
-Stopped at: Completed 99-22-PLAN.md
+Last session: 2026-11-17T18:48:54.828Z
+Stopped at: Completed 99-23-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
