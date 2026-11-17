@@ -52,7 +52,10 @@ public class ShopManagementControllerIntegrationTests(WebApplicationFactoryBase 
 
     [Theory]
     [InlineData(ItemRarity.Common, ItemStatus.Published)]
+    [InlineData(ItemRarity.Uncommon, ItemStatus.Published)]
     [InlineData(ItemRarity.Rare, ItemStatus.Draft)]
+    [InlineData(ItemRarity.VeryRare, ItemStatus.Draft)]
+    [InlineData(ItemRarity.Legendary, ItemStatus.Draft)]
     public async Task Create_Post_DungeonMaster_StoresItemOnTheActiveBoard(ItemRarity rarity, ItemStatus expectedStatus)
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
@@ -254,13 +257,18 @@ public class ShopManagementControllerIntegrationTests(WebApplicationFactoryBase 
             : await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory, handle, $"{handle}@example.com");
     }
 
-    private async Task<int> SeedItemAsync(int createdById, string name, ItemStatus status)
+    private async Task<int> SeedItemAsync(int createdById, string name, ItemStatus status, ItemRarity rarity = ItemRarity.Rare)
     {
-        var item = await TestDataHelper.CreateShopItemAsync(factory.Services, createdById, name, rarity: ItemRarity.Rare);
+        var item = await TestDataHelper.CreateShopItemAsync(factory.Services, createdById, name, rarity: rarity);
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
         var tracked = await context.ShopItems.IgnoreQueryFilters().SingleAsync(i => i.Id == item.Id, Token);
         tracked.Status = (int)status;
+        if (status == ItemStatus.Denied)
+        {
+            tracked.DenialReason = "Too strong for this board";
+            tracked.DeniedAt = new DateTime(2026, 9, 1, 12, 0, 0, DateTimeKind.Utc);
+        }
         await context.SaveChangesAsync(Token);
         return item.Id;
     }
@@ -350,5 +358,187 @@ public class ShopManagementControllerIntegrationTests(WebApplicationFactoryBase 
         await PostManagementActionAsync(client, "Reopen", itemId);
 
         (await ReadStatusAsync(itemId)).Should().Be(ItemStatus.Published);
+    }
+
+    // ---- Edit: an edit never publishes, and edited content that needs review goes back to review ----------
+
+    public enum Viewer
+    {
+        DungeonMaster,
+        Admin,
+        SuperAdmin
+    }
+
+    private const string ResubmittedToast = "Item updated and resubmitted for review!";
+    private const string SentBackToast = "Item updated and sent back for review. It is off sale until another Dungeon Master publishes it.";
+    private const string UpdatedToast = "Item updated successfully!";
+
+    private async Task<(HttpClient Client, UserEntity Viewer)> SeedViewerAsync(string handle, Viewer viewer)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+        return viewer switch
+        {
+            Viewer.Admin => await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(factory, handle, $"{handle}@example.com"),
+            Viewer.SuperAdmin => await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(factory, handle, $"{handle}@example.com"),
+            _ => await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory, handle, $"{handle}@example.com")
+        };
+    }
+
+    // Posts the Edit form for an item, follows the redirect to the management list and returns that page decoded.
+    private async Task<string> PostEditAsync(HttpClient client, int itemId, string newName, ItemRarity newRarity)
+    {
+        var formData = ItemForm(newName, newRarity);
+        formData["Id"] = itemId.ToString();
+        var form = await BuildAntiForgeryFormAsync(client, $"/ShopManagement/Edit/{itemId}", formData);
+        var response = await client.PostAsync($"/ShopManagement/Edit/{itemId}", form, Token);
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect, "a saved edit answers with a redirect to the management list");
+        var location = response.Headers.Location!.OriginalString;
+        location.Should().EndWith("/ShopManagement");
+
+        var landing = await client.GetAsync(location, Token);
+        landing.StatusCode.Should().Be(HttpStatusCode.OK);
+        return WebUtility.HtmlDecode(await landing.Content.ReadAsStringAsync(Token));
+    }
+
+    private async Task<ShopItemEntity> ReadItemAsync(int itemId) =>
+        (await GetAllShopItemsAsync()).Should().ContainSingle(i => i.Id == itemId).Subject;
+
+    [Theory]
+    [InlineData(ItemStatus.Draft, ItemRarity.Rare, ItemRarity.Common, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Draft, ItemRarity.Rare, ItemRarity.Uncommon, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Draft, ItemRarity.Rare, ItemRarity.Rare, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Draft, ItemRarity.Rare, ItemRarity.VeryRare, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Draft, ItemRarity.Rare, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Denied, ItemRarity.Rare, ItemRarity.Common, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Denied, ItemRarity.Rare, ItemRarity.Uncommon, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Denied, ItemRarity.Rare, ItemRarity.Rare, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Denied, ItemRarity.Rare, ItemRarity.VeryRare, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Denied, ItemRarity.Rare, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Published, ItemRarity.Rare, ItemRarity.Common, ItemStatus.Published)]
+    [InlineData(ItemStatus.Published, ItemRarity.Rare, ItemRarity.Uncommon, ItemStatus.Published)]
+    [InlineData(ItemStatus.Published, ItemRarity.Rare, ItemRarity.Rare, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Published, ItemRarity.Rare, ItemRarity.VeryRare, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Published, ItemRarity.Rare, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Archived, ItemRarity.Rare, ItemRarity.Common, ItemStatus.Archived)]
+    [InlineData(ItemStatus.Archived, ItemRarity.Rare, ItemRarity.Uncommon, ItemStatus.Archived)]
+    [InlineData(ItemStatus.Archived, ItemRarity.Rare, ItemRarity.Rare, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Archived, ItemRarity.Rare, ItemRarity.VeryRare, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Archived, ItemRarity.Rare, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Published, ItemRarity.Common, ItemRarity.Common, ItemStatus.Published)]
+    [InlineData(ItemStatus.Published, ItemRarity.Common, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(ItemStatus.Archived, ItemRarity.Common, ItemRarity.Common, ItemStatus.Archived)]
+    [InlineData(ItemStatus.Archived, ItemRarity.Common, ItemRarity.Rare, ItemStatus.Draft)]
+    public async Task Edit_Post_ByTheItemsCreator_LeavesTheStatusTheReviewRuleGives(
+        ItemStatus fromStatus, ItemRarity storedRarity, ItemRarity newRarity, ItemStatus expectedStatus)
+    {
+        var handle = $"shop_edit_creator_{fromStatus}_{storedRarity}_{newRarity}".ToLowerInvariant();
+        var (client, viewer) = await SeedViewerAsync(handle, Viewer.DungeonMaster);
+        var itemId = await SeedItemAsync(viewer.Id, "Before Edit", fromStatus, storedRarity);
+
+        var landing = await PostEditAsync(client, itemId, "After Edit", newRarity);
+
+        var item = await ReadItemAsync(itemId);
+        ((ItemStatus)item.Status).Should().Be(expectedStatus);
+        item.Name.Should().Be("After Edit");
+        item.Rarity.Should().Be((int)newRarity);
+        if (fromStatus == ItemStatus.Denied)
+        {
+            item.DenialReason.Should().BeNull("a resubmitted item carries no old denial");
+            item.DeniedAt.Should().BeNull();
+        }
+
+        var expectedToast = expectedStatus == fromStatus && expectedStatus != ItemStatus.Draft
+            ? UpdatedToast
+            : fromStatus is ItemStatus.Draft or ItemStatus.Denied ? ResubmittedToast : SentBackToast;
+        landing.Should().Contain(expectedToast);
+        if (expectedStatus == ItemStatus.Draft)
+        {
+            landing.Should().NotContain(UpdatedToast, "an item waiting for review was not simply updated");
+        }
+    }
+
+    [Theory]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Draft, ItemRarity.Common, ItemStatus.Draft)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Draft, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Denied, ItemRarity.Common, ItemStatus.Draft)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Denied, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Published, ItemRarity.Common, ItemStatus.Published)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Published, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Archived, ItemRarity.Common, ItemStatus.Archived)]
+    [InlineData(Viewer.DungeonMaster, ItemStatus.Archived, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.Admin, ItemStatus.Draft, ItemRarity.Common, ItemStatus.Draft)]
+    [InlineData(Viewer.Admin, ItemStatus.Draft, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.Admin, ItemStatus.Denied, ItemRarity.Common, ItemStatus.Draft)]
+    [InlineData(Viewer.Admin, ItemStatus.Denied, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.Admin, ItemStatus.Published, ItemRarity.Common, ItemStatus.Published)]
+    [InlineData(Viewer.Admin, ItemStatus.Published, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.Admin, ItemStatus.Archived, ItemRarity.Common, ItemStatus.Archived)]
+    [InlineData(Viewer.Admin, ItemStatus.Archived, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Draft, ItemRarity.Common, ItemStatus.Draft)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Draft, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Denied, ItemRarity.Common, ItemStatus.Draft)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Denied, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Published, ItemRarity.Common, ItemStatus.Published)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Published, ItemRarity.Legendary, ItemStatus.Draft)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Archived, ItemRarity.Common, ItemStatus.Archived)]
+    [InlineData(Viewer.SuperAdmin, ItemStatus.Archived, ItemRarity.Legendary, ItemStatus.Draft)]
+    public async Task Edit_Post_OnAnotherKeepersItem_IsSavedButNeverPublishedByTheEdit(
+        Viewer viewer, ItemStatus fromStatus, ItemRarity newRarity, ItemStatus expectedStatus)
+    {
+        var handle = $"shop_edit_other_{viewer}_{fromStatus}_{newRarity}".ToLowerInvariant();
+        var (client, _) = await SeedViewerAsync(handle, viewer);
+        var keeper = await AuthenticationHelper.CreateTestUserAsync(factory.Services, $"{handle}_keeper", $"{handle}_keeper@example.com");
+        var itemId = await SeedItemAsync(keeper.Id, "Keepers Item", fromStatus);
+
+        await PostEditAsync(client, itemId, "Edited By Another", newRarity);
+
+        var item = await ReadItemAsync(itemId);
+        ((ItemStatus)item.Status).Should().Be(expectedStatus);
+        item.Name.Should().Be("Edited By Another");
+        item.CreatedByDmId.Should().Be(keeper.Id, "an edit does not change who created the item");
+    }
+
+    public enum EditChain
+    {
+        DraftToCommonThenToLegendary,
+        PublishedCommonToLegendary
+    }
+
+    [Theory]
+    [InlineData(Viewer.DungeonMaster, EditChain.DraftToCommonThenToLegendary)]
+    [InlineData(Viewer.DungeonMaster, EditChain.PublishedCommonToLegendary)]
+    [InlineData(Viewer.Admin, EditChain.DraftToCommonThenToLegendary)]
+    [InlineData(Viewer.Admin, EditChain.PublishedCommonToLegendary)]
+    [InlineData(Viewer.SuperAdmin, EditChain.DraftToCommonThenToLegendary)]
+    [InlineData(Viewer.SuperAdmin, EditChain.PublishedCommonToLegendary)]
+    public async Task EditThenPublish_ByTheItemsCreator_NeverPutsAnUnreviewedItemOnSale(Viewer viewer, EditChain chain)
+    {
+        var handle = $"shop_edit_chain_{viewer}_{chain}".ToLowerInvariant();
+        var (client, creator) = await SeedViewerAsync(handle, viewer);
+        int itemId;
+        if (chain == EditChain.DraftToCommonThenToLegendary)
+        {
+            itemId = await SeedItemAsync(creator.Id, "Chained Item", ItemStatus.Draft, ItemRarity.Rare);
+            await PostEditAsync(client, itemId, "Chained Item", ItemRarity.Common);
+            (await ReadStatusAsync(itemId)).Should().Be(ItemStatus.Draft, "an edit to a review-free rarity does not publish a draft");
+            await PostEditAsync(client, itemId, "Chained Item", ItemRarity.Legendary);
+        }
+        else
+        {
+            itemId = await SeedItemAsync(creator.Id, "Chained Item", ItemStatus.Published, ItemRarity.Common);
+            await PostEditAsync(client, itemId, "Chained Item", ItemRarity.Legendary);
+        }
+        (await ReadStatusAsync(itemId)).Should().Be(ItemStatus.Draft, "edited content that needs review waits for review");
+
+        // The creator's own Publish is refused as it always has been; only what it leaves behind matters here.
+        var ownForm = await BuildAntiForgeryFormAsync(client, "/ShopManagement", []);
+        await client.PostAsync($"/ShopManagement/Publish/{itemId}", ownForm, Token);
+        (await ReadStatusAsync(itemId)).Should().Be(ItemStatus.Draft, "the creator cannot approve their own edited item");
+
+        var (reviewer, _) = await AuthenticationHelper.CreateAuthenticatedDMClientAsync(
+            factory, $"{handle}_reviewer", $"{handle}_reviewer@example.com");
+        await PostManagementActionAsync(reviewer, "Publish", itemId);
+        (await ReadStatusAsync(itemId)).Should().Be(ItemStatus.Published, "another Dungeon Master's review still puts it on sale");
     }
 }

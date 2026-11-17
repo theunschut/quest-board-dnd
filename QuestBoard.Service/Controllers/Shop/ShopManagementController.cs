@@ -76,7 +76,7 @@ public class ShopManagementController(
             Price = viewModel.Price,
             Quantity = viewModel.Quantity,
             ReferenceUrl = viewModel.ReferenceUrl,
-            Status = ItemStatus.Draft,
+            Status = ShopItemReview.StatusOnCreate(viewModel.Rarity!.Value),
             CreatedByDmId = currentUser.Id,
             // Tag the item to the active board: ShopItems.GroupId is a required foreign key, and
             // the board query filter would hide an item stamped with any other board.
@@ -84,12 +84,6 @@ public class ShopManagementController(
             AvailableFrom = viewModel.AvailableFrom,
             AvailableUntil = viewModel.AvailableUntil
         };
-
-        if (shopItem.Status == ItemStatus.Draft && (shopItem.Rarity == ItemRarity.Common || shopItem.Rarity == ItemRarity.Uncommon))
-        {
-            // Auto-publish common and uncommon items
-            shopItem.Status = ItemStatus.Published;
-        }
 
         await shopService.AddAsync(shopItem, token);
 
@@ -155,25 +149,26 @@ public class ShopManagementController(
         item.AvailableFrom = viewModel.AvailableFrom;
         item.AvailableUntil = viewModel.AvailableUntil;
 
-        // If item was denied, reset it to draft when edited
-        if (item.Status == ItemStatus.Denied)
+        var previousStatus = item.Status;
+
+        // Editing a denied item resubmits it, so the old denial no longer applies.
+        if (previousStatus == ItemStatus.Denied)
         {
-            item.Status = ItemStatus.Draft;
             item.DenialReason = null;
             item.DeniedAt = null;
         }
 
-        if (item.Status == ItemStatus.Draft && (item.Rarity == ItemRarity.Common || item.Rarity == ItemRarity.Uncommon))
-        {
-            // Auto-publish common and uncommon items upon editing
-            item.Status = ItemStatus.Published;
-        }
+        // An edit never publishes. Edited content at a rarity that needs review waits for another Dungeon Master's
+        // Publish, even when the item was on sale or archived, and the message says whether the item went back to review.
+        item.Status = ShopItemReview.StatusAfterEdit(previousStatus, item.Rarity);
 
         await shopService.UpdateAsync(item, token);
 
-        TempData["Success"] = item.Status == ItemStatus.Draft 
-            ? "Item updated and resubmitted for review!" 
-            : "Item updated successfully!";
+        TempData["Success"] = item.Status != ItemStatus.Draft
+            ? "Item updated successfully!"
+            : previousStatus is ItemStatus.Draft or ItemStatus.Denied
+                ? "Item updated and resubmitted for review!"
+                : "Item updated and sent back for review. It is off sale until another Dungeon Master publishes it.";
         return RedirectToAction(nameof(Index));
     }
 
