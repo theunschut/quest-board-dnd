@@ -169,15 +169,6 @@
                                                         </button>
                                                     </form>
                                                 }
-                                                @if (item.Status == ItemStatus.Draft && isAdmin)
-                                                {
-                                                    <form method="post" action="/ShopManagement/Publish/@item.Id" data-confirm-message="Are you sure you want to publish this item?">
-                                                        @Html.AntiForgeryToken()
-                                                        <button type="submit" class="btn btn-success btn-sm" title="Publish" aria-label="Publish item">
-                                                            <i class="fas fa-check" aria-hidden="true"></i>
-                                                        </button>
-                                                    </form>
-                                                }
                                                 @if (item.Status == ItemStatus.Denied)
                                                 {
                                                     <a href="/ShopManagement/Edit/@item.Id" class="btn btn-warning btn-sm" title="Edit &amp; Resubmit" aria-label="Edit &amp; Resubmit item">

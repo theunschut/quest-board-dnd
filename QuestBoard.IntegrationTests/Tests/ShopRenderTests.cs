@@ -657,6 +657,32 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         html.Should().NotMatchRegex(@"class=""btn btn-(?:primary|outline)[^""]*""[^>]*aria-label=""Edit item""");
     }
 
+    // The controller refuses to publish or deny an item to its own creator, so the list must not offer either control
+    // on the viewer's own draft, while the other keeper's draft keeps both.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShopManagementList_AdminViewingTheirOwnDraft_OffersNeitherPublishNorDenyForIt(bool mobile)
+    {
+        var client = await SeedManagementBoardAsync($"shopr_owndraft_{(mobile ? "m" : "d")}", admin: true);
+        int ownDraftId;
+        int reviewId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            ownDraftId = (await context.ShopItems.IgnoreQueryFilters().SingleAsync(i => i.Name == "Own Draft", TestContext.Current.CancellationToken)).Id;
+            reviewId = (await context.ShopItems.IgnoreQueryFilters().SingleAsync(i => i.Name == "Review Me", TestContext.Current.CancellationToken)).Id;
+        }
+
+        var html = await GetAsync(client, "/ShopManagement", AgentFor(mobile));
+
+        html.Should().NotContain($"/ShopManagement/Publish/{ownDraftId}\"", "the creator cannot publish their own item");
+        html.Should().NotContain($"/ShopManagement/Deny/{ownDraftId}\"", "the creator cannot deny their own item");
+        html.Should().Contain($"/ShopManagement/Publish/{reviewId}\"", "another keeper's draft can still be published");
+        html.Should().Contain($"/ShopManagement/Deny/{reviewId}\"", "another keeper's draft can still be denied");
+        html.Should().Contain($"/ShopManagement/Edit/{ownDraftId}\"", "the creator can still edit their own draft");
+    }
+
     [Fact]
     public async Task ShopManagementList_Desktop_DeniedRowShowsTheReasonAndALocalTimeDate()
     {
