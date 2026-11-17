@@ -199,6 +199,13 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
             throw new InvalidOperationException("Item is not available for sale.");
         }
 
+        // Limited stock is counted in an int, so a hand-made post with a huge number would wrap the stock negative and
+        // make the item read as unlimited or sold out. Refuse it before anything is changed or recorded.
+        if (item.Quantity >= 0 && quantity > int.MaxValue - item.Quantity)
+        {
+            throw new InvalidOperationException("That quantity is too large for this item's stock.");
+        }
+
         // Calculate sell price (half of shop price)
         var sellPrice = (item.Price / 2) * quantity;
 

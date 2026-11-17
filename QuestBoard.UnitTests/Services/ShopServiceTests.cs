@@ -151,4 +151,45 @@ public class ShopServiceTests
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("This item is sold out.");
         await transactions.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
     }
+
+    [Fact]
+    public async Task SellItemToShopAsync_QuantityThatWouldOverflowTheStock_IsRefusedAndChangesNothing()
+    {
+        var (service, shop, transactions) = CreateService();
+        var item = new ShopItem { Id = 1, Name = "Rope", Price = 40m, Quantity = 2, Status = ItemStatus.Published };
+        shop.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(item);
+
+        var act = () => service.SellItemToShopAsync(1, int.MaxValue, Member, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        item.Quantity.Should().Be(2);
+        await shop.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);
+        await transactions.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task SellItemToShopAsync_QuantityThatFillsTheStockExactlyToTheLimit_IsAccepted()
+    {
+        var (service, shop, transactions) = CreateService();
+        var item = new ShopItem { Id = 1, Name = "Rope", Price = 40m, Quantity = 2, Status = ItemStatus.Published };
+        shop.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(item);
+
+        await service.SellItemToShopAsync(1, int.MaxValue - 2, Member, TestContext.Current.CancellationToken);
+
+        item.Quantity.Should().Be(int.MaxValue);
+        await transactions.Received(1).AddAsync(Arg.Any<UserTransaction>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SellItemToShopAsync_LargeQuantityOfAnUnlimitedItem_LeavesStockAtMinusOne()
+    {
+        var (service, shop, transactions) = CreateService();
+        var item = new ShopItem { Id = 1, Name = "Rope", Price = 40m, Quantity = -1, Status = ItemStatus.Published };
+        shop.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(item);
+
+        await service.SellItemToShopAsync(1, int.MaxValue, Member, TestContext.Current.CancellationToken);
+
+        item.Quantity.Should().Be(-1);
+        await transactions.Received(1).AddAsync(Arg.Any<UserTransaction>(), Arg.Any<CancellationToken>());
+    }
 }
