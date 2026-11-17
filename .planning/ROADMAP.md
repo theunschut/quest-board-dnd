@@ -2037,7 +2037,7 @@ Plans:
 **Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
 **Requirements**: TBD
 **Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
-**Plans:** 19/21 plans executed
+**Plans:** 20/21 plans executed
 
 **Scope:**
 
@@ -2166,7 +2166,7 @@ Plans:
 
 **Wave 20** *(blocked on Wave 19 completion)*
 
-- [ ] 99-19-PLAN.md — Timed stop: cannot start before `eligibleAt` in `~/qb-ui-review/phase-99/fixtures.json` (24 hours after the 99-02 day-0 purchases); waiting there is expected, not a stall. Closing sweep after the 24-hour Sell mark: full AFTER, click-throughs on both layouts, whole-image and accessibility checks, exceptions, finding trace, migrator suite if approved, ledger and deferred items
+- [x] 99-19-PLAN.md — Timed stop: cannot start before `eligibleAt` in `~/qb-ui-review/phase-99/fixtures.json` (24 hours after the 99-02 day-0 purchases); waiting there is expected, not a stall. Closing sweep after the 24-hour Sell mark: full AFTER, click-throughs on both layouts, whole-image and accessibility checks, exceptions, finding trace, migrator suite if approved, ledger and deferred items
 
 **Wave 21** *(blocked on Wave 20 completion)*
 
