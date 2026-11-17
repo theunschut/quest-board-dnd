@@ -12,7 +12,7 @@ created: 2026-11-17
 # Phase 99 — Security
 
 > Per-phase security contract: threat register, accepted risks, and audit trail.
-> Register authored at plan time (23 PLAN `<threat_model>` blocks: 85 rows, 81 unique IDs; T-99-SC repeats in plans 01, 02, 03, 05, 06). Verified by gsd-security-auditor at ASVS L1 against HEAD 396b1067.
+> Register authored at plan time (24 PLAN `<threat_model>` blocks: 94 rows, 90 unique IDs; T-99-SC repeats in plans 01, 02, 03, 05, 06). Verified by gsd-security-auditor at ASVS L1 against HEAD c65cef69 (T-99-SC to T-99-80 first verified at 396b1067; re-run after 99-24 added T-99-81 to T-99-89).
 
 ---
 
@@ -56,9 +56,9 @@ created: 2026-11-17
 | T-99-09 | Info disclosure | baseline-src, before/ captures | low | accept | `git archive` copies committed files only; fantasy fixtures | closed (accepted) |
 | T-99-10 | Tampering | behaviour probes writing to the DB | medium | mitigate | shop-behaviour.mjs:37-39 aborts every POST; sweep.mjs:134-135 answers POSTs with 204 | closed |
 | T-99-11 | Tampering | baseline app migrating the DB | low | mitigate | run-app.mjs:4-11 refuses a port another tree serves; forced suppression on 8321 | closed |
-| T-99-12 | Tampering | Return and Sell row forms (CSRF) | high | mitigate | _ShopPurchaseHistory.cshtml:64,77 asp-controller/asp-action; ShopController.cs:136 [ValidateAntiForgeryToken]; ShopConversionGuardTests.cs:711; HistoryRowForm_CarriesAnAntiforgeryTokenAndPostsToARedirect | closed |
+| T-99-12 | Tampering | Return and Sell row forms (CSRF) | high | mitigate | _ShopPurchaseHistory.cshtml:64,77 asp-controller/asp-action; ShopController.cs:136 [ValidateAntiForgeryToken]; ShopConversionGuardTests.cs:713; HistoryRowForm_CarriesAnAntiforgeryTokenAndPostsToARedirect | closed |
 | T-99-13 | Tampering / EoP | item name in an inline script string | high | mitigate | _ShopItemDetailsContent.cshtml:196 Razor-encoded `data-item-name`; shop-item-sell.js:34 reads `dataset`; 0 inline `on*=` in shop views; ShopRenderTests.cs:24,174 | closed |
-| T-99-14 | Tampering | markup built from strings in the module | medium | mitigate | shop-item-sell.js:24 textContent; ShopModules_WriteNoMarkupFromStrings (ShopConversionGuardTests.cs:81-91,816); no innerHTML/outerHTML/insertAdjacentHTML/document.write in any shop module | closed |
+| T-99-14 | Tampering | markup built from strings in the module | medium | mitigate | shop-item-sell.js:24 textContent; ShopModules_WriteNoMarkupFromStrings (ShopConversionGuardTests.cs:81-91,818); no innerHTML/outerHTML/insertAdjacentHTML/document.write in any shop module | closed |
 | T-99-15 | Spoofing | theme attribute | low | accept | constant from the view; _Layout.cshtml:6 and _Layout.Mobile.cshtml:6 HtmlEncode it | closed (accepted) |
 | T-99-16 | Info disclosure | mockup content (99-05) | low | mitigate | fantasy fixture text only; no mockup, gate or png file in git ls-files or phase history | closed |
 | T-99-17 | Info disclosure | mockup content (99-06) | low | mitigate | as T-99-16 | closed |
@@ -68,25 +68,25 @@ created: 2026-11-17
 | T-99-21 | Tampering | chip partial rendering item data | low | mitigate | _ShopRarityChip.cshtml:2-3, _ShopTypeChip.cshtml:2-3 take an enum only | closed |
 | T-99-22 | Repudiation | status shown differently on the two layouts | low | mitigate | ShopItemDisplay.cs:35-42; _ShopStatusBadge at all six sites; ShopViews_UseTheSharedStatusMapping | closed |
 | T-99-23 | Tampering | Markdown description | medium | mitigate | _ShopItemDetailsContent.cshtml:122 Html.Markdown; HtmlHelperExtensions.cs, MarkdownService.cs, MarkdownController.cs unchanged since 59df0cf8 | closed |
-| T-99-24 | Spoofing | reverse tabnabbing via reference link | medium | mitigate | _ShopItemDetailsContent.cshtml:129 rel="noopener noreferrer"; ShopRenderTests.cs:1114 | closed |
+| T-99-24 | Spoofing | reverse tabnabbing via reference link | medium | mitigate | _ShopItemDetailsContent.cshtml:129 rel="noopener noreferrer"; ShopRenderTests.cs:1206 | closed |
 | T-99-25 | Info disclosure | Markdown image tracking pixel | low | accept | allowed tag set unchanged; deferred-items.md, Gate 2 `df:defer` | closed (accepted) |
 | T-99-26 | Info disclosure | member opening a Draft item's Details by id | low | accept | superseded: fixed by 99-22 (T-99-64, commit fd6e799e) | closed (superseded) |
 | T-99-27 | DoS | item script intercepting the Logout form | medium | mitigate | shop-item-form.js:112 binds only `form[data-shop-item-form]`; keyboard-guard fact | closed |
 | T-99-28 | Tampering | client-side validation as the only check | low | accept | server validation attributes unchanged and authoritative | closed (accepted) |
-| T-99-29 | Tampering | CSRF on Edit | medium | mitigate | Edit.cshtml:18, Edit.Mobile.cshtml:18 asp-action; ShopManagementController.cs:120; token scanner | closed |
+| T-99-29 | Tampering | CSRF on Edit | medium | mitigate | Edit.cshtml:18, Edit.Mobile.cshtml:18 asp-action; ShopManagementController.cs:114; token scanner | closed |
 | T-99-30 | Tampering | hint text built from strings | low | mitigate | shop-item-form.js:23-34,60 createElement + textContent | closed |
 | T-99-31 | Tampering | typed values or server HTML in the preview | high | mitigate | shop-item-preview.js:54-60 inert DOMParser, text only; :89-109,133,144 textContent | closed |
 | T-99-32 | Tampering | CSRF on /markdown/preview | low | mitigate | shop-item-preview.js:74 RequestVerificationToken header; MarkdownController.cs:12,19 [Authorize] + [ValidateAntiForgeryToken], unchanged; token meta from _QuestFormScripts.cshtml:15 via Create.cshtml:173 | closed |
 | T-99-33 | Tampering | accidental save from the preview dialog | medium | mitigate | Create.cshtml:145-158 template holds no form or link; Purchase is an aria-hidden span | closed |
-| T-99-34 | Tampering | CSRF on the management and Deny forms | high | mitigate | every POST form tokenised (Index 76/156/165/180/255/264/273, Index.Mobile 67/76/93/102, _ShopManagementDialogs.cshtml:36-37); every action [ValidateAntiForgeryToken]; ShopPostForms_EachCarryAnAntiforgeryToken | closed |
-| T-99-35 | Tampering / EoP | item name in the Deny dialog | high | mitigate | Index.cshtml:84, Index.Mobile.cshtml:87 Razor-encoded `data-deny-name`; shop-management.js:25 textContent | closed |
-| T-99-36 | Tampering | Deny form action taken from the page | medium | mitigate | server-rendered `data-deny-url`; ShopManagementController.cs:13 policy, :249 ownership, :255 status | closed |
-| T-99-37 | EoP | who sees Publish, Deny and Delete | medium | mitigate | controller checks ShopManagementController.cs:191,249,300-308; ShopRenderTests.cs:519,571,699 | closed |
+| T-99-34 | Tampering | CSRF on the management and Deny forms | high | mitigate | every POST form tokenised (Index 76/156/165/180/255/264/273, Index.Mobile 68/77/94/103, _ShopManagementDialogs.cshtml:36-37); every action [ValidateAntiForgeryToken]; ShopPostForms_EachCarryAnAntiforgeryToken | closed |
+| T-99-35 | Tampering / EoP | item name in the Deny dialog | high | mitigate | Index.cshtml:84, Index.Mobile.cshtml:88 Razor-encoded `data-deny-name`; shop-management.js:25 textContent | closed |
+| T-99-36 | Tampering | Deny form action taken from the page | medium | mitigate | server-rendered `data-deny-url`; ShopManagementController.cs:13 policy, :246 ownership, :252 status | closed |
+| T-99-37 | EoP | who sees Publish, Deny and Delete | medium | mitigate | controller checks ShopManagementController.cs:188 (Publish), :246 (Deny), :299-318 (Delete: the AdminOnly policy, otherwise ownership then status); ShopRenderTests.cs:535,587,791, and :736 (Delete offered only where the server accepts it) | closed |
 | T-99-38 | Tampering | inserting the fetched fragment | medium | mitigate | Index.cshtml:195,202 server-built `data-item-url`; shop-item-modal.js:50-54 inert parse, scripts dropped, nodes moved | closed |
 | T-99-39 | Tampering | reflected search text (desktop) | medium | mitigate | Index.cshtml:155 Razor-encoded value; no Html.Raw in shop views | closed |
 | T-99-40 | DoS | stale or failed fetches | low | mitigate | shop-item-modal.js:17,24-25,46,57-60 request counter; failure clears aria-busy | closed |
 | T-99-41 | Tampering | CSRF on Return and Sell | high | mitigate | as T-99-12 | closed |
-| T-99-42 | Tampering / EoP | item name in the Sell confirmation | high | mitigate | _ShopPurchaseHistory.cshtml:76-77 encoded `data-confirm-message`; confirm-submit.js:44-46 plain text; ShopRenderTests.cs:2032 | closed |
+| T-99-42 | Tampering / EoP | item name in the Sell confirmation | high | mitigate | _ShopPurchaseHistory.cshtml:76-77 encoded `data-confirm-message`; confirm-submit.js:44-46 plain text; ShopRenderTests.cs:2124 | closed |
 | T-99-43 | Tampering | toast built from strings | medium | mitigate | shop-merchant.js:115,123 template clone + textContent; templates at Index.cshtml:323-354 | closed |
 | T-99-44 | EoP | selling another member's purchase | low | accept | ownership check present at ShopService.cs:137, unchanged | closed (accepted) |
 | T-99-45 | Tampering | CSRF on the phone Return and Sell forms | high | mitigate | Index.Mobile.cshtml:178 renders the shared partial; ShopIndex_Phone_…ReturnFormWithATokenAndAThirtyHourOneASellThatAsks | closed |
@@ -100,7 +100,7 @@ created: 2026-11-17
 | T-99-53 | Info disclosure | Gate 2 package content | medium | mitigate | gate-hygiene.py re-run on gate2: hygiene ok (375 jpeg) | closed |
 | T-99-54 | Tampering | unreviewed release or image publication | high | mitigate | no tag at HEAD or containing 59df0cf8; no phase-99 PR; docker-publish.yml and release.yml trigger on v* tags only, dotnet.yml on main only; milestone-branch push follows the standing rule and fires no workflow | closed |
 | T-99-55 | Repudiation | Gate 2 answers | low | mitigate | gate2/answers.json carries a source on every answer, versions [gate2-v1] | closed |
-| T-99-56 | Repudiation | legendary colour drifting from the answer | low | mitigate | shop-pages.css:40-42; ShopConversionGuardTests.cs:326 pins amber; ui-guidelines gold list unchanged | closed |
+| T-99-56 | Repudiation | legendary colour drifting from the answer | low | mitigate | shop-pages.css:40-42; ShopConversionGuardTests.cs:328 pins amber; ui-guidelines gold list unchanged | closed |
 | T-99-57 | Tampering | partials rendering item data | low | mitigate | _ShopStatusBadge.cshtml:2 enum, _ShopManagementStockBadge.cshtml:1 int | closed |
 | T-99-58 | DoS | item script intercepting Logout on Create | medium | mitigate | shop-item-form.js:112; Create.cshtml:18, Create.Mobile.cshtml:18 | closed |
 | T-99-59 | Tampering | CSRF on Create and the phone forms | medium | mitigate | asp-action on Create, Create.Mobile, Edit, Edit.Mobile; ShopManagementController.cs:56 | closed |
@@ -116,7 +116,7 @@ created: 2026-11-17
 | T-99-69 | DoS | hand-made Purchase/Sell to Shop on a Draft lands on a 404 | low | accept | reachable only by a hand-made post; service refusal unchanged | closed (accepted) |
 | T-99-70 | DoS | limited-stock Return and Sell refused | high | mitigate | EntityProfile.cs:82-84,95-97 ignore navigations; ShopFormPostEffectTests.cs:138 no longer skipped | closed |
 | T-99-71 | Tampering | mapped model overwrites tracked rows | medium | mitigate | same map change; ShopServiceStockWriteTests.cs:180-226 | closed |
-| T-99-72 | EoP | self-publish through Archive then Reopen | medium | mitigate | ShopManagementController.cs:218-224, the only ArchiveItemAsync caller; facts :290,:309 | closed |
+| T-99-72 | EoP | self-publish through Archive then Reopen | medium | mitigate | ShopManagementController.cs:215-221 Published-only check ahead of :223, the only ArchiveItemAsync caller; facts ShopManagementControllerIntegrationTests.cs:298,:317 | closed |
 | T-99-73 | Tampering | buying or selling outside the window | medium | mitigate | ShopService.cs:91,197 IsOnSale(item, boardClock.Now); ShopAvailabilityWindowTests.cs:265 | closed |
 | T-99-74 | Info disclosure | scheduled item read by id | medium | mitigate | ShopController.cs:99-100 `!HasOpened`; parity fact ShopAvailabilityWindowTests.cs:165-186 | closed |
 | T-99-75 | EoP (regression) | reviewers lose the scheduled item | medium | mitigate | single policy call ShopController.cs:103; ShopAvailabilityWindowTests.cs:218 | closed |
@@ -130,7 +130,7 @@ created: 2026-11-17
 | T-99-83 | Tampering | a Dungeon Master who is not an Admin deletes another keeper's Draft or Denied item | medium | mitigate | ShopManagementController.cs:302-318 loads the current user and refuses another keeper's item with "You can only delete your own items." (:308-312) before the status check; ShopManagementControllerIntegrationTests.cs:612 `Delete_Post_FollowsWhoCreatedTheItemAndWhetherItHasBeenOnSale` (24 cases); bite check 1 (creator check removed) failed the Dungeon Master's 4 other-keeper rows; opened at planning by 99-24; closed by 014994d2 (lines as of 59c37604) | closed |
 | T-99-84 | EoP (regression) | Admins or SuperAdmins lose Delete, or a role-name shortcut replaces the policy | medium | mitigate | ShopManagementController.cs:299 the single `AuthorizeAsync(User, "AdminOnly")` call, `IsInRole` count 0 in the controller; Admin and SuperAdmin rows of `Delete_Post_FollowsWhoCreatedTheItemAndWhetherItHasBeenOnSale`; bite check 2 (policy forced to fail) failed the 12 Admin and SuperAdmin rows on other keepers' items and their own Published and Archived items; opened at planning by 99-24; closed by 014994d2 (lines as of 59c37604) | closed |
 | T-99-85 | Repudiation | the Edit toast says "Item updated successfully!" when the item went off sale or stayed unpublished, or the sent-back sentence when it stayed on sale | low | mitigate | ShopManagementController.cs:169-173 chooses the toast from the before and after statuses (the earlier citation :165-171 was off by two; at 14ce7ed9 the block was :167-171); every row of `Edit_Post_ByTheItemsCreator_LeavesTheStatusTheReviewRuleGives`, the kept-at-Rare-or-above rows included, asserts its toast and, for a Draft result, the absence of the success sentence; opened at planning by 99-24; closed by 14ce7ed9 (lines as of 59c37604) | closed |
-| T-99-86 | DoS (regression) | a list offers a Delete the server refuses, or loses an Edit or Delete control the server accepts | low | mitigate | Index.cshtml:271 Delete for an Admin only in the other-items table; Index.Mobile.cshtml:101 Delete for an Admin on non-draft rows, otherwise only an own Denied row; ShopRenderTests.cs:736 `ShopManagementList_BothLayouts_OfferDeleteOnlyWhereTheServerAcceptsIt`, :764 `ShopManagementList_BothLayouts_EveryEditLinkOpensForTheViewer` (6 cases each, passed before and after the view change); bite check (Delete on every row) failed all 6 Delete cases; opened at planning by 99-24; closed by 050167a1 | closed |
+| T-99-86 | DoS (regression) | a list offers a Delete the server refuses, or loses an Edit or Delete control the server accepts | low | mitigate | Index.cshtml:271 Delete for an Admin only in the other-items table (the My Items condition at :178, own Denied or non-Draft for an Admin, is unchanged and every row it offers is accepted by the server); Index.Mobile.cshtml:101 Delete for an Admin on non-draft rows, otherwise only an own Denied row; ShopRenderTests.cs:736 `ShopManagementList_BothLayouts_OfferDeleteOnlyWhereTheServerAcceptsIt`, :764 `ShopManagementList_BothLayouts_EveryEditLinkOpensForTheViewer` (6 cases each, passed before and after the view change); bite check (Delete on every row) failed all 6 Delete cases; opened at planning by 99-24; closed by 050167a1 | closed |
 | T-99-87 | EoP | a Dungeon Master raises another keeper's Common or Uncommon item to Rare or above, which sends it to Draft, and then publishes it, approving their own change | medium | accept | any Dungeon Master may still edit any item and Publish refuses only the creator; unchanged by the rarity-raise rule (59c37604): the raise still sends the item to Draft and that Dungeon Master's Publish is still accepted (other-keeper rows Published or Archived Common to Legendary give Draft); closing it needs a record of who sent the item to review (new column and migration) or taking Edit off other keepers' items; AR-99-16; deferred-items.md row; unticked Sign-Off line; opened at planning by 99-24; closed by 14ce7ed9 (own-item route), remainder accepted | closed (accepted) |
 | T-99-88 | EoP | deleting one's own Draft and creating it again at Common or Uncommon puts it on sale at once | low | accept | ShopItemReview.cs:27-28 `StatusOnCreate` unchanged in effect; only review-free content reaches the shop this way; AR-99-17; deferred-items.md Create/Edit row; opened at planning by 99-24; closed by 14ce7ed9 (Create on the shared rule) | closed (accepted) |
 | T-99-89 | Tampering | any Dungeon Master changes the content of an item already reviewed at Rare or above (name, description, price, stock, or its rarity within Rare to Legendary) and it stays on sale, or archived and one Reopen from sale, without another review | medium | accept | ShopItemReview.cs:46 keeps a Published or Archived status for every edit that is not a raise into review; the kept rows of `StatusAfterEdit_NeverPublishesAndSendsBackOnlyAnItemRaisedIntoReview` and of the creator and other-keeper Edit theories pin it (Rare to Rare, Rare to Legendary, Legendary to Rare, Legendary to Common); the operator's rule "Only on a rarity raise" so a restock or typo fix does not take a reviewed item off sale, and nothing records which fields a reviewer approved; AR-99-18; deferred-items.md row; opened by the 99-24 rule amendment; accepted by the operator, built in 59c37604 | closed (accepted) |
@@ -182,6 +182,7 @@ Deferred by operator decision, not security acceptances: dialog dates keep the s
 | Audit Date | Threats Total | Closed | Open | Run By |
 |------------|---------------|--------|------|--------|
 | 2026-11-17 | 81 | 81 | 0 | gsd-security-auditor (ASVS L1), recorded by the auditor at the orchestrator's request |
+| 2026-11-17 | 90 | 90 | 0 | gsd-security-auditor (ASVS L1), re-run after 99-24 at HEAD c65cef69, recorded by the auditor at the orchestrator's request |
 
 ## Security Audit 2026-11-17
 
@@ -194,6 +195,51 @@ Deferred by operator decision, not security acceptances: dialog dates keep the s
 
 Tests re-run by the auditor: unit (filter `Shop|AmbientClockSeamTests`) 150 passed, 0 failed; integration (filter `Shop|KeyboardScriptGuardTests|MobileViewsTests`) 452 passed, 0 failed, 2 skipped (`ShopItemSqlServerTests`, gated on the SQL Server environment flag).
 
+## Security Audit 2026-11-17 (re-run after 99-24)
+
+Scope: T-99-81 to T-99-89 from the 99-24 `<threat_model>`, as amended by the operator's rule "Only on a rarity raise". Each was checked against the code at HEAD c65cef69 at ASVS L1 with block_on high, and the executor's rows were re-derived from the code rather than taken on trust. The audit also spot-checked the earlier threats 99-24 touched. No implementation file was changed.
+
+| Metric | New threats (T-99-81 to T-99-89) | Phase total |
+|--------|----------------------------------|-------------|
+| Threats found | 9 (6 mitigate, 3 accept, 0 transfer; 0 high, 6 medium, 3 low) | 90 (72 mitigate, 18 accept, 0 transfer; 19 high, 39 medium, 32 low) |
+| Closed | 9 (6 mitigated; 3 accepted: AR-99-16, AR-99-17, AR-99-18) | 90 |
+| Open | 0 | 0 |
+| Open at or above high | 0 | 0 |
+
+| Threat ID | Severity | Disposition | Verified at c65cef69 | Status |
+|-----------|----------|-------------|----------------------|--------|
+| T-99-81 | medium | mitigate | `ShopItemReview.cs:47` gives Draft for Draft, Denied and any other status that is not Published or Archived. The only Published result in the type is `StatusOnCreate` (:28). Edit takes its status only from `StatusAfterEdit` (`ShopManagementController.cs:165`), and the posted model's status is never copied (:146-154). Unit theory `ShopItemReviewTests.cs:137` and integration theories `:442`, `:508`, `:545` are green | closed |
+| T-99-82 | medium | mitigate | `ShopItemReview.cs:45,50-51`: a raise into review gives Draft. The old rarity is read from the stored item before the copy (`ShopManagementController.cs:143-144`) and passed at :165. The 12 unit raise rows, the 8 creator and 6 other-keeper raise rows, and the 9 Published and Archived chains are green | closed |
+| T-99-83 | medium | mitigate | `ShopManagementController.cs:300-318`: the non-admin path loads the user (:302-306) and refuses `CreatedByDmId != currentUser.Id` (:308-312) before the status check (:314-318). `Delete_Post_FollowsWhoCreatedTheItemAndWhetherItHasBeenOnSale` (:612, 24 rows) is green | closed |
+| T-99-84 | medium | mitigate | One `AuthorizeAsync(User, "AdminOnly")` call (:299). `IsInRole` and role-name literals: 0 in the controller and in both list views. `AdminHandler.cs:17-21` holds the SuperAdmin bypass and :31-33 the board role (unchanged since 396b1067). The Admin and SuperAdmin Delete rows are green | closed |
+| T-99-85 | low | mitigate | The toast is chosen from the before and after statuses (:169-173). The creator theory asserts the expected toast on every row, and on a Draft result also asserts that the success sentence is absent (`ShopManagementControllerIntegrationTests.cs:461-468`) | closed |
+| T-99-86 | low | mitigate | `Index.cshtml:178` (unchanged) and `:271` `@if (isAdmin)`; `Index.Mobile.cshtml:101`. `ShopRenderTests.cs:736` and `:764` (12 cases) are green | closed |
+| T-99-87 | medium | accept | AR-99-16 and the deferred-items.md row are present, and the Sign-Off line is unticked. Confirmed in code: any keeper may edit any item, and Publish refuses only the creator (:188) | closed (accepted) |
+| T-99-88 | low | accept | AR-99-17 and the deferred-items.md Create/Edit row are present. Create uses `StatusOnCreate` (:79), which gives the same result as the removed auto-publish block | closed (accepted) |
+| T-99-89 | medium | accept | AR-99-18 (accepted by the operator) and the deferred-items.md row are present. `ShopItemReview.cs:46` keeps the status for every edit that is not a raise | closed (accepted) |
+
+**Corrections made by this audit.**
+- T-99-81 to T-99-89: every file:line citation and test name matches c65cef69. T-99-86 gained a citation for the unchanged My Items Delete condition (`Index.cshtml:178`). The bite-check figures are the executor's and were not re-run, because implementation files are read-only for the auditor. Each cited test row was read, and each one expects a status that the code before 99-24 could not produce.
+- Earlier rows whose line citations 99-24 shifted (evidence refreshed; no status changed): T-99-12 `ShopConversionGuardTests.cs:711` to `:713`; T-99-14 `:816` to `:818`; T-99-24 `ShopRenderTests.cs:1114` to `:1206`; T-99-29 `ShopManagementController.cs:120` to `:114`; T-99-34 `Index.Mobile` 67/76/93/102 to 68/77/94/103; T-99-35 `Index.Mobile.cshtml:87` to `:88`; T-99-36 `:249`/`:255` to `:246`/`:252`; T-99-37 `:191,249,300-308` to `:188,246,299-318` and `ShopRenderTests.cs:519,571,699` to `:535,587,791` (plus `:736`); T-99-42 `ShopRenderTests.cs:2032` to `:2124`; T-99-56 `ShopConversionGuardTests.cs:326` to `:328`; T-99-72 `:218-224` to `:215-221`/`:223`, and the facts `:290,:309` to `ShopManagementControllerIntegrationTests.cs:298,:317`.
+- Header: 24 plan blocks, 94 rows, 90 unique IDs, verified at HEAD c65cef69.
+
+**Spot check: 99-24 reopened none of the earlier threats it touched.**
+- T-99-34: the controller's 7 `[HttpPost]` actions each carry `[ValidateAntiForgeryToken]`. Every list form still holds a token: on the desktop 76/156/165/180/255/264/273, unchanged; on the phone 68/77/94/103, moved down one line by a comment line. `ShopPostForms_EachCarryAnAntiforgeryToken` (`:713`) is green.
+- T-99-36: Deny's logic is unchanged (ownership at :246, Draft only at :252).
+- T-99-37: Publish (:188) and Deny (:246) are unchanged. Delete is stricter, since ownership is now checked for non-admins. Both lists now offer Delete only where the server accepts it.
+- T-99-72: Archive is still Published only (:217-221), and that check comes before the only `ArchiveItemAsync` call (:223). An edit cannot make an item Archived from any other status, because `StatusAfterEdit` returns the current status only for Published or Archived. An Archived item raised into review becomes Draft, so Reopen cannot publish it. The facts at `:298` and `:317` are green.
+- T-99-60 and T-99-61, Create path: 99-24 changed only Create's status assignment (:79). `Quantity` keeps `[Range(-1, int.MaxValue)]` (`CreateShopItemViewModel.cs:31`). `ShopService.cs`, the view models, the repository and `ShopController.cs` are unchanged since 396b1067, and the quantity and stock facts are green.
+
+**Tests re-run by the auditor** (no GC environment variable set, no 0x80131506):
+- unit `~ShopItemReview|~ShopItemAvailability`: 124 passed, 0 failed
+- unit `~ShopService`: 36 passed, 0 failed
+- integration `~ShopManagement|~ShopRender|~ShopConversionGuard`: 388 passed, 0 failed, 0 skipped
+- integration `~ShopFormPostEffect|~ShopControllerIntegration|~ShopAvailabilityWindow`: 72 passed, 0 failed
+
+**Unregistered flags:** none. The 99-24 SUMMARY lists no threat flags, and no new attack surface was found beyond the register.
+
+**Auditor observation (informational, not registered, non-blocking).** Before 14ce7ed9, an item could reach Published (or Archived) at Rare or above through the old Edit auto-publish: a Draft edited to Common was published by the edit and then raised. Such items look the same as reviewed items. Under the amended rule, an edit that keeps them at Rare or above keeps them on sale. This is the same pattern as T-99-77 (rows made before a fix). It was not measured, because the auditor does not read the database. The operator may register it as an accepted residual next to T-99-89 or check the live data.
+
 ---
 
 ## Sign-Off
@@ -205,4 +251,4 @@ Tests re-run by the auditor: unit (filter `Shop|AmbientClockSeamTests`) 150 pass
 - [x] Edit review bypass and cross-keeper Delete registered as T-99-81 to T-99-89 and closed by 99-24 (operator decisions "Fix first" and, for the edit rule, "Only on a rarity raise"; T-99-89 accepted by the operator, AR-99-18)
 - [ ] Operator's choice on T-99-87 (a Dungeon Master publishing their own edit of another keeper's item): accept, or a follow-up that records who sent an item to review
 
-**Approval:** verified 2026-11-17
+**Approval:** verified 2026-11-17; re-verified 2026-11-17 after 99-24 at HEAD c65cef69
