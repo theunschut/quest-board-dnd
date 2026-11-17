@@ -69,11 +69,19 @@ public class EntityProfile : Profile
 
         // Shop entity mappings
 
+        // The navigations of a shop item and of a transaction belong to the store: a domain model mapped over a
+        // tracked entity writes only its own columns and foreign keys. Copying a loaded transaction list back would
+        // swap the tracked purchases for untracked copies and sever them from their item, and copying a loaded
+        // creator back would overwrite that user's row.
+
         // ShopItem mapping with enum conversions
         CreateMap<ShopItem, ShopItemEntity>()
             .ForMember(dest => dest.Type, opt => opt.MapFrom(src => (int)src.Type))
             .ForMember(dest => dest.Rarity, opt => opt.MapFrom(src => (int)src.Rarity))
-            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => (int)src.Status));
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => (int)src.Status))
+            .ForMember(dest => dest.CreatedByDm, opt => opt.Ignore())
+            .ForMember(dest => dest.Group, opt => opt.Ignore())
+            .ForMember(dest => dest.Transactions, opt => opt.Ignore());
 
         CreateMap<ShopItemEntity, ShopItem>()
             .ForMember(dest => dest.Type, opt => opt.MapFrom(src => (ItemType)src.Type))
@@ -83,7 +91,10 @@ public class EntityProfile : Profile
 
         // UserTransaction mapping
         CreateMap<UserTransaction, UserTransactionEntity>()
-            .ForMember(dest => dest.TransactionType, opt => opt.MapFrom(src => (int)src.TransactionType));
+            .ForMember(dest => dest.TransactionType, opt => opt.MapFrom(src => (int)src.TransactionType))
+            .ForMember(dest => dest.User, opt => opt.Ignore())
+            .ForMember(dest => dest.ShopItem, opt => opt.Ignore())
+            .ForMember(dest => dest.OriginalTransaction, opt => opt.Ignore());
 
         CreateMap<UserTransactionEntity, UserTransaction>()
             .ForMember(dest => dest.TransactionType, opt => opt.MapFrom(src => (TransactionType)src.TransactionType));

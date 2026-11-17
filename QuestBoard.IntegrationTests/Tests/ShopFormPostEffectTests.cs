@@ -126,20 +126,15 @@ public class ShopFormPostEffectTests(WebApplicationFactoryBase factory) : IClass
         sale.OriginalTransactionId.Should().BeNull("selling to the shop is not tied to a purchase");
     }
 
-    private const string LimitedStockRefundFails =
-        "Known defect: on an item with limited stock the history's Return and Sell post is refused with an EF " +
-        "'association has been severed' error, because the item update reloads the item over the tracked purchase graph. " +
-        "Remove this skip once the service restocks without severing the purchase.";
-
     [Theory]
     [InlineData(false, 2.0, "Return", 80.0, -1, -1)]
     [InlineData(true, 2.0, "Return", 80.0, -1, -1)]
     [InlineData(false, 30.0, "Sell", 40.0, -1, -1)]
     [InlineData(true, 30.0, "Sell", 40.0, -1, -1)]
-    [InlineData(false, 2.0, "Return", 80.0, 5, 7, Skip = LimitedStockRefundFails)]
-    [InlineData(true, 2.0, "Return", 80.0, 5, 7, Skip = LimitedStockRefundFails)]
-    [InlineData(false, 30.0, "Sell", 40.0, 5, 7, Skip = LimitedStockRefundFails)]
-    [InlineData(true, 30.0, "Sell", 40.0, 5, 7, Skip = LimitedStockRefundFails)]
+    [InlineData(false, 2.0, "Return", 80.0, 5, 7)]
+    [InlineData(true, 2.0, "Return", 80.0, 5, 7)]
+    [InlineData(false, 30.0, "Sell", 40.0, 5, 7)]
+    [InlineData(true, 30.0, "Sell", 40.0, 5, 7)]
     public async Task HistorySlipForm_SubmittedAsRendered_RefundsTheRemainingQuantityAndRestocks(
         bool mobile, double hoursAgo, string buttonWord, double expectedRefund, int stock, int expectedStock)
     {
