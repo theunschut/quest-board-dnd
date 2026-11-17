@@ -268,7 +268,7 @@
                                                         </button>
                                                     </form>
                                                 }
-                                                @if (item.Status == ItemStatus.Draft || isAdmin)
+                                                @if (isAdmin)
                                                 {
                                                     <form method="post" action="/ShopManagement/Delete/@item.Id" data-confirm-message="Are you sure you want to permanently delete this item? This action cannot be undone.">
                                                         @Html.AntiForgeryToken()

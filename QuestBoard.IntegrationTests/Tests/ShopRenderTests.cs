@@ -389,15 +389,31 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
 
     // A signed-in Dungeon Master and a board with every status: the DM's own Draft, Published, Archived and Denied
     // items, a Draft by another keeper (the review table) and a Published one by that keeper (the other-items table).
-    private async Task<HttpClient> SeedManagementBoardAsync(string handle, bool admin = false)
+    private async Task<HttpClient> SeedManagementBoardAsync(string handle, bool admin = false) =>
+        (await SeedManagementBoardAsViewerAsync(handle, admin ? ManagementViewer.Admin : ManagementViewer.DungeonMaster)).Client;
+
+    // Who is looking at the management list. Public because a theory parameter of a private nested type does not compile.
+    public enum ManagementViewer
+    {
+        DungeonMaster,
+        Admin,
+        SuperAdmin
+    }
+
+    // The same board as SeedManagementBoardAsync, seen by the given viewer, returning the viewer and the other keeper too.
+    private async Task<(HttpClient Client, UserEntity User, UserEntity Keeper)> SeedManagementBoardAsViewerAsync(
+        string handle, ManagementViewer viewer)
     {
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
         factory.TestGroupContext.ActiveGroupId = 1;
         var keeper = await AuthenticationHelper.CreateTestUserAsync(
             factory.Services, $"{handle}_keeper", $"{handle}_keeper@example.com");
-        var (client, dm) = admin
-            ? await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(factory, handle, $"{handle}@example.com")
-            : await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory, handle, $"{handle}@example.com");
+        var (client, dm) = viewer switch
+        {
+            ManagementViewer.Admin => await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(factory, handle, $"{handle}@example.com"),
+            ManagementViewer.SuperAdmin => await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(factory, handle, $"{handle}@example.com"),
+            _ => await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory, handle, $"{handle}@example.com")
+        };
 
         var own = new (string Name, ItemStatus Status, ItemRarity Rarity, ItemType Type)[]
         {
@@ -415,7 +431,7 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         var review = await TestDataHelper.CreateShopItemAsync(factory.Services, keeper.Id, "Review Me", 10m, 1, ItemRarity.Rare);
         await SetStatusAsync(review.Id, ItemStatus.Draft);
         await TestDataHelper.CreateShopItemAsync(factory.Services, keeper.Id, "Other Published", 10m, 1, ItemRarity.Common);
-        return client;
+        return (client, dm, keeper);
     }
 
     [Theory]
@@ -689,6 +705,82 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
             ControlsLabelled(html, "Edit &amp; Resubmit item").Should().NotBeEmpty("a denied item offers Edit & Resubmit as today")
                 .And.OnlyContain(c => c.Contains("btn-warning"));
         html.Should().NotMatchRegex(@"class=""btn btn-(?:primary|outline)[^""]*""[^>]*aria-label=""Edit item""");
+    }
+
+    // The management board seen by the viewer, plus another keeper's archived and denied items, and every item as stored.
+    private async Task<(HttpClient Client, int ViewerId, List<(int Id, string Name, ItemStatus Status, int CreatorId)> Items)>
+        SeedManagementBoardWithEveryOtherStatusAsync(string handle, ManagementViewer viewer)
+    {
+        var (client, user, keeper) = await SeedManagementBoardAsViewerAsync(handle, viewer);
+        var otherArchived = await TestDataHelper.CreateShopItemAsync(factory.Services, keeper.Id, "Other Archived", 10m, 1, ItemRarity.Rare);
+        await SetStatusAsync(otherArchived.Id, ItemStatus.Archived);
+        var otherDenied = await TestDataHelper.CreateShopItemAsync(factory.Services, keeper.Id, "Other Denied", 10m, 1, ItemRarity.Rare);
+        await SetStatusAsync(otherDenied.Id, ItemStatus.Denied);
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var items = (await context.ShopItems.IgnoreQueryFilters().AsNoTracking().ToListAsync(TestContext.Current.CancellationToken))
+            .Select(i => (i.Id, i.Name, (ItemStatus)i.Status, i.CreatedByDmId)).ToList();
+        return (client, user.Id, items);
+    }
+
+    // The list may offer Delete only where the server accepts it, and on every such row it offered before: a Dungeon
+    // Master their own denied item, an Admin or SuperAdmin every listed item that is not a draft.
+    [Theory]
+    [InlineData(false, ManagementViewer.DungeonMaster)]
+    [InlineData(false, ManagementViewer.Admin)]
+    [InlineData(false, ManagementViewer.SuperAdmin)]
+    [InlineData(true, ManagementViewer.DungeonMaster)]
+    [InlineData(true, ManagementViewer.Admin)]
+    [InlineData(true, ManagementViewer.SuperAdmin)]
+    public async Task ShopManagementList_BothLayouts_OfferDeleteOnlyWhereTheServerAcceptsIt(bool mobile, ManagementViewer viewer)
+    {
+        var (client, viewerId, items) = await SeedManagementBoardWithEveryOtherStatusAsync(
+            $"shopr_delete_{(mobile ? "m" : "d")}_{viewer}".ToLowerInvariant(), viewer);
+        var byId = items.ToDictionary(i => i.Id);
+
+        var html = await GetAsync(client, "/ShopManagement", AgentFor(mobile));
+
+        var deleteTargets = Regex.Matches(html, @"<form\b[^>]*\baction=""/ShopManagement/Delete/(?<id>\d+)""")
+            .Select(m => int.Parse(m.Groups["id"].Value)).ToList();
+        var isAdmin = viewer != ManagementViewer.DungeonMaster;
+        var expected = isAdmin
+            ? new[] { "Own Denied", "Own Published", "Own Archived", "Other Published", "Other Archived" }
+            : new[] { "Own Denied" };
+        deleteTargets.Select(id => byId[id].Name).Should().BeEquivalentTo(expected);
+        deleteTargets.Should().OnlyContain(
+            id => isAdmin || (byId[id].CreatorId == viewerId && (byId[id].Status == ItemStatus.Draft || byId[id].Status == ItemStatus.Denied)),
+            "every Delete the list offers is one the server accepts from this viewer");
+    }
+
+    // Every Edit link either list offers opens the item's edit page for the viewer.
+    [Theory]
+    [InlineData(false, ManagementViewer.DungeonMaster)]
+    [InlineData(false, ManagementViewer.Admin)]
+    [InlineData(false, ManagementViewer.SuperAdmin)]
+    [InlineData(true, ManagementViewer.DungeonMaster)]
+    [InlineData(true, ManagementViewer.Admin)]
+    [InlineData(true, ManagementViewer.SuperAdmin)]
+    public async Task ShopManagementList_BothLayouts_EveryEditLinkOpensForTheViewer(bool mobile, ManagementViewer viewer)
+    {
+        var (client, _, items) = await SeedManagementBoardWithEveryOtherStatusAsync(
+            $"shopr_edit_{(mobile ? "m" : "d")}_{viewer}".ToLowerInvariant(), viewer);
+        var byId = items.ToDictionary(i => i.Id);
+
+        var html = await GetAsync(client, "/ShopManagement", AgentFor(mobile));
+
+        var editTargets = Regex.Matches(html, @"href=""/ShopManagement/Edit/(?<id>\d+)""")
+            .Select(m => int.Parse(m.Groups["id"].Value)).Distinct().ToList();
+        var expected = new List<string> { "Own Draft", "Own Published", "Own Archived", "Own Denied", "Other Published", "Other Archived" };
+        if (mobile)
+            expected.Add("Review Me");
+        editTargets.Select(id => byId[id].Name).Should().BeEquivalentTo(expected);
+
+        foreach (var id in editTargets)
+        {
+            var page = await GetAsync(client, $"/ShopManagement/Edit/{id}", AgentFor(mobile));
+            page.Should().Contain(byId[id].Name, "the edit page opens on the item the list linked");
+        }
     }
 
     // The controller refuses to publish or deny an item to its own creator, so the list must not offer either control

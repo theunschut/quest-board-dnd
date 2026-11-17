@@ -14,7 +14,8 @@
         .DistinctBy(i => i.Id)
         .ToList();
     // The list mixes the viewer's own items with other DMs' items. The controller refuses to publish or deny an item
-    // its creator is looking at, so those two controls are only offered on items that belong to someone else.
+    // its creator is looking at, so those two controls are only offered on items that belong to someone else. A Dungeon
+    // Master may delete only their own items, so Delete on someone else's item is offered to Admins only.
     var ownItemIds = Model.MyItems.Select(i => i.Id).ToHashSet();
 }
 
@@ -97,7 +98,7 @@
                             </button>
                         </form>
                     }
-                    @if (item.Status == ItemStatus.Denied || (item.Status != ItemStatus.Draft && item.Status != ItemStatus.Denied && isAdmin))
+                    @if (isAdmin ? item.Status != ItemStatus.Draft : (item.Status == ItemStatus.Denied && ownItemIds.Contains(item.Id)))
                     {
                         <form method="post" action="/ShopManagement/Delete/@item.Id" data-confirm-message="Are you sure you want to permanently delete this item? This action cannot be undone.">
                             @Html.AntiForgeryToken()
