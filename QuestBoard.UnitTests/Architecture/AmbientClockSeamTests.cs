@@ -16,6 +16,7 @@ public class AmbientClockSeamTests
     [
         "QuestBoard.Domain/Extensions/MoveEligibility.cs",
         "QuestBoard.Domain/Extensions/QuestExtensions.cs",
+        "QuestBoard.Domain/Models/Shop/ShopItemAvailability.cs",
         "QuestBoard.Domain/Services/BoardPageSettingsService.cs",
         "QuestBoard.Domain/Services/CalendarFeedWriter.cs",
         "QuestBoard.Domain/Services/CalendarSubscriptionService.cs",
@@ -24,12 +25,14 @@ public class AmbientClockSeamTests
         "QuestBoard.Domain/Services/MoveControlService.cs",
         "QuestBoard.Domain/Services/QuestMoveService.cs",
         "QuestBoard.Domain/Services/QuestService.cs",
+        "QuestBoard.Domain/Services/ShopService.cs",
         "QuestBoard.Repository/Entities/QuestBoardContext.cs",
         "QuestBoard.Repository/EventMoveRepository.cs",
         "QuestBoard.Repository/FeedRevisionStamper.cs",
         "QuestBoard.Repository/GroupRepository.cs",
         "QuestBoard.Repository/QuestMoveRepository.cs",
         "QuestBoard.Repository/QuestRepository.cs",
+        "QuestBoard.Repository/ShopRepository.cs",
         "QuestBoard.Service/Controllers/Admin/AdminController.cs",
         "QuestBoard.Service/Controllers/QuestBoard/CalendarController.cs",
         "QuestBoard.Service/Controllers/QuestBoard/QuestController.cs",
@@ -69,6 +72,9 @@ public class AmbientClockSeamTests
         ["QuestBoard.Domain/Services/QuestService.cs"] = ["SignupTime"],
         // The moment a quest was closed.
         ["QuestBoard.Repository/QuestRepository.cs"] = ["ClosedDate"],
+        // The moments a purchase, a refund and a sale to the shop were recorded, the 24-hour return window measured
+        // between two such real instants, and the moment an item was denied.
+        ["QuestBoard.Domain/Services/ShopService.cs"] = ["TransactionDate", "DeniedAt"],
     };
 
     // The .cs files expected to resolve the board's own zone through the seam itself. Listed
@@ -84,6 +90,7 @@ public class AmbientClockSeamTests
         "QuestBoard.Domain/Services/MoveControlService.cs",
         "QuestBoard.Domain/Services/QuestMoveService.cs",
         "QuestBoard.Domain/Services/QuestService.cs",
+        "QuestBoard.Domain/Services/ShopService.cs",
         "QuestBoard.Repository/GroupRepository.cs",
         "QuestBoard.Repository/QuestRepository.cs",
         "QuestBoard.Service/Controllers/Admin/AdminController.cs",
@@ -321,6 +328,23 @@ public class AmbientClockSeamTests
         content.Should().Contain("DateOnly boardToday",
             because: "the 'can this entry still be moved' rule is handed the board-local today by its " +
                      "caller, so it holds no clock of its own to read");
+        content.Should().NotContain("IBoardClock",
+            because: "injecting the clock into the rule would hide a second clock resolution behind every " +
+                     "caller that delegates to it");
+    }
+
+    // The shop's on-sale rule is shared by the shop list, a purchase, a sale to the shop and the details page, so it is
+    // handed the board-local time by its caller for the same reason: a clock of its own would be an unguarded second
+    // resolution behind every caller.
+    [Fact]
+    public void ShopItemAvailability_TakesTheBoardLocalTimeRatherThanResolvingOne()
+    {
+        var fullPath = ResolveRepoRelativePath("QuestBoard.Domain/Models/Shop/ShopItemAvailability.cs");
+        var content = File.ReadAllText(fullPath);
+
+        content.Should().Contain("DateTime boardNow",
+            because: "the 'is this item on sale' rule is handed the board-local time by its caller, so it holds " +
+                     "no clock of its own to read");
         content.Should().NotContain("IBoardClock",
             because: "injecting the clock into the rule would hide a second clock resolution behind every " +
                      "caller that delegates to it");

@@ -7,6 +7,7 @@ using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Services;
 using QuestBoard.Repository;
 using QuestBoard.Repository.Entities;
+using QuestBoard.UnitTests.Helpers;
 
 namespace QuestBoard.UnitTests.Services;
 
@@ -40,7 +41,9 @@ public class ShopServiceStockWriteTests
     private static ShopService CreateService(QuestBoardContext context)
     {
         var mapper = CreateMapper();
-        return new ShopService(new ShopRepository(context, mapper), new UserTransactionRepository(context, mapper), mapper);
+        // The item has no availability window, so any board time leaves it on sale.
+        var clock = new FakeBoardClock { Now = new DateTime(2026, 9, 6, 12, 0, 0) };
+        return new ShopService(new ShopRepository(context, mapper), new UserTransactionRepository(context, mapper), mapper, clock);
     }
 
     // One board, a buyer, the keeper who created the item, a published item at 40 gp and one purchase of 2 at 80 gp

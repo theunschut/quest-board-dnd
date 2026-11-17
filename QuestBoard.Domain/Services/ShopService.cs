@@ -6,7 +6,7 @@ using QuestBoard.Domain.Models.Shop;
 
 namespace QuestBoard.Domain.Services;
 
-internal class ShopService(IShopRepository repository, IUserTransactionRepository transactionRepository, IMapper mapper) : BaseService<ShopItem>(repository, mapper), IShopService
+internal class ShopService(IShopRepository repository, IUserTransactionRepository transactionRepository, IMapper mapper, IBoardClock boardClock) : BaseService<ShopItem>(repository, mapper), IShopService
 {
     /// <inheritdoc/>
     public async Task<IList<ShopItem>> GetAllItemsAsync(CancellationToken token = default)
@@ -17,7 +17,7 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
     /// <inheritdoc/>
     public async Task<IList<ShopItem>> GetPublishedItemsAsync(CancellationToken token = default)
     {
-        return await repository.GetPublishedItemsAsync(token);
+        return await repository.GetPublishedItemsAsync(boardClock.Now, token);
     }
 
     /// <inheritdoc/>
@@ -29,7 +29,7 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
     /// <inheritdoc/>
     public async Task<IList<ShopItem>> GetItemsByTypeAsync(ItemType type, CancellationToken token = default)
     {
-        return await repository.GetItemsByTypeAsync((int)type, token);
+        return await repository.GetItemsByTypeAsync((int)type, boardClock.Now, token);
     }
 
     /// <inheritdoc/>
@@ -88,7 +88,7 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
         EnsureQuantityIsAtLeastOne(quantity);
 
         var item = await repository.GetByIdAsync(itemId, token);
-        if (item == null || item.Status != ItemStatus.Published)
+        if (item == null || !ShopItemAvailability.IsOnSale(item, boardClock.Now))
         {
             throw new InvalidOperationException("Item is not available for purchase.");
         }
@@ -153,6 +153,7 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
             throw new InvalidOperationException($"Cannot return/sell more items than remaining. Only {remainingQuantity} items can still be returned/sold.");
         }
 
+        // No status or window check: what a member bought can always be handed back.
         var item = await repository.GetByIdAsync(originalTransaction.ShopItemId, token)
             ?? throw new InvalidOperationException("Original item no longer exists.");
 
@@ -193,7 +194,7 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
         EnsureQuantityIsAtLeastOne(quantity);
 
         var item = await repository.GetByIdAsync(itemId, token);
-        if (item == null || item.Status != ItemStatus.Published)
+        if (item == null || !ShopItemAvailability.IsOnSale(item, boardClock.Now))
         {
             throw new InvalidOperationException("Item is not available for sale.");
         }
@@ -296,6 +297,7 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
             search,
             page,
             pageSize,
+            boardClock.Now,
             token);
     }
 

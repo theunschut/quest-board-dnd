@@ -5,6 +5,7 @@ using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.Shop;
 using QuestBoard.Domain.Services;
 using NSubstitute;
+using QuestBoard.UnitTests.Helpers;
 
 namespace QuestBoard.UnitTests.Services;
 
@@ -52,12 +53,17 @@ public class ShopServiceTests
 
     private const string QuantityRefusal = "Quantity must be at least 1.";
 
-    private static (ShopService Service, IShopRepository Shop, IUserTransactionRepository Transactions) CreateService()
+    // The board's local time the fake clock reads: just past midnight on the 6th, a moment when UTC would still be on
+    // the 5th for a board east of Greenwich.
+    private static readonly DateTime BoardNow = new(2026, 9, 6, 0, 30, 0);
+
+    private static (ShopService Service, IShopRepository Shop, IUserTransactionRepository Transactions, FakeBoardClock Clock) CreateService()
     {
         var shop = Substitute.For<IShopRepository>();
         var transactions = Substitute.For<IUserTransactionRepository>();
-        var service = new ShopService(shop, transactions, Substitute.For<IMapper>());
-        return (service, shop, transactions);
+        var clock = new FakeBoardClock { Now = BoardNow, Today = DateOnly.FromDateTime(BoardNow) };
+        var service = new ShopService(shop, transactions, Substitute.For<IMapper>(), clock);
+        return (service, shop, transactions, clock);
     }
 
     private static readonly User Member = new() { Id = 7, Name = "Member" };
@@ -76,7 +82,7 @@ public class ShopServiceTests
     [InlineData(-1)]
     public async Task PurchaseItemAsync_QuantityBelowOne_IsRefusedBeforeAnyRepositoryCall(int quantity)
     {
-        var (service, shop, transactions) = CreateService();
+        var (service, shop, transactions, _) = CreateService();
 
         var act = () => service.PurchaseItemAsync(1, quantity, Member, TestContext.Current.CancellationToken);
 
@@ -89,7 +95,7 @@ public class ShopServiceTests
     [InlineData(-1)]
     public async Task ReturnOrSellItemAsync_QuantityBelowOne_IsRefusedBeforeAnyRepositoryCall(int quantity)
     {
-        var (service, shop, transactions) = CreateService();
+        var (service, shop, transactions, _) = CreateService();
 
         var act = () => service.ReturnOrSellItemAsync(1, quantity, Member, TestContext.Current.CancellationToken);
 
@@ -102,7 +108,7 @@ public class ShopServiceTests
     [InlineData(-1)]
     public async Task SellItemToShopAsync_QuantityBelowOne_IsRefusedBeforeAnyRepositoryCall(int quantity)
     {
-        var (service, shop, transactions) = CreateService();
+        var (service, shop, transactions, _) = CreateService();
 
         var act = () => service.SellItemToShopAsync(1, quantity, Member, TestContext.Current.CancellationToken);
 
@@ -113,7 +119,7 @@ public class ShopServiceTests
     [Fact]
     public async Task PurchaseItemAsync_OneOfAnUnlimitedItem_LeavesStockAtMinusOneAndRecordsThePurchase()
     {
-        var (service, shop, transactions) = CreateService();
+        var (service, shop, transactions, _) = CreateService();
         shop.GetByIdAsync(1, Arg.Any<CancellationToken>())
             .Returns(new ShopItem { Id = 1, Name = "Rope", Price = 40m, Quantity = -1, Status = ItemStatus.Published });
 
@@ -128,7 +134,7 @@ public class ShopServiceTests
     [Fact]
     public async Task PurchaseItemAsync_OneOfALimitedItem_TakesOneFromStock()
     {
-        var (service, shop, transactions) = CreateService();
+        var (service, shop, transactions, _) = CreateService();
         var item = new ShopItem { Id = 1, Name = "Rope", Price = 40m, Quantity = 3, Status = ItemStatus.Published };
         shop.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(item);
 
@@ -142,7 +148,7 @@ public class ShopServiceTests
     [Fact]
     public async Task PurchaseItemAsync_OfASoldOutItem_IsStillRefusedAsSoldOut()
     {
-        var (service, shop, transactions) = CreateService();
+        var (service, shop, transactions, _) = CreateService();
         shop.GetByIdAsync(1, Arg.Any<CancellationToken>())
             .Returns(new ShopItem { Id = 1, Name = "Rope", Price = 40m, Quantity = 0, Status = ItemStatus.Published });
 
@@ -155,7 +161,7 @@ public class ShopServiceTests
     [Fact]
     public async Task SellItemToShopAsync_QuantityThatWouldOverflowTheStock_IsRefusedAndChangesNothing()
     {
-        var (service, shop, transactions) = CreateService();
+        var (service, shop, transactions, _) = CreateService();
         var item = new ShopItem { Id = 1, Name = "Rope", Price = 40m, Quantity = 2, Status = ItemStatus.Published };
         shop.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(item);
 
@@ -170,7 +176,7 @@ public class ShopServiceTests
     [Fact]
     public async Task SellItemToShopAsync_QuantityThatFillsTheStockExactlyToTheLimit_IsAccepted()
     {
-        var (service, shop, transactions) = CreateService();
+        var (service, shop, transactions, _) = CreateService();
         var item = new ShopItem { Id = 1, Name = "Rope", Price = 40m, Quantity = 2, Status = ItemStatus.Published };
         shop.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(item);
 
@@ -183,7 +189,7 @@ public class ShopServiceTests
     [Fact]
     public async Task SellItemToShopAsync_LargeQuantityOfAnUnlimitedItem_LeavesStockAtMinusOne()
     {
-        var (service, shop, transactions) = CreateService();
+        var (service, shop, transactions, _) = CreateService();
         var item = new ShopItem { Id = 1, Name = "Rope", Price = 40m, Quantity = -1, Status = ItemStatus.Published };
         shop.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(item);
 
@@ -202,7 +208,7 @@ public class ShopServiceTests
     [InlineData(48, false)]
     public async Task ReturnOrSellItemAsync_FollowsTheSameWindowTheHistoryListOffersAReturnBy(double hoursAgo, bool expectedReturn)
     {
-        var (service, shop, transactions) = CreateService();
+        var (service, shop, transactions, _) = CreateService();
         var purchase = new UserTransaction
         {
             Id = 5,
@@ -223,5 +229,129 @@ public class ShopServiceTests
         (result.Price == 200m).Should().Be(expectedReturn, "a return pays full price and a sell-back pays half");
         var viewModel = new QuestBoard.Service.ViewModels.ShopViewModels.UserTransactionViewModel { TransactionDate = purchase.TransactionDate };
         viewModel.CanReturn.Should().Be(expectedReturn);
+    }
+
+    // ---- The availability window, judged on the board clock ---------------------------------------------
+
+    private static ShopItem WindowedItem(DateTime? from, DateTime? until, ItemStatus status = ItemStatus.Published) =>
+        new() { Id = 1, Name = "Rope", Price = 40m, Quantity = 3, Status = status, AvailableFrom = from, AvailableUntil = until };
+
+    public static TheoryData<DateTime?, DateTime?> OutsideTheWindow => new()
+    {
+        { BoardNow.AddMinutes(1), null },
+        { null, BoardNow.AddMinutes(-1) },
+    };
+
+    public static TheoryData<DateTime?, DateTime?> AtTheEdgeOfTheWindow => new()
+    {
+        { BoardNow, null },
+        { null, BoardNow },
+        { BoardNow, BoardNow },
+    };
+
+    [Theory]
+    [MemberData(nameof(OutsideTheWindow))]
+    public async Task PurchaseItemAsync_OutsideTheWindow_IsRefusedAndChangesNothing(DateTime? from, DateTime? until)
+    {
+        var (service, shop, transactions, _) = CreateService();
+        var item = WindowedItem(from, until);
+        shop.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(item);
+
+        var act = () => service.PurchaseItemAsync(1, 1, Member, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Item is not available for purchase.");
+        item.Quantity.Should().Be(3);
+        await shop.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);
+        await transactions.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+    }
+
+    [Theory]
+    [MemberData(nameof(AtTheEdgeOfTheWindow))]
+    public async Task PurchaseItemAsync_WithTheStartOrEndExactlyAtNow_IsAccepted(DateTime? from, DateTime? until)
+    {
+        var (service, shop, transactions, _) = CreateService();
+        var item = WindowedItem(from, until);
+        shop.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(item);
+
+        await service.PurchaseItemAsync(1, 1, Member, TestContext.Current.CancellationToken);
+
+        item.Quantity.Should().Be(2);
+        await shop.Received(1).UpdateAsync(item, Arg.Any<CancellationToken>());
+        await transactions.Received(1).AddAsync(Arg.Any<UserTransaction>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [MemberData(nameof(OutsideTheWindow))]
+    public async Task SellItemToShopAsync_OutsideTheWindow_IsRefusedAndChangesNothing(DateTime? from, DateTime? until)
+    {
+        var (service, shop, transactions, _) = CreateService();
+        var item = WindowedItem(from, until);
+        shop.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(item);
+
+        var act = () => service.SellItemToShopAsync(1, 1, Member, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Item is not available for sale.");
+        item.Quantity.Should().Be(3);
+        await shop.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);
+        await transactions.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+    }
+
+    [Theory]
+    [MemberData(nameof(AtTheEdgeOfTheWindow))]
+    public async Task SellItemToShopAsync_WithTheStartOrEndExactlyAtNow_IsAccepted(DateTime? from, DateTime? until)
+    {
+        var (service, shop, transactions, _) = CreateService();
+        var item = WindowedItem(from, until);
+        shop.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(item);
+
+        await service.SellItemToShopAsync(1, 1, Member, TestContext.Current.CancellationToken);
+
+        item.Quantity.Should().Be(4);
+        await shop.Received(1).UpdateAsync(item, Arg.Any<CancellationToken>());
+        await transactions.Received(1).AddAsync(Arg.Any<UserTransaction>(), Arg.Any<CancellationToken>());
+    }
+
+    // What a member bought can always be handed back, whether the item's sale has ended or it was taken off sale.
+    [Theory]
+    [InlineData(ItemStatus.Published, true)]
+    [InlineData(ItemStatus.Archived, false)]
+    public async Task ReturnOrSellItemAsync_OnAnItemNoLongerOnSale_StillRecordsTheRefund(ItemStatus status, bool windowClosed)
+    {
+        var (service, shop, transactions, _) = CreateService();
+        var purchase = new UserTransaction
+        {
+            Id = 5,
+            ShopItemId = 1,
+            UserId = Member.Id,
+            Quantity = 2,
+            Price = 80m,
+            TransactionType = TransactionType.Purchase,
+            TransactionDate = DateTime.UtcNow.AddHours(-1),
+        };
+        transactions.GetTransactionWithDetailsAsync(5, Arg.Any<CancellationToken>()).Returns(purchase);
+        transactions.GetTransactionsByUserAsync(Member.Id, Arg.Any<CancellationToken>()).Returns(new List<UserTransaction> { purchase });
+        var item = WindowedItem(null, windowClosed ? BoardNow.AddDays(-1) : null, status);
+        shop.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(item);
+
+        var result = await service.ReturnOrSellItemAsync(5, 2, Member, TestContext.Current.CancellationToken);
+
+        result.Price.Should().Be(80m);
+        result.OriginalTransactionId.Should().Be(5);
+        item.Quantity.Should().Be(5);
+        await transactions.Received(1).AddAsync(Arg.Any<UserTransaction>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TheShopLists_AreHandedExactlyTheBoardClocksNow()
+    {
+        var (service, shop, _, clock) = CreateService();
+
+        await service.GetPagedPublishedItemsAsync(null, null, null, null, 1, 12, TestContext.Current.CancellationToken);
+        await service.GetPublishedItemsAsync(TestContext.Current.CancellationToken);
+        await service.GetItemsByTypeAsync(ItemType.Equipment, TestContext.Current.CancellationToken);
+
+        await shop.Received(1).GetPagedPublishedItemsAsync(null, null, null, null, 1, 12, clock.Now, Arg.Any<CancellationToken>());
+        await shop.Received(1).GetPublishedItemsAsync(clock.Now, Arg.Any<CancellationToken>());
+        await shop.Received(1).GetItemsByTypeAsync((int)ItemType.Equipment, clock.Now, Arg.Any<CancellationToken>());
     }
 }
