@@ -291,10 +291,24 @@ public class ShopManagementController(
             return NotFound();
         }
 
-        // Only allow deletion if item is still in draft or denied status
+        // An Admin of the board, or a SuperAdmin through the same policy, may delete any item. Any other Dungeon Master
+        // may delete only an item they created, and only while it is a draft or denied, so they cannot remove another
+        // keeper's work or an item that has been on sale.
         var isAdmin = (await authorizationService.AuthorizeAsync(User, "AdminOnly")).Succeeded;
         if (!isAdmin)
         {
+            var currentUser = await userService.GetUserAsync(User);
+            if (currentUser == null)
+            {
+                return Challenge();
+            }
+
+            if (item.CreatedByDmId != currentUser.Id)
+            {
+                TempData["Error"] = "You can only delete your own items.";
+                return RedirectToAction(nameof(Index));
+            }
+
             if (item.Status != ItemStatus.Draft && item.Status != ItemStatus.Denied)
             {
                 TempData["Error"] = "Cannot delete items that have been published.";

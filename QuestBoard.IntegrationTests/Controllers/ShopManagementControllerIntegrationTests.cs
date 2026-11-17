@@ -541,4 +541,61 @@ public class ShopManagementControllerIntegrationTests(WebApplicationFactoryBase 
         await PostManagementActionAsync(reviewer, "Publish", itemId);
         (await ReadStatusAsync(itemId)).Should().Be(ItemStatus.Published, "another Dungeon Master's review still puts it on sale");
     }
+
+    // ---- Delete: a Dungeon Master removes only their own unpublished work; Admins remove anything -------------
+
+    private const string DeletedToast = "Item deleted successfully!";
+    private const string PublishedRefusal = "Cannot delete items that have been published.";
+    private const string NotYoursRefusal = "You can only delete your own items.";
+
+    [Theory]
+    [InlineData(Viewer.DungeonMaster, true, ItemStatus.Draft, true, DeletedToast)]
+    [InlineData(Viewer.DungeonMaster, true, ItemStatus.Denied, true, DeletedToast)]
+    [InlineData(Viewer.DungeonMaster, true, ItemStatus.Published, false, PublishedRefusal)]
+    [InlineData(Viewer.DungeonMaster, true, ItemStatus.Archived, false, PublishedRefusal)]
+    [InlineData(Viewer.DungeonMaster, false, ItemStatus.Draft, false, NotYoursRefusal)]
+    [InlineData(Viewer.DungeonMaster, false, ItemStatus.Denied, false, NotYoursRefusal)]
+    [InlineData(Viewer.DungeonMaster, false, ItemStatus.Published, false, NotYoursRefusal)]
+    [InlineData(Viewer.DungeonMaster, false, ItemStatus.Archived, false, NotYoursRefusal)]
+    [InlineData(Viewer.Admin, true, ItemStatus.Draft, true, DeletedToast)]
+    [InlineData(Viewer.Admin, true, ItemStatus.Denied, true, DeletedToast)]
+    [InlineData(Viewer.Admin, true, ItemStatus.Published, true, DeletedToast)]
+    [InlineData(Viewer.Admin, true, ItemStatus.Archived, true, DeletedToast)]
+    [InlineData(Viewer.Admin, false, ItemStatus.Draft, true, DeletedToast)]
+    [InlineData(Viewer.Admin, false, ItemStatus.Denied, true, DeletedToast)]
+    [InlineData(Viewer.Admin, false, ItemStatus.Published, true, DeletedToast)]
+    [InlineData(Viewer.Admin, false, ItemStatus.Archived, true, DeletedToast)]
+    [InlineData(Viewer.SuperAdmin, true, ItemStatus.Draft, true, DeletedToast)]
+    [InlineData(Viewer.SuperAdmin, true, ItemStatus.Denied, true, DeletedToast)]
+    [InlineData(Viewer.SuperAdmin, true, ItemStatus.Published, true, DeletedToast)]
+    [InlineData(Viewer.SuperAdmin, true, ItemStatus.Archived, true, DeletedToast)]
+    [InlineData(Viewer.SuperAdmin, false, ItemStatus.Draft, true, DeletedToast)]
+    [InlineData(Viewer.SuperAdmin, false, ItemStatus.Denied, true, DeletedToast)]
+    [InlineData(Viewer.SuperAdmin, false, ItemStatus.Published, true, DeletedToast)]
+    [InlineData(Viewer.SuperAdmin, false, ItemStatus.Archived, true, DeletedToast)]
+    public async Task Delete_Post_FollowsWhoCreatedTheItemAndWhetherItHasBeenOnSale(
+        Viewer viewer, bool ownItem, ItemStatus status, bool expectedDeleted, string expectedToast)
+    {
+        var handle = $"shop_delete_{viewer}_{(ownItem ? "own" : "other")}_{status}".ToLowerInvariant();
+        var (client, viewerUser) = await SeedViewerAsync(handle, viewer);
+        var creatorId = ownItem
+            ? viewerUser.Id
+            : (await AuthenticationHelper.CreateTestUserAsync(factory.Services, $"{handle}_keeper", $"{handle}_keeper@example.com")).Id;
+        var itemId = await SeedItemAsync(creatorId, "Delete Candidate", status);
+
+        var response = await PostManagementActionAsync(client, "Delete", itemId);
+
+        var landing = await client.GetAsync(response.Headers.Location!.OriginalString, Token);
+        landing.StatusCode.Should().Be(HttpStatusCode.OK);
+        WebUtility.HtmlDecode(await landing.Content.ReadAsStringAsync(Token)).Should().Contain(expectedToast);
+        var stored = (await GetAllShopItemsAsync()).Where(i => i.Id == itemId).ToList();
+        if (expectedDeleted)
+        {
+            stored.Should().BeEmpty();
+        }
+        else
+        {
+            ((ItemStatus)stored.Should().ContainSingle().Subject.Status).Should().Be(status, "a refused delete changes nothing");
+        }
+    }
 }
