@@ -2037,7 +2037,7 @@ Plans:
 **Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
 **Requirements**: TBD
 **Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
-**Plans:** 21/21 plans executed
+**Plans:** 21/22 plans executed
 
 **Scope:**
 
@@ -2171,6 +2171,10 @@ Plans:
 **Wave 21** *(blocked on Wave 20 completion)*
 
 - [x] 99-20-PLAN.md — Gate 2 local sheet with findings, inherited questions and every exception and text change, Gate 2 (operator, gap-closure loop), v6.4.0 release hand-off
+
+**Wave 22** *(blocked on Wave 21 completion)*
+
+- [ ] 99-22-PLAN.md — Draft details access (the Gate 2 `df` item, operator: "go, fix the draft access first"): Shop/Details, page and dialog, answers 404 to anyone outside the DungeonMasterOnly policy of the active board for Draft and Denied items, the same answer as a missing id; Published and Archived unchanged for members; board scope already held by the query filter; EF InMemory integration facts; availability window, Archive/Reopen review bypass and the cross-board existence signal recorded as found and deferred
 
 ### Phase 100: Admin and Platform UI conversion
 
