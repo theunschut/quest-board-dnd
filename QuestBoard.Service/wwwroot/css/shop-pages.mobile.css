@@ -1,0 +1,186 @@
+/*
+ * Shop pages, phone layout: only what differs from the desktop sheet. The phone has three text sizes, finger-sized
+ * controls, a two-column item grid and no merchant. The history and the filter are drawers, and the item details stack
+ * in one column.
+ */
+@layer pages {
+  /* The title takes the phone's 20px step and the page's gold stays. */
+  .mobile-layout .shop-hero {
+    padding: var(--qb-space-md);
+  }
+
+  .mobile-layout .shop-hero__title {
+    font-size: var(--qb-text-lg);
+  }
+
+  .mobile-layout .shop-hero__title .fas {
+    margin-inline-end: var(--qb-space-sm);
+  }
+
+  /* The two openers, one above the other, each as wide as the page. */
+  .mobile-layout .shop-tools {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-sm);
+    margin-block-end: var(--qb-space-md);
+  }
+
+  .mobile-layout .shop-tools .btn {
+    inline-size: 100%;
+    margin: 0;
+  }
+
+  .mobile-layout .shop-tools .history-toggle {
+    justify-content: center;
+  }
+
+  /* Two columns of cards at 360 to 390 wide and one at 320; a card holds the name, the chip, the price and Buy. */
+  .mobile-layout .shop-grid-mobile {
+    grid-template-columns: repeat(auto-fill, minmax(min(156px, 100%), 1fr));
+    gap: var(--qb-space-sm);
+  }
+
+  .mobile-layout .shop-grid-mobile .shop-card {
+    padding: var(--qb-space-sm) var(--qb-space-sm) var(--qb-space-md);
+  }
+
+  .mobile-layout .shop-grid-mobile .shop-card__head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .mobile-layout .shop-grid-mobile .shop-card__name,
+  .mobile-layout .shop-grid-mobile .shop-card__price {
+    font-size: var(--qb-text-base);
+  }
+
+  /* Previous and Next share the row, each as wide as half of it, with the desktop's disabled colours. */
+  .mobile-layout .shop-pager-mobile {
+    display: flex;
+    gap: var(--qb-space-sm);
+    margin: var(--qb-space-md) 0 var(--qb-space-sm);
+  }
+
+  .mobile-layout .shop-pager-mobile .btn {
+    flex: 1 1 0;
+  }
+
+  .mobile-layout .shop-pager-mobile .btn.disabled {
+    border-color: var(--qb-surface-glass-border);
+    background: var(--qb-surface-overlay);
+    color: var(--qb-fg-muted);
+    opacity: 1;
+  }
+
+  /* The filter drawer is as tall as its controls and no taller than 70% of the screen; its body scrolls past that. */
+  .mobile-layout .shop-filter-offcanvas {
+    --bs-offcanvas-height: auto;
+    max-block-size: 70vh;
+  }
+
+  .mobile-layout .filter-rarity legend {
+    float: none;
+    inline-size: auto;
+    padding: 0;
+    font-size: inherit;
+  }
+
+  .mobile-layout .filter-check-row {
+    display: flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    min-block-size: var(--qb-hit-min);
+    padding-inline-start: 0;
+  }
+
+  .mobile-layout .filter-check-row .form-check-input {
+    flex: none;
+    float: none;
+    margin: 0;
+  }
+
+  .mobile-layout .offcanvas-footer-row {
+    display: flex;
+    gap: var(--qb-space-sm);
+  }
+
+  .mobile-layout .offcanvas-footer-row .btn:first-child {
+    flex: 1 1 auto;
+  }
+
+  /* My Transactions as a drawer from the start edge, leaving a strip of the page and its backdrop visible. The shared
+     history card is the drawer's content, so the drawer's own header holds only the Close button, laid over the card's
+     title row, and the card is flat inside the drawer. */
+  .mobile-layout .history-offcanvas {
+    --bs-offcanvas-width: min(22rem, 88vw);
+  }
+
+  .mobile-layout .history-offcanvas .offcanvas-header {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+    z-index: 1;
+    padding: var(--qb-space-sm);
+    border: 0;
+    background: transparent;
+  }
+
+  .mobile-layout .history-offcanvas .offcanvas-body {
+    padding: 0;
+  }
+
+  .mobile-layout .history-offcanvas .history-card {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .mobile-layout .history-offcanvas .history-card .modern-card-header {
+    min-block-size: calc(var(--qb-hit-min) + var(--qb-space-md));
+    padding-inline-end: calc(var(--qb-hit-min) + var(--qb-space-md));
+  }
+
+  .mobile-layout .history-card .modern-card-body {
+    padding: var(--qb-space-sm);
+  }
+
+  .mobile-layout .history-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mobile-layout .history-slip__action .btn {
+    min-block-size: var(--qb-hit-min);
+  }
+
+  /* The tile and its glyph are a step smaller on the phone; both are still sized by a minimum and the glyph's font size. */
+  .mobile-layout .emblem {
+    min-block-size: 120px;
+    font-size: 48px;
+  }
+
+  .mobile-layout .item-details__back .btn {
+    inline-size: 100%;
+  }
+
+  .mobile-layout .item-details__center .form-control {
+    min-block-size: var(--qb-hit-min);
+  }
+
+  .mobile-layout .item-details__center .btn {
+    inline-size: 100%;
+    min-block-size: var(--qb-hit-min);
+  }
+
+  /* The management header actions are full width and every row action is finger-sized. */
+  .mobile-layout .mgmt-bar .btn {
+    flex: 1 1 100%;
+    min-block-size: var(--qb-hit-min);
+  }
+
+  .mobile-layout .mgmt-row-actions .btn {
+    min-inline-size: var(--qb-hit-min);
+    min-block-size: var(--qb-hit-min);
+  }
+}

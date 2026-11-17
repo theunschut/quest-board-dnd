@@ -192,10 +192,10 @@ public class CrossBoardAuthorizationBoundaryTests(CrossBoardWebApplicationFactor
         followUpBody.Should().NotContain("EuphoriaInn", because: "the board must not have half-switched back to Board A");
     }
 
-    [Fact]
-    public async Task ResolvedDraftShopItem_SwitchesTheBoardAndLetsThePageDecideForItself()
+    // The viewer is a Player on Board A (group 1) and holds the given role on Board B, where another user's Draft
+    // shop item lives. Board A is selected last, so the deep link has to switch the board before the page decides.
+    private async Task<(HttpClient client, int shopItemId)> SeedViewerAndDraftShopItemOnTargetBoardAsync(string suffix, GroupRole roleOnBoardB)
     {
-        var suffix = Guid.NewGuid().ToString("N")[..8];
         await TestDataHelper.ClearDatabaseAsync(factory.Services);
 
         var dm = await AuthenticationHelper.CreateTestUserAsync(
@@ -211,8 +211,8 @@ public class CrossBoardAuthorizationBoundaryTests(CrossBoardWebApplicationFactor
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
             boardBId = boardB.Id;
 
-            // Draft status (0) -- an item the shop's own view refuses to offer for purchase,
-            // unrelated to which board it lives on.
+            // A Draft: the shop page shows it only to the board's Dungeon Masters and Admins, and the
+            // resolver still switches the board without consulting that rule.
             var draftItem = new ShopItemEntity
             {
                 Name = $"BoundaryDraftItem{suffix}",
@@ -230,16 +230,49 @@ public class CrossBoardAuthorizationBoundaryTests(CrossBoardWebApplicationFactor
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
             shopItemId = draftItem.Id;
 
-            ctx.UserGroups.Add(new UserGroupEntity { UserId = viewer.Id, GroupId = boardBId, GroupRole = (int)GroupRole.Player });
+            ctx.UserGroups.Add(new UserGroupEntity { UserId = viewer.Id, GroupId = boardBId, GroupRole = (int)roleOnBoardB });
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var selectBoardAForm = new Dictionary<string, string> { ["groupId"] = "1" };
         await client.PostAsync("/GroupPicker/SelectGroup", new FormUrlEncodedContent(selectBoardAForm), TestContext.Current.CancellationToken);
 
+        return (client, shopItemId);
+    }
+
+    [Fact]
+    public async Task ResolvedDraftShopItem_SwitchesTheBoardAndLetsThePageDecideForItself()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var (client, shopItemId) = await SeedViewerAndDraftShopItemOnTargetBoardAsync(suffix, GroupRole.Player);
+
         var response = await client.SendAsync(NavigationGet($"/Shop/Details/{shopItemId}"), TestContext.Current.CancellationToken);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound, because: "the shop page, not the resolver, refuses a Draft to a Player of the board it lives on");
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().NotContain($"BoundaryDraftItem{suffix}");
+
+        // The refusal renders no page, so the one-shot switch notice, with its link back to Board A, shows on the
+        // next page instead. That page proves the switch outlived the refusal; the one after it, with the notice
+        // spent, proves the board did not stay on Board A.
+        var followUp = await client.SendAsync(NavigationGet("/quests"), TestContext.Current.CancellationToken);
+        var followUpBody = await followUp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        followUpBody.Should().Contain($"BoundaryShopBoardB{suffix}", because: "the switch made before the refusal still holds");
+
+        var settled = await client.SendAsync(NavigationGet("/quests"), TestContext.Current.CancellationToken);
+        var settledBody = await settled.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        settledBody.Should().NotContain("EuphoriaInn", because: "the board must not have half-switched back to Board A");
+    }
+
+    [Fact]
+    public async Task ResolvedDraftShopItem_ForADungeonMasterOfThatBoard_OpensAfterTheSwitch()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var (client, shopItemId) = await SeedViewerAndDraftShopItemOnTargetBoardAsync(suffix, GroupRole.DungeonMaster);
+
+        var response = await client.SendAsync(NavigationGet($"/Shop/Details/{shopItemId}"), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, because: "the Draft rule is judged against the board the request switched to, where the viewer is a Dungeon Master");
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         body.Should().Contain($"BoundaryShopBoardB{suffix}", because: "the board-switch banner names the board the viewer landed on");
         body.Should().Contain("currently under review", because: "the shop's own Draft-status rule, not the resolver, is what withholds the purchase form");

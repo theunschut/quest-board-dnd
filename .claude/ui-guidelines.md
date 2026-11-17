@@ -59,8 +59,8 @@ literal.
     `text-purple`).
 - **Re-theme Bootstrap through its own variables** (`--bs-*`), never by out-specifying it. Bootstrap sits
   in the lowest layer, so a variable set in `base.css` or `components.css` wins without a fight.
-- **Legacy page sheets are unlayered.** `legacy-pages.css` (the desktop remainder), `mobile.css`, the
-  shop sheets and the admin and platform phone sheets are not in a layer yet, so on their own
+- **Legacy page sheets are unlayered.** `legacy-pages.css` (one shared wide-container rule), `mobile.css`
+  and the admin and platform phone sheets are not in a layer yet, so on their own
   selectors they beat every layered rule. A page converts to the layered system by moving its rules into
   `@layer pages` and its look onto tokens; until then, do not fight an unlayered rule from a layered one.
 - Text on the bare board takes its colour from `body`; a surface that is not the board sets its own colour
@@ -261,7 +261,8 @@ distinct opaque hex colours is capped; reuse a token before adding one.
 **Add a theme block** as `[data-theme='name'] { ... }` inside the tokens layer of `tokens.css`. A theme
 overrides semantic tokens only (board, surfaces, chrome, secondary text, action). Component rules never name
 a theme. A page opts in with the attribute on `<html>`, not on `<body>`: on the html element it also
-recolours the page's fallback background.
+recolours the page's fallback background. The view sets `ViewData["Theme"]` and both layouts emit it as
+`data-theme` on `<html>`.
 
 The board photo is a token seam. The shell stylesheet sets `--qb-board-photo` on `:root` and `tokens.css`
 reads it through `--qb-board-image`; a theme replaces `--qb-board-image` as a whole. Never set

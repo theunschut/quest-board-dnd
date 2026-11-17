@@ -7,6 +7,11 @@ public class ShopItemDetailsViewModel : ShopItemViewModel
     public IList<DmItemVoteViewModel> DmVotes { get; set; } = [];
     public IList<PlayerTransactionViewModel> RecentTransactions { get; set; } = [];
 
+    /// <summary>
+    /// Set by the details page from the board clock. Decides whether the Purchase and Sell to Shop forms are offered.
+    /// </summary>
+    public bool IsOnSale { get; set; }
+
     public int YesVotes => DmVotes.Count(v => v.VoteType == VoteType.Yes);
     public int NoVotes => DmVotes.Count(v => v.VoteType == VoteType.No);
     public int MaybeVotes => DmVotes.Count(v => v.VoteType == VoteType.Maybe);

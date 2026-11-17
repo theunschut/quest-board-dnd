@@ -1,42 +1,40 @@
 @using QuestBoard.Service.ViewModels.ShopViewModels
 @using QuestBoard.Domain.Enums
-@model ShopItemViewModel
+@model ShopItemDetailsViewModel
 @{
     ViewData["Title"] = Model.Name + " - Shop Details";
+    ViewData["Theme"] = "shop";
     var isModal = ViewBag.IsModal == true;
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/markdown-content.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/shop-pages.css" asp-append-version="true" />
+}
+
+@section Scripts {
+    <script type="module" src="~/js/shop-item-sell.js" asp-append-version="true"></script>
 }
 
 @if (isModal)
 {
-    <!-- Modal Content - No main card wrapper -->
+    @* The dialog supplies its own h2, so the item name is an h3 and no page wrapper is drawn. *@
     <div class="item-details-content">
-        <!-- Modal header -->
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="mb-0">@Model.Name</h2>
-            <span class="badge bg-primary fs-6">
-                <i class="fas fa-tag me-1"></i>
-                @Model.Type
-            </span>
+        <div class="item-details__head">
+            <h3>@Model.Name</h3>
+            <partial name="_ShopTypeChip" model="Model.Type" />
         </div>
-        
+
         @await Html.PartialAsync("_ShopItemDetailsContent", Model)
     </div>
 }
 else
 {
-    <!-- Full Page Content - With main card wrapper -->
     <div class="item-details-content">
         <div class="card modern-card">
-            <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
+            <div class="card-header modern-card-header item-details__title-row">
                 <h1 class="mb-0">@Model.Name</h1>
-                <span class="badge bg-primary fs-6">
-                    <i class="fas fa-tag me-1"></i>
-                    @Model.Type
-                </span>
+                <partial name="_ShopTypeChip" model="Model.Type" />
             </div>
             <div class="card-body modern-card-body">
                 @await Html.PartialAsync("_ShopItemDetailsContent", Model)
@@ -44,10 +42,9 @@ else
         </div>
     </div>
 
-    <!-- Full page view navigation -->
-    <div class="mt-4">
+    <div class="item-details__back">
         <a href="/Shop" class="btn btn-secondary">
-            <i class="fas fa-arrow-left me-2"></i>Back to Shop
+            <i class="fas fa-arrow-left me-2" aria-hidden="true"></i>Back to Shop
         </a>
     </div>
 }

@@ -76,7 +76,7 @@ public class ShopManagementController(
             Price = viewModel.Price,
             Quantity = viewModel.Quantity,
             ReferenceUrl = viewModel.ReferenceUrl,
-            Status = ItemStatus.Draft,
+            Status = ShopItemReview.StatusOnCreate(viewModel.Rarity!.Value),
             CreatedByDmId = currentUser.Id,
             // Tag the item to the active board: ShopItems.GroupId is a required foreign key, and
             // the board query filter would hide an item stamped with any other board.
@@ -84,12 +84,6 @@ public class ShopManagementController(
             AvailableFrom = viewModel.AvailableFrom,
             AvailableUntil = viewModel.AvailableUntil
         };
-
-        if (shopItem.Status == ItemStatus.Draft && (shopItem.Rarity == ItemRarity.Common || shopItem.Rarity == ItemRarity.Uncommon))
-        {
-            // Auto-publish common and uncommon items
-            shopItem.Status = ItemStatus.Published;
-        }
 
         await shopService.AddAsync(shopItem, token);
 
@@ -122,6 +116,14 @@ public class ShopManagementController(
     {
         if (!ModelState.IsValid)
         {
+            // The status is not a form field, so the posted model carries the enum default. Show the item's real status
+            // again rather than claiming the item is pending review.
+            var current = await shopService.GetByIdAsync(id, token);
+            if (current != null)
+            {
+                viewModel.Status = current.Status;
+            }
+
             return View(viewModel);
         }
 
@@ -137,6 +139,10 @@ public class ShopManagementController(
             return Challenge();
         }
 
+        // Read before the posted values are copied over, so the rule can tell whether the edit raised the rarity.
+        var previousStatus = item.Status;
+        var previousRarity = item.Rarity;
+
         item.Name = viewModel.Name;
         item.Description = viewModel.Description;
         item.Type = viewModel.Type;
@@ -147,25 +153,24 @@ public class ShopManagementController(
         item.AvailableFrom = viewModel.AvailableFrom;
         item.AvailableUntil = viewModel.AvailableUntil;
 
-        // If item was denied, reset it to draft when edited
-        if (item.Status == ItemStatus.Denied)
+        // Editing a denied item resubmits it, so the old denial no longer applies.
+        if (previousStatus == ItemStatus.Denied)
         {
-            item.Status = ItemStatus.Draft;
             item.DenialReason = null;
             item.DeniedAt = null;
         }
 
-        if (item.Status == ItemStatus.Draft && (item.Rarity == ItemRarity.Common || item.Rarity == ItemRarity.Uncommon))
-        {
-            // Auto-publish common and uncommon items upon editing
-            item.Status = ItemStatus.Published;
-        }
+        // An edit never publishes. An item on sale or archived goes back to review only when the edit raises it into a
+        // rarity that needs review; it then waits for another Dungeon Master's Publish, and the message says so.
+        item.Status = ShopItemReview.StatusAfterEdit(previousStatus, previousRarity, item.Rarity);
 
         await shopService.UpdateAsync(item, token);
 
-        TempData["Success"] = item.Status == ItemStatus.Draft 
-            ? "Item updated and resubmitted for review!" 
-            : "Item updated successfully!";
+        TempData["Success"] = item.Status != ItemStatus.Draft
+            ? "Item updated successfully!"
+            : previousStatus is ItemStatus.Draft or ItemStatus.Denied
+                ? "Item updated and resubmitted for review!"
+                : "Item updated and sent back for review. It is off sale until another Dungeon Master publishes it.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -205,6 +210,14 @@ public class ShopManagementController(
         if (item == null)
         {
             return NotFound();
+        }
+
+        // Only an item that is on sale can be taken off sale. Archiving a draft or a denied item and then reopening it
+        // would publish it without another Dungeon Master's review.
+        if (item.Status != ItemStatus.Published)
+        {
+            TempData["Error"] = "Only published items can be archived.";
+            return RedirectToAction(nameof(Index));
         }
 
         await shopService.ArchiveItemAsync(id, token);
@@ -280,10 +293,24 @@ public class ShopManagementController(
             return NotFound();
         }
 
-        // Only allow deletion if item is still in draft or denied status
+        // An Admin of the board, or a SuperAdmin through the same policy, may delete any item. Any other Dungeon Master
+        // may delete only an item they created, and only while it is a draft or denied, so they cannot remove another
+        // keeper's work or an item that has been on sale.
         var isAdmin = (await authorizationService.AuthorizeAsync(User, "AdminOnly")).Succeeded;
         if (!isAdmin)
         {
+            var currentUser = await userService.GetUserAsync(User);
+            if (currentUser == null)
+            {
+                return Challenge();
+            }
+
+            if (item.CreatedByDmId != currentUser.Id)
+            {
+                TempData["Error"] = "You can only delete your own items.";
+                return RedirectToAction(nameof(Index));
+            }
+
             if (item.Status != ItemStatus.Draft && item.Status != ItemStatus.Denied)
             {
                 TempData["Error"] = "Cannot delete items that have been published.";

@@ -1,123 +1,111 @@
 @using QuestBoard.Service.ViewModels.ShopViewModels
 @using QuestBoard.Domain.Enums
 @using QuestBoard.Service.Extensions
-@model ShopItemViewModel
+@model ShopItemDetailsViewModel
+@{
+    // The same body fills the dialog and the page on both layouts. In the dialog the item name above it is an h3 under
+    // the dialog's own h2, so the section titles are h3 too; on the page the name is the h1 and the sections are h2.
+    var inDialog = ViewBag.IsModal == true;
+    var hasWindow = Model.AvailableFrom.HasValue || Model.AvailableUntil.HasValue;
+    var halfPrice = (Model.Price / 2).ToString("N0");
+
+    void SectionTitle(string icon, string text, string extraClass = "mb-0")
+    {
+        if (inDialog)
+        {
+            <h3 class="@extraClass"><i class="fas @icon me-2" aria-hidden="true"></i>@text</h3>
+        }
+        else
+        {
+            <h2 class="@extraClass"><i class="fas @icon me-2" aria-hidden="true"></i>@text</h2>
+        }
+    }
+}
 
 <div class="row">
-    <!-- Item Image Placeholder -->
     <div class="col-md-4 mb-3">
-        <div class="item-image-placeholder bg-secondary rounded d-flex align-items-center justify-content-center" style="height: 250px;">
-            @{
-                string iconClass = Model.Type switch
-                {
-                    ItemType.Equipment => "fas fa-hammer",
-                    ItemType.MagicItem => "fas fa-magic",
-                    ItemType.QuestItems => "fas fa-scroll",
-                    _ => "fas fa-box"
-                };
-            }
-            <i class="@iconClass fa-4x text-light opacity-50"></i>
+        <div class="emblem emblem--@ShopItemDisplay.RarityKey(Model.Rarity)">
+            <i class="fas @ShopItemDisplay.TypeIcon(Model.Type)" aria-hidden="true"></i>
         </div>
-        
-        <!-- Price and Rarity -->
-        <div class="text-center mt-3">
-            <div class="item-price fs-4 text-warning mb-2">
-                <i class="fas fa-coins me-2"></i>@Model.Price gp
+
+        <div class="item-details__aside">
+            <div class="item-details__price">
+                <i class="fas fa-coins" aria-hidden="true"></i>@Model.Price gp
             </div>
-            <span class="item-rarity rarity-@Model.Rarity.ToString().ToLower() fs-6">
-                @Model.Rarity.ToString().Replace("VeryRare", "Very Rare")
-            </span>
+            <partial name="_ShopRarityChip" model="Model.Rarity" />
         </div>
     </div>
 
-    <!-- Item Details -->
     <div class="col-md-8">
-        <!-- Stock Information -->
-        <div class="card modern-card mb-3">
+        <div class="card modern-card modern-card--aside mb-3">
             <div class="card-header modern-card-header">
-                <h6 class="mb-0">
-                    <i class="fas fa-warehouse me-2"></i>Availability
-                </h6>
+                @{ SectionTitle("fa-warehouse", "Availability"); }
             </div>
             <div class="card-body modern-card-body">
-                <div class="d-flex align-items-center mb-2">
+                <div class="d-flex align-items-center">
                     @if (Model.Quantity == -1)
                     {
                         <span class="badge bg-success">
-                            <i class="fas fa-infinity me-1"></i>Unlimited Stock
+                            <i class="fas fa-infinity me-1" aria-hidden="true"></i>Unlimited Stock
                         </span>
                     }
                     else if (Model.Quantity == 0)
                     {
                         <span class="badge bg-danger">
-                            <i class="fas fa-times-circle me-1"></i>Out of Stock
+                            <i class="fas fa-times-circle me-1" aria-hidden="true"></i>Out of Stock
                         </span>
                     }
                     else if (Model.Quantity <= 5)
                     {
-                        <span class="badge bg-warning text-dark">
-                            <i class="fas fa-exclamation-triangle me-1"></i>Only @Model.Quantity left in stock
+                        <span class="badge bg-warning">
+                            <i class="fas fa-exclamation-triangle me-1" aria-hidden="true"></i>Only @Model.Quantity left in stock
                         </span>
                     }
                     else
                     {
                         <span class="badge bg-info">
-                            <i class="fas fa-box me-1"></i>@Model.Quantity in stock
+                            <i class="fas fa-box me-1" aria-hidden="true"></i>@Model.Quantity in stock
                         </span>
                     }
                 </div>
 
-                @if (Model.AvailableFrom.HasValue || Model.AvailableUntil.HasValue)
+                @if (hasWindow)
                 {
-                    <div class="mt-2">
-                        <small class="text-muted">
-                            @if (Model.AvailableFrom.HasValue && Model.AvailableUntil.HasValue)
-                            {
-                                <span>
-                                    <i class="fas fa-clock me-1"></i>Available from @Model.AvailableFrom.Value.ToString("MMM dd") to @Model.AvailableUntil.Value.ToString("MMM dd, yyyy")
-                                </span>
-                            }
-                            else if (Model.AvailableFrom.HasValue)
-                            {
-                                <span>
-                                    <i class="fas fa-clock me-1"></i>Available starting @Model.AvailableFrom.Value.ToString("MMM dd, yyyy")
-                                </span>
-                            }
-                            else if (Model.AvailableUntil.HasValue)
-                            {
-                                <span>
-                                    <i class="fas fa-clock me-1"></i>Available until @Model.AvailableUntil.Value.ToString("MMM dd, yyyy")
-                                </span>
-                            }
-                        </small>
+                    <div class="mt-2 item-details__muted">
+                        <i class="fas fa-clock me-1" aria-hidden="true"></i>
+                        @if (Model.AvailableFrom.HasValue && Model.AvailableUntil.HasValue)
+                        {
+                            <text>Available from @Html.WallClock(Model.AvailableFrom.Value, "date-compact") to @Html.WallClock(Model.AvailableUntil.Value, "date")</text>
+                        }
+                        else if (Model.AvailableFrom.HasValue)
+                        {
+                            <text>Available starting @Html.WallClock(Model.AvailableFrom.Value, "date")</text>
+                        }
+                        else
+                        {
+                            <text>Available until @Html.WallClock(Model.AvailableUntil!.Value, "date")</text>
+                        }
                     </div>
                 }
             </div>
         </div>
 
-        <!-- Item Properties -->
-        <div class="card modern-card mb-3">
+        <div class="card modern-card modern-card--aside mb-3">
             <div class="card-header modern-card-header">
-                <h6 class="mb-0">
-                    <i class="fas fa-list me-2"></i>Item Properties
-                </h6>
+                @{ SectionTitle("fa-list", "Item Properties"); }
             </div>
             <div class="card-body modern-card-body">
-                <div class="row">
-                    <div class="col-6">
-                        <small class="text-muted">Type:</small>
-                        <div>@Model.Type</div>
-                    </div>
-                    <div class="col-6">
-                        <small class="text-muted">Rarity:</small>
-                        <div>@Model.Rarity.ToString().Replace("VeryRare", "Very Rare")</div>
-                    </div>
-                </div>
-                
+                <dl class="item-props">
+                    <dt>Type</dt>
+                    <dd><partial name="_ShopTypeChip" model="Model.Type" /></dd>
+                    <dt>Rarity</dt>
+                    <dd><partial name="_ShopRarityChip" model="Model.Rarity" /></dd>
+                </dl>
+
                 @if (Model.Status == ItemStatus.Draft)
                 {
-                    <div class="alert alert-warning mt-3 mb-0">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
+                    <div class="alert alert-warning mt-3 mb-0" role="status">
+                        <i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i>
                         This item is currently under review by the Dungeon Masters and is not yet available for purchase.
                     </div>
                 }
@@ -126,12 +114,9 @@
     </div>
 </div>
 
-<!-- Item Description -->
-<div class="card modern-card mb-3">
+<div class="card modern-card modern-card--aside mb-3">
     <div class="card-header modern-card-header">
-        <h6 class="mb-0">
-            <i class="fas fa-scroll me-2"></i>Description
-        </h6>
+        @{ SectionTitle("fa-scroll", "Description"); }
     </div>
     <div class="card-body modern-card-body">
         @Html.Markdown(Model.Description)
@@ -140,99 +125,87 @@
 
 @if (!string.IsNullOrEmpty(Model.ReferenceUrl))
 {
-    <!-- D&D Beyond Reference -->
     <div class="mb-3">
-        <a href="@Model.ReferenceUrl" target="_blank" class="btn btn-outline-info">
-            <i class="fas fa-external-link-alt me-2"></i>View on D&D Beyond
+        <a href="@Model.ReferenceUrl" target="_blank" rel="noopener noreferrer" class="btn btn-info">
+            <i class="fas fa-external-link-alt me-2" aria-hidden="true"></i>View on D&amp;D Beyond
         </a>
     </div>
 }
 
-<!-- Purchase Section -->
 <hr>
 @if (User.Identity?.IsAuthenticated == true)
 {
-    @if (Model.Status == ItemStatus.Published && Model.Quantity != 0)
+    @if (Model.IsOnSale && Model.Quantity != 0)
     {
-        <div class="text-center">
-            <form method="post" action="@Url.Action("Purchase", "Shop", new { id = Model.Id })">
-                @Html.AntiForgeryToken()
-                
-                <!-- Quantity Selection -->
-                <div class="mb-3">
-                    <div class="row justify-content-center">
-                        <div class="col-md-4 col-sm-6">
-                            <label for="quantity" class="form-label">
-                                <i class="fas fa-sort-numeric-up me-1"></i>Quantity
-                            </label>
-                            <input type="number" class="form-control text-center" id="quantity" name="quantity" 
-                                   value="1" min="1" max="@(Model.Quantity == -1 ? 99 : Model.Quantity)">
-                            @if (Model.Quantity > 0)
-                            {
-                                <small class="text-muted">Max: @Model.Quantity available</small>
-                            }
-                            else if (Model.Quantity == -1)
-                            {
-                                <small class="text-muted">Unlimited stock available</small>
-                            }
-                        </div>
-                    </div>
+        <form method="post" action="@Url.Action("Purchase", "Shop", new { id = Model.Id })" class="item-details__center">
+            @Html.AntiForgeryToken()
+            <div>
+                <label for="quantity" class="form-label">
+                    <i class="fas fa-sort-numeric-up me-1" aria-hidden="true"></i>Quantity
+                </label>
+                <input type="number" class="form-control" id="quantity" name="quantity"
+                       value="1" min="1" max="@(Model.Quantity == -1 ? 99 : Model.Quantity)" aria-describedby="quantity-hint">
+                <div id="quantity-hint" class="form-text item-details__muted">
+                    @if (Model.Quantity > 0)
+                    {
+                        <text>Max: @Model.Quantity available</text>
+                    }
+                    else
+                    {
+                        <text>Unlimited stock available</text>
+                    }
                 </div>
-
-                <button type="submit" class="btn btn-success btn-lg">
-                    <i class="fas fa-shopping-cart me-2"></i>
-                    Purchase Item
-                </button>
-            </form>
-        </div>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-shopping-cart me-2" aria-hidden="true"></i>Purchase Item
+            </button>
+        </form>
     }
     else if (Model.Status == ItemStatus.Draft)
     {
-        <div class="alert alert-info text-center">
-            <i class="fas fa-hourglass-half me-2"></i>
+        <div class="alert alert-info" role="status">
+            <i class="fas fa-hourglass-half me-2" aria-hidden="true"></i>
             This item is currently under review and not available for purchase.
         </div>
     }
-    else if (Model.Quantity == 0 && Model.Status == ItemStatus.Published)
+    else if (Model.IsOnSale && Model.Quantity == 0)
     {
-        <div class="alert alert-warning text-center">
-            <i class="fas fa-times-circle me-2"></i>
+        <div class="alert alert-warning" role="status">
+            <i class="fas fa-times-circle me-2" aria-hidden="true"></i>
             This item is currently out of stock.
         </div>
     }
+    else
+    {
+        <div class="alert alert-info" role="status">
+            <i class="fas fa-ban me-2" aria-hidden="true"></i>
+            This item is not currently available for purchase.
+        </div>
+    }
 
-    <!-- Sell to Shop Section -->
-    @if (Model.Status == ItemStatus.Published)
+    @if (Model.IsOnSale)
     {
         <hr>
-        <div class="text-center">
-            <h6 class="mb-3">
-                <i class="fas fa-hand-holding-usd me-2"></i>Sell to Shop
-            </h6>
-            <p class="text-muted">
-                Sell this item to the shop for <strong class="text-warning">@((Model.Price / 2).ToString("N0")) gp</strong>
-                <small>(half the shop price)</small>
+        <div class="item-details__center">
+            @{ SectionTitle("fa-hand-holding-usd", "Sell to Shop", "item-details__sell-title"); }
+            <p class="item-details__muted item-details__sell-line mb-0">
+                Sell this item to the shop for <strong>@halfPrice gp</strong> (half the shop price)
             </p>
-            <form method="post" action="@Url.Action("SellToShop", "Shop", new { id = Model.Id })" onsubmit="return confirmSell(event, '@Model.Name', @((Model.Price / 2).ToString("N0")))">
+            <form method="post" action="@Url.Action("SellToShop", "Shop", new { id = Model.Id })"
+                  class="item-details__center"
+                  data-sell-form data-item-name="@Model.Name"
+                  data-unit-price="@((Model.Price / 2).ToString(System.Globalization.CultureInfo.InvariantCulture))">
                 @Html.AntiForgeryToken()
-                
-                <!-- Quantity Selection for Selling -->
-                <div class="mb-3">
-                    <div class="row justify-content-center">
-                        <div class="col-md-4 col-sm-6">
-                            <label for="sellQuantity" class="form-label">
-                                <i class="fas fa-sort-numeric-up me-1"></i>Quantity to Sell
-                            </label>
-                            <input type="number" class="form-control text-center" id="sellQuantity" name="quantity" 
-                                   value="1" min="1" max="99" onchange="updateSellPrice('@Model.Price')">
-                            <small class="text-muted">You will receive: <strong id="totalSellPrice">@((Model.Price / 2).ToString("N0"))</strong> gp</small>
-                        </div>
-                    </div>
+                <div>
+                    <label for="sellQuantity" class="form-label">
+                        <i class="fas fa-sort-numeric-up me-1" aria-hidden="true"></i>Quantity to Sell
+                    </label>
+                    <input type="number" class="form-control" id="sellQuantity" name="quantity"
+                           value="1" min="1" max="99" data-sell-quantity>
+                    <div class="form-text item-details__muted">You will receive: <strong><output for="sellQuantity" data-sell-total>@halfPrice</output></strong> gp</div>
                 </div>
-
-                <button type="submit" class="btn btn-warning btn-lg">
-                    <i class="fas fa-hand-holding-usd me-2"></i>
-                    Sell to Shop
+                <button type="submit" class="btn btn-warning">
+                    <i class="fas fa-hand-holding-usd me-2" aria-hidden="true"></i>Sell to Shop
                 </button>
             </form>
         </div>
@@ -240,29 +213,8 @@
 }
 else
 {
-    <div class="alert alert-info text-center">
-        <i class="fas fa-sign-in-alt me-2"></i>
-        <a href="/Account/Login" class="text-decoration-none">Login</a> to purchase this item.
+    <div class="alert alert-info">
+        <i class="fas fa-sign-in-alt me-2" aria-hidden="true"></i>
+        <a href="/Account/Login">Login</a> to purchase this item.
     </div>
 }
-
-<script>
-    function updateSellPrice(shopPrice) {
-        const quantity = document.getElementById('sellQuantity').value;
-        const sellPricePerUnit = parseFloat(shopPrice) / 2;
-        const totalSellPrice = (sellPricePerUnit * quantity).toFixed(0);
-        document.getElementById('totalSellPrice').textContent = parseInt(totalSellPrice).toLocaleString();
-    }
-
-    function confirmSell(event, itemName, pricePerUnit) {
-        const quantity = document.getElementById('sellQuantity').value;
-        const totalPrice = (pricePerUnit * quantity).toFixed(0);
-        const message = `Are you sure you want to sell ${quantity}x ${itemName} to the shop for ${parseInt(totalPrice).toLocaleString()} gp?`;
-        
-        if (!confirm(message)) {
-            event.preventDefault();
-            return false;
-        }
-        return true;
-    }
-</script>

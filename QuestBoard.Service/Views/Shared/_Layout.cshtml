@@ -3,7 +3,7 @@
 @using QuestBoard.Service.Constants
 @inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"@(ViewData["Theme"] is string { Length: > 0 } pageTheme ? Html.Raw($" data-theme=\"{System.Net.WebUtility.HtmlEncode(pageTheme)}\"") : null)>
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -22,7 +22,6 @@
     <link rel="stylesheet" href="~/css/shell.css" asp-append-version="true" />
     <link href="~/lib/fontawesome-6.7.2/css/v4-shims.min.css" rel="stylesheet">
     <link rel="stylesheet" href="~/css/legacy-pages.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/shop.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="d-flex flex-column min-vh-100 shell-fixed-nav @ViewData["BodyClass"]">

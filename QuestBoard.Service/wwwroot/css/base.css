@@ -165,7 +165,7 @@
     }
 
     /* Hover and press lifts, scales and tilts on interactive elements, cards and list rows, and on what moves inside them. */
-    :is(a, button, summary, label, [role="button"], .btn, .nav-link, .navbar-brand, [class*="card"], [class*="-btn"], [class*="-item"], [class*="option"], .player-badge, .shop-merchant):is(:hover, :active, :focus-visible),
+    :is(a, button, summary, label, [role="button"], .btn, .nav-link, .navbar-brand, [class*="card"], [class*="-btn"], [class*="-item"], [class*="option"], .player-badge):is(:hover, :active, :focus-visible),
     :is([class*="card"], [class*="-item"]):is(:hover, :active) :is(img, [class*="image"], [class*="avatar"], [class*="seal"], [class*="info"]) {
       transform: none !important;
     }

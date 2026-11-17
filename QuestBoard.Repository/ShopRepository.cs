@@ -1,4 +1,5 @@
 using AutoMapper;
+using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models.Shop;
 using QuestBoard.Repository.Entities;
@@ -21,13 +22,9 @@ internal class ShopRepository(QuestBoardContext dbContext, IMapper mapper) : Bas
     }
 
     /// <inheritdoc/>
-    public async Task<IList<ShopItem>> GetPublishedItemsAsync(CancellationToken token = default)
+    public async Task<IList<ShopItem>> GetPublishedItemsAsync(DateTime boardNow, CancellationToken token = default)
     {
-        var entities = await DbContext.ShopItems
-            .Include(si => si.CreatedByDm)
-            .Where(si => si.Status == 1) // Published
-            .Where(si => si.AvailableFrom == null || si.AvailableFrom <= DateTime.UtcNow)
-            .Where(si => si.AvailableUntil == null || si.AvailableUntil >= DateTime.UtcNow)
+        var entities = await OnSale(DbContext.ShopItems.Include(si => si.CreatedByDm), boardNow)
             .OrderBy(si => si.Name)
             .ToListAsync(cancellationToken: token);
         return Mapper.Map<IList<ShopItem>>(entities);
@@ -46,13 +43,10 @@ internal class ShopRepository(QuestBoardContext dbContext, IMapper mapper) : Bas
     }
 
     /// <inheritdoc/>
-    public async Task<IList<ShopItem>> GetItemsByTypeAsync(int type, CancellationToken token = default)
+    public async Task<IList<ShopItem>> GetItemsByTypeAsync(int type, DateTime boardNow, CancellationToken token = default)
     {
-        var entities = await DbContext.ShopItems
-            .Include(si => si.CreatedByDm)
-            .Where(si => si.Type == type && si.Status == 1) // Published
-            .Where(si => si.AvailableFrom == null || si.AvailableFrom <= DateTime.UtcNow)
-            .Where(si => si.AvailableUntil == null || si.AvailableUntil >= DateTime.UtcNow)
+        var entities = await OnSale(DbContext.ShopItems.Include(si => si.CreatedByDm), boardNow)
+            .Where(si => si.Type == type)
             .OrderBy(si => si.Name)
             .ToListAsync(cancellationToken: token);
         return Mapper.Map<IList<ShopItem>>(entities);
@@ -88,13 +82,10 @@ internal class ShopRepository(QuestBoardContext dbContext, IMapper mapper) : Bas
         string? search,
         int page,
         int pageSize,
+        DateTime boardNow,
         CancellationToken token = default)
     {
-        var query = DbContext.ShopItems
-            .Include(si => si.CreatedByDm)
-            .Where(si => si.Status == 1) // Published
-            .Where(si => si.AvailableFrom == null || si.AvailableFrom <= DateTime.UtcNow)
-            .Where(si => si.AvailableUntil == null || si.AvailableUntil >= DateTime.UtcNow);
+        var query = OnSale(DbContext.ShopItems.Include(si => si.CreatedByDm), boardNow);
 
         if (type.HasValue)
             query = query.Where(si => si.Type == type.Value);
@@ -124,4 +115,13 @@ internal class ShopRepository(QuestBoardContext dbContext, IMapper mapper) : Bas
 
         return (Mapper.Map<IList<ShopItem>>(entities), totalCount);
     }
+
+    // The shop's on-sale rule as a query: Published, and the optional window contains the given board-local time with
+    // both ends inside. The window values are the wall-clock times a Dungeon Master typed, so the caller hands in the
+    // board's local time and this repository reads no clock of its own.
+    private static IQueryable<ShopItemEntity> OnSale(IQueryable<ShopItemEntity> query, DateTime boardNow) =>
+        query
+            .Where(si => si.Status == (int)ItemStatus.Published)
+            .Where(si => si.AvailableFrom == null || si.AvailableFrom <= boardNow)
+            .Where(si => si.AvailableUntil == null || si.AvailableUntil >= boardNow);
 }

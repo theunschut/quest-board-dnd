@@ -6,7 +6,7 @@ using QuestBoard.Domain.Models.Shop;
 
 namespace QuestBoard.Domain.Services;
 
-internal class ShopService(IShopRepository repository, IUserTransactionRepository transactionRepository, IMapper mapper) : BaseService<ShopItem>(repository, mapper), IShopService
+internal class ShopService(IShopRepository repository, IUserTransactionRepository transactionRepository, IMapper mapper, IBoardClock boardClock) : BaseService<ShopItem>(repository, mapper), IShopService
 {
     /// <inheritdoc/>
     public async Task<IList<ShopItem>> GetAllItemsAsync(CancellationToken token = default)
@@ -17,7 +17,7 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
     /// <inheritdoc/>
     public async Task<IList<ShopItem>> GetPublishedItemsAsync(CancellationToken token = default)
     {
-        return await repository.GetPublishedItemsAsync(token);
+        return await repository.GetPublishedItemsAsync(boardClock.Now, token);
     }
 
     /// <inheritdoc/>
@@ -29,7 +29,7 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
     /// <inheritdoc/>
     public async Task<IList<ShopItem>> GetItemsByTypeAsync(ItemType type, CancellationToken token = default)
     {
-        return await repository.GetItemsByTypeAsync((int)type, token);
+        return await repository.GetItemsByTypeAsync((int)type, boardClock.Now, token);
     }
 
     /// <inheritdoc/>
@@ -72,11 +72,23 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
         }
     }
 
+    // A hand-made post can carry any number; the forms' minimum is only a browser hint. Checked before any repository
+    // read so a refused request reads, changes and records nothing.
+    private static void EnsureQuantityIsAtLeastOne(int quantity)
+    {
+        if (quantity < 1)
+        {
+            throw new InvalidOperationException("Quantity must be at least 1.");
+        }
+    }
+
     /// <inheritdoc/>
     public async Task<UserTransaction> PurchaseItemAsync(int itemId, int quantity, User user, CancellationToken token = default)
     {
+        EnsureQuantityIsAtLeastOne(quantity);
+
         var item = await repository.GetByIdAsync(itemId, token);
-        if (item == null || item.Status != ItemStatus.Published)
+        if (item == null || !ShopItemAvailability.IsOnSale(item, boardClock.Now))
         {
             throw new InvalidOperationException("Item is not available for purchase.");
         }
@@ -119,6 +131,8 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
     /// <inheritdoc/>
     public async Task<UserTransaction> ReturnOrSellItemAsync(int transactionId, int quantity, User user, CancellationToken token = default)
     {
+        EnsureQuantityIsAtLeastOne(quantity);
+
         var originalTransaction = await transactionRepository.GetTransactionWithDetailsAsync(transactionId, token);
         if (originalTransaction == null || originalTransaction.UserId != user.Id || originalTransaction.TransactionType != TransactionType.Purchase)
         {
@@ -139,12 +153,12 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
             throw new InvalidOperationException($"Cannot return/sell more items than remaining. Only {remainingQuantity} items can still be returned/sold.");
         }
 
+        // No status or window check: what a member bought can always be handed back.
         var item = await repository.GetByIdAsync(originalTransaction.ShopItemId, token)
             ?? throw new InvalidOperationException("Original item no longer exists.");
 
-        // Calculate time since purchase
-        var timeSincePurchase = DateTime.UtcNow - originalTransaction.TransactionDate;
-        var isReturn = timeSincePurchase.TotalHours <= 24;
+        // Full price back inside the shared return window, half price after it
+        var isReturn = ShopReturnPolicy.IsWithinReturnWindow(originalTransaction.TransactionDate, DateTime.UtcNow);
 
         // Calculate refund amount
         var originalUnitPrice = originalTransaction.Price / originalTransaction.Quantity;
@@ -177,10 +191,19 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
     /// <inheritdoc/>
     public async Task<UserTransaction> SellItemToShopAsync(int itemId, int quantity, User user, CancellationToken token = default)
     {
+        EnsureQuantityIsAtLeastOne(quantity);
+
         var item = await repository.GetByIdAsync(itemId, token);
-        if (item == null || item.Status != ItemStatus.Published)
+        if (item == null || !ShopItemAvailability.IsOnSale(item, boardClock.Now))
         {
             throw new InvalidOperationException("Item is not available for sale.");
+        }
+
+        // Limited stock is counted in an int, so a hand-made post with a huge number would wrap the stock negative and
+        // make the item read as unlimited or sold out. Refuse it before anything is changed or recorded.
+        if (item.Quantity >= 0 && quantity > int.MaxValue - item.Quantity)
+        {
+            throw new InvalidOperationException("That quantity is too large for this item's stock.");
         }
 
         // Calculate sell price (half of shop price)
@@ -274,6 +297,7 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
             search,
             page,
             pageSize,
+            boardClock.Now,
             token);
     }
 

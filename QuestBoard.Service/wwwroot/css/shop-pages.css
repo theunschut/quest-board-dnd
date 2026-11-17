@@ -1,0 +1,858 @@
+/*
+ * Shop pages: the sheet for everything on the shop pages that has moved onto the shared look. It holds one pages
+ * layer block and nothing but design tokens, so changing a colour is a change to the token file.
+ *
+ * It holds the rarity chip, a solid badge that always carries the rarity word and a gem icon, so the fill is the
+ * second cue and never the only one (each fill is paired with the label token that holds 4.5:1 on it), and the item
+ * details: the emblem tile, the sections and the purchase and sell forms, which the dialog and the page share.
+ */
+@layer pages {
+  .badge-rarity {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--qb-space-xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .badge-rarity.rarity-common {
+    background-color: var(--qb-neutral);
+    color: var(--qb-neutral-fg);
+  }
+
+  .badge-rarity.rarity-uncommon {
+    background-color: var(--qb-success);
+    color: var(--qb-success-fg);
+  }
+
+  .badge-rarity.rarity-rare {
+    background-color: var(--qb-info);
+    color: var(--qb-info-fg);
+  }
+
+  .badge-rarity.rarity-veryrare {
+    background-color: var(--qb-event);
+    color: var(--qb-event-fg);
+  }
+
+  /* The top rarity is amber with the near-black label amber needs, plus a still glow of the same amber; it does not move. */
+  .badge-rarity.rarity-legendary {
+    background-color: var(--qb-warning);
+    color: var(--qb-warning-fg);
+    box-shadow: 0 0 var(--qb-space-sm) color-mix(in srgb, var(--qb-warning) 55%, transparent);
+  }
+
+  /* ---------- Item details: the dialog, Shop/Details and the shared partial ---------- */
+
+  /* The emblem tile is a block that grows with what it holds: a minimum block size, flex centring, a glyph smaller than
+     the tile. It never crops, clips or fixes its own height, so a larger text size or a tall glyph makes it taller. */
+  .emblem {
+    --emblem-border: var(--qb-neutral);
+    --emblem-glyph: var(--qb-neutral-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 100%;
+    min-block-size: 144px;
+    border: 2px solid var(--emblem-border);
+    border-radius: var(--qb-radius-lg);
+    background: var(--qb-surface-scrim);
+    color: var(--emblem-glyph);
+    font-size: 64px;
+  }
+
+  .emblem--common {
+    --emblem-border: var(--qb-neutral);
+    --emblem-glyph: var(--qb-neutral-text);
+  }
+
+  .emblem--uncommon {
+    --emblem-border: var(--qb-success);
+    --emblem-glyph: var(--qb-success-text);
+  }
+
+  .emblem--rare {
+    --emblem-border: var(--qb-info);
+    --emblem-glyph: var(--qb-info-text);
+  }
+
+  .emblem--veryrare {
+    --emblem-border: var(--qb-event);
+    --emblem-glyph: var(--qb-event-text);
+  }
+
+  .emblem--legendary {
+    --emblem-border: var(--qb-warning);
+    --emblem-glyph: var(--qb-warning-text);
+  }
+
+  /* A picture in a description keeps its own proportions and never passes the card or the dialog that holds it. */
+  .item-details-content .markdown-content img {
+    max-inline-size: 100%;
+    block-size: auto;
+  }
+
+  .item-details__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+    margin-block-end: var(--qb-space-md);
+  }
+
+  .item-details__head > :first-child {
+    flex: 1 1 12rem;
+    min-inline-size: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .item-details__aside {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    margin-block-start: var(--qb-space-md);
+  }
+
+  .item-details__price {
+    color: var(--qb-fg);
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .item-details__price .fas {
+    margin-inline-end: var(--qb-space-xs);
+    color: var(--qb-accent);
+  }
+
+  .item-details__muted {
+    color: var(--qb-fg);
+    font-size: var(--qb-text-sm);
+  }
+
+  .item-props {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: var(--qb-space-xs) var(--qb-space-lg);
+    margin: 0;
+  }
+
+  .item-props dt {
+    color: var(--qb-fg);
+    font-weight: var(--qb-weight-regular);
+  }
+
+  .item-props dd {
+    margin: 0;
+  }
+
+  .item-details__center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    text-align: center;
+  }
+
+  .item-details__center .form-control {
+    inline-size: min(100%, 12rem);
+    text-align: center;
+  }
+
+  .item-details__sell-title {
+    margin: 0;
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .item-details__sell-line strong {
+    color: var(--qb-fg);
+  }
+
+  .item-details__back {
+    margin-block-start: var(--qb-space-lg);
+  }
+
+  .item-details__title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+  }
+
+  .item-details__title-row > h1 {
+    flex: 1 1 12rem;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* ---------- The shop item card: the Preview replica and the grid cards share it ---------- */
+
+  .shop-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-sm);
+    min-inline-size: 0;
+    padding: var(--qb-space-md);
+  }
+
+  .shop-card__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--qb-space-sm);
+  }
+
+  /* A long name wraps to as many lines as it needs and never truncates. */
+  .shop-card__name {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+    margin: 0;
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+    overflow-wrap: anywhere;
+  }
+
+  .shop-card__head .badge {
+    flex: none;
+  }
+
+  .shop-card__excerpt {
+    margin: 0;
+    color: var(--qb-fg);
+    overflow-wrap: anywhere;
+  }
+
+  .shop-card__foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--qb-space-sm);
+    margin-block-start: auto;
+    padding-block-start: var(--qb-space-sm);
+    border-block-start: 1px solid var(--qb-surface-glass-border);
+  }
+
+  .shop-card__price {
+    font-size: var(--qb-text-lg);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .shop-card__price .fas {
+    margin-inline-end: var(--qb-space-xs);
+    color: var(--qb-accent);
+  }
+
+  .shop-card__stock {
+    color: var(--qb-fg);
+    font-size: var(--qb-text-sm);
+  }
+
+  .shop-card__stock .fas {
+    margin-inline-end: var(--qb-space-xs);
+  }
+
+  /* The state colours are the status text colours pulled halfway to the card's own text colour, because the grid card
+     is translucent and the plain status text measures a little under 4.5:1 over the brightest board. The icon and the
+     words carry the state, so the colour only reinforces it. */
+  .shop-card__stock--low {
+    color: color-mix(in srgb, var(--qb-warning-text) 50%, var(--qb-fg));
+  }
+
+  .shop-card__stock--soldout {
+    color: color-mix(in srgb, var(--qb-danger-text) 50%, var(--qb-fg));
+  }
+
+  .shop-card__stock--unlimited {
+    color: color-mix(in srgb, var(--qb-info-text) 50%, var(--qb-fg));
+  }
+
+  /* On the grid cards the name is a real link stretched over the whole card, so the card is one target for the mouse
+     and the name link is the way in for the keyboard and for assistive technology. The focus ring is drawn on the
+     card, where it can be seen, instead of on the small name. */
+  .shop-card .row-nav-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  .shop-card:has(.row-nav-link:focus-visible) {
+    outline: var(--qb-focus-width) solid var(--qb-focus-outer);
+    outline-offset: var(--qb-focus-offset);
+    box-shadow: 0 0 0 var(--qb-focus-offset) var(--qb-focus-inner);
+  }
+
+  .shop-card .row-nav-link:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  /* The purchase control sits above a stretched name link on the grid cards, so a click on it never reaches the link. */
+  .shop-card__action {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ---------- Shop browse: hero, categories, the filter card, the grid and the pager ---------- */
+
+  .shop-hero {
+    margin-block-end: var(--qb-space-lg);
+    padding: var(--qb-space-lg);
+    border: 2px solid var(--qb-accent);
+    border-radius: var(--qb-radius-lg);
+    background: var(--qb-surface-overlay);
+    color: var(--qb-fg);
+    box-shadow: var(--qb-shadow-rest);
+    text-align: center;
+  }
+
+  .shop-hero__title {
+    margin: 0;
+    font-size: var(--qb-text-xl);
+    line-height: var(--qb-leading-heading);
+    color: var(--qb-accent);
+    overflow-wrap: anywhere;
+  }
+
+  .shop-hero__title .fas {
+    margin-inline-end: var(--qb-space-md);
+  }
+
+  .shop-hero__sub {
+    margin: var(--qb-space-sm) 0 0;
+    color: var(--qb-fg);
+  }
+
+  /* The four categories are links, each at least as tall as the touch target step, the current one on paper. */
+  .category-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--qb-space-sm);
+    margin-block-end: var(--qb-space-lg);
+  }
+
+  .category-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    min-block-size: var(--qb-hit-min);
+    padding: 0 var(--qb-space-md);
+    border: 1px solid var(--qb-border-strong);
+    border-radius: var(--qb-radius-md);
+    background: var(--qb-surface-overlay);
+    color: var(--qb-fg);
+    font-weight: var(--qb-weight-strong);
+    text-decoration: none;
+    transition: background-color var(--qb-dur-fast) var(--qb-ease), color var(--qb-dur-fast) var(--qb-ease), border-color var(--qb-dur-fast) var(--qb-ease);
+  }
+
+  .category-btn:hover {
+    background: var(--qb-surface-paper-alt);
+    color: var(--qb-ink);
+  }
+
+  .category-btn[aria-current="page"],
+  .category-btn[aria-current="page"]:hover {
+    border-color: var(--qb-surface-paper);
+    background: var(--qb-surface-paper);
+    color: var(--qb-ink);
+  }
+
+  /* One filter card across the whole width: the rarity choices share equal columns, and under a rule the search field
+     takes the flexible width, the sort select a fixed share, and Apply and Clear sit at the row end. When the row is too
+     narrow the sort and the actions drop to their own line and the actions stay at the end. */
+  .shop-filter-card {
+    margin-block-end: var(--qb-space-lg);
+  }
+
+  .shop-filter-card .modern-card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--qb-space-sm);
+  }
+
+  .shop-filter-card .modern-card-header h2 {
+    margin: 0;
+  }
+
+  .shop-filter-card .modern-card-body {
+    padding: var(--qb-space-md) var(--qb-space-lg);
+  }
+
+  .filter-rarity {
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .shop-filter-label {
+    float: none;
+    inline-size: auto;
+    margin: 0 var(--qb-space-sm) 0 0;
+    padding: 0;
+    font-size: var(--qb-text-base);
+    font-weight: var(--qb-weight-strong);
+  }
+
+  .filter-rarity .shop-filter-label {
+    margin-block-end: var(--qb-space-sm);
+  }
+
+  .filter-rarity__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: var(--qb-space-sm) var(--qb-space-md);
+  }
+
+  .filter-check {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    min-inline-size: 0;
+    min-block-size: calc(var(--qb-hit-min) - var(--qb-space-sm) - var(--qb-space-xs));
+    cursor: pointer;
+  }
+
+  .filter-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--qb-space-md);
+    margin-block-start: var(--qb-space-md);
+    padding-block-start: var(--qb-space-md);
+    border-block-start: 1px solid var(--qb-surface-glass-border);
+  }
+
+  .filter-search {
+    flex: 1 1 22rem;
+    min-inline-size: 0;
+  }
+
+  .filter-sort {
+    display: flex;
+    flex: 0 0 14rem;
+    align-items: center;
+    gap: var(--qb-space-sm);
+    min-inline-size: 0;
+  }
+
+  .filter-sort .form-select {
+    flex: 1 1 auto;
+    inline-size: auto;
+    min-inline-size: 0;
+  }
+
+  .filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--qb-space-sm);
+    margin-inline-start: auto;
+  }
+
+  /* The grid fills the width with columns at least 280px wide, so one card keeps its column width and a long name
+     wraps inside its card. The interactive cards carry no blur. */
+  .inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+    gap: var(--qb-space-md);
+    align-items: stretch;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* The pager takes its colours from the pagination variables Bootstrap reads, all from tokens. */
+  .shop-pager {
+    --bs-pagination-bg: var(--qb-surface-overlay);
+    --bs-pagination-color: var(--qb-fg);
+    --bs-pagination-border-color: var(--qb-surface-glass-border);
+    --bs-pagination-hover-bg: var(--qb-surface-paper-alt);
+    --bs-pagination-hover-color: var(--qb-ink);
+    --bs-pagination-hover-border-color: var(--qb-surface-glass-border);
+    --bs-pagination-focus-bg: var(--qb-surface-paper-alt);
+    --bs-pagination-focus-color: var(--qb-ink);
+    --bs-pagination-active-bg: var(--qb-surface-paper);
+    --bs-pagination-active-color: var(--qb-ink);
+    --bs-pagination-active-border-color: var(--qb-surface-paper);
+    --bs-pagination-disabled-bg: var(--qb-surface-overlay);
+    --bs-pagination-disabled-color: var(--qb-fg-muted);
+    --bs-pagination-disabled-border-color: var(--qb-surface-glass-border);
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: var(--qb-space-lg) 0 var(--qb-space-sm);
+  }
+
+  .shop-count {
+    margin: 0 0 var(--qb-space-lg);
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-sm);
+    text-align: center;
+  }
+
+  /* ---------- Purchase history: a collapsible pane ---------- */
+  /* The My Transactions toggle sits under the hero, at the start of the row. The pane is the old side panel: it opens at
+     the start of the item area, collapsed by default, and the grid takes the width back when it is closed. */
+  .shop-toolbar {
+    display: flex;
+    justify-content: flex-start;
+    margin-block-end: var(--qb-space-md);
+  }
+
+  .history-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+  }
+
+  .history-toggle__count {
+    min-inline-size: 1.75em;
+    padding: 0 var(--qb-space-sm);
+    border-radius: var(--qb-radius-pill);
+    background: var(--qb-surface-paper);
+    color: var(--qb-ink);
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-strong);
+    text-align: center;
+  }
+
+  .history-toggle__chevron--open {
+    display: none;
+  }
+
+  .history-toggle[aria-expanded='true'] .history-toggle__chevron--closed {
+    display: none;
+  }
+
+  .history-toggle[aria-expanded='true'] .history-toggle__chevron--open {
+    display: inline-block;
+  }
+
+  .shop-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--qb-space-lg);
+    align-items: start;
+  }
+
+  .shop-layout:has(> .history-pane:not([hidden])) {
+    grid-template-columns: 17rem minmax(0, 1fr);
+  }
+
+  .shop-main {
+    min-inline-size: 0;
+  }
+
+  .history-pane {
+    position: sticky;
+    inset-block-start: calc(var(--qb-nav-h) + var(--qb-space-md));
+    min-inline-size: 0;
+  }
+
+  .history-pane .history-card {
+    display: flex;
+    flex-direction: column;
+    margin-block-start: 0;
+    max-block-size: calc(100vh - var(--qb-nav-h) - var(--qb-space-xl));
+  }
+
+  .history-pane .history-card .modern-card-body {
+    min-block-size: 0;
+    padding: var(--qb-space-sm);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .history-pane .history-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* A desktop window narrower than 768px has no room for a side pane: it opens above the items instead. */
+  @media (max-width: 767.98px) {
+    .shop-layout:has(> .history-pane:not([hidden])) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .history-pane {
+      position: static;
+    }
+
+    .history-pane .history-card {
+      max-block-size: none;
+    }
+
+    .history-pane .history-card .modern-card-body {
+      overflow-y: visible;
+    }
+  }
+
+  .history-card {
+    margin-block-start: var(--qb-space-lg);
+  }
+
+  .history-card .modern-card-body {
+    padding: var(--qb-space-md);
+  }
+
+  .history-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(248px, 100%), 1fr));
+    gap: var(--qb-space-sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .history-slip {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-xs);
+    min-inline-size: 0;
+    padding: var(--qb-space-sm);
+    border: 1px solid var(--qb-surface-glass-border);
+    border-radius: var(--qb-radius-md);
+    background: var(--qb-surface-overlay);
+    color: var(--qb-fg);
+  }
+
+  .history-slip__name {
+    font-weight: var(--qb-weight-strong);
+    overflow-wrap: anywhere;
+  }
+
+  .history-slip__note {
+    font-weight: var(--qb-weight-regular);
+    font-size: var(--qb-text-sm);
+    color: var(--qb-fg-muted);
+  }
+
+  .history-slip__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--qb-space-sm);
+    font-size: var(--qb-text-sm);
+  }
+
+  .history-slip__row .fa-coins {
+    color: var(--qb-accent);
+  }
+
+  .history-slip__credit {
+    color: var(--qb-success-text);
+  }
+
+  .history-slip__when {
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-sm);
+  }
+
+  .history-slip__action {
+    display: flex;
+    margin-block-start: auto;
+    padding-block-start: var(--qb-space-xs);
+  }
+
+  .history-cap {
+    margin: var(--qb-space-sm) 0 0;
+    color: var(--qb-fg-muted);
+    font-size: var(--qb-text-sm);
+    text-align: center;
+  }
+
+  /* ---------- The merchant ---------- */
+  /* A round button in a dock that sticks to the bottom of the window while the page scrolls and, at the end of the page,
+     rests in its own row after the content, so it never covers the footer. The dock lets clicks through everywhere but
+     on the button. */
+  .shop-merchant-dock {
+    position: sticky;
+    bottom: var(--qb-space-lg);
+    z-index: 1020;
+    display: flex;
+    justify-content: flex-end;
+    margin-block-start: var(--qb-space-md);
+    pointer-events: none;
+  }
+
+  .shop-merchant {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-inline-size: 56px;
+    min-block-size: 56px;
+    padding: 0;
+    border: 2px solid var(--qb-accent);
+    border-radius: var(--qb-radius-pill);
+    background: var(--qb-surface-overlay);
+    color: var(--qb-accent);
+    box-shadow: var(--qb-shadow-raised);
+    font-size: var(--qb-text-lg);
+    pointer-events: auto;
+  }
+
+  .shop-merchant:hover {
+    background: var(--qb-surface-paper-alt);
+    color: var(--qb-ink);
+  }
+
+  /* The button's own shadow sits in this layer, above the foundation ring, so the ring's inner band is restated beside it. */
+  .shop-merchant:focus-visible {
+    outline: var(--qb-focus-width) solid var(--qb-focus-outer);
+    outline-offset: var(--qb-focus-offset);
+    box-shadow: 0 0 0 var(--qb-focus-offset) var(--qb-focus-inner), var(--qb-shadow-raised);
+  }
+
+  /* The bob is a hint that the merchant can be talked to: a few pixels, three times, then still. Someone who asked for
+     less motion never sees it. */
+  @keyframes merchant-bob {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(calc(var(--qb-space-xs) * -1));
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .shop-merchant {
+      animation: merchant-bob 1.5s ease-in-out 3;
+    }
+  }
+
+  /* ---------- Shop management: the lists, the rows and the phone slips ---------- */
+
+  .mgmt-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--qb-space-sm);
+    margin-block-end: var(--qb-space-lg);
+  }
+
+  .mgmt-section {
+    margin-block-end: var(--qb-space-lg);
+  }
+
+  .mgmt-section .modern-card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--qb-space-xs) var(--qb-space-sm);
+  }
+
+  .mgmt-section .modern-card-header h2 {
+    margin: 0;
+  }
+
+  .mgmt-section .header-subtitle {
+    margin-top: 0;
+  }
+
+  .mgmt-section .modern-card-body {
+    padding: var(--qb-space-md);
+  }
+
+  /* The sentence under an empty section's heading is in the card's own colour, which holds 4.5:1 on the card. */
+  .mgmt-section .empty-state-text {
+    color: var(--qb-fg);
+  }
+
+  /* Long names and reasons wrap inside their cells; the table scrolls inside its card and never widens the page. */
+  .mgmt-name {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+
+  .mgmt-teaser {
+    display: block;
+    color: var(--qb-ink-muted);
+    font-size: var(--qb-text-sm);
+    overflow-wrap: anywhere;
+  }
+
+  .mgmt-denial {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--qb-space-sm);
+    margin-block-start: var(--qb-space-sm);
+    padding: var(--qb-space-xs) var(--qb-space-sm);
+    border-inline-start: 4px solid var(--qb-danger);
+    background: var(--qb-surface-paper-alt);
+    color: var(--qb-ink);
+    font-size: var(--qb-text-sm);
+  }
+
+  .mgmt-denial > div {
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .mgmt-denial .fas {
+    flex: none;
+    margin-block-start: var(--qb-space-xs);
+  }
+
+  .mgmt-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--qb-space-xs);
+  }
+
+  .mgmt-row-actions form {
+    display: inline-flex;
+  }
+
+  .mgmt-note {
+    font-size: var(--qb-text-sm);
+  }
+
+  .mgmt-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .mgmt-slip {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-xs);
+    min-inline-size: 0;
+    padding: var(--qb-space-sm);
+    border: 1px solid var(--qb-surface-glass-border);
+    border-radius: var(--qb-radius-md);
+    background: var(--qb-surface-overlay);
+    color: var(--qb-fg);
+  }
+
+  .mgmt-slip__name {
+    margin: 0;
+    font-size: var(--qb-text-base);
+    font-weight: var(--qb-weight-strong);
+    overflow-wrap: anywhere;
+  }
+
+  .mgmt-slip__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--qb-space-sm);
+  }
+
+  .mgmt-slip .mgmt-denial {
+    color: var(--qb-fg);
+    background: var(--qb-surface-scrim);
+  }
+}

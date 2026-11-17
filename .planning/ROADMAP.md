@@ -2037,7 +2037,7 @@ Plans:
 **Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
 **Requirements**: TBD
 **Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
-**Plans:** 0 plans
+**Plans:** 24/24 plans executed
 
 **Scope:**
 
@@ -2088,7 +2088,101 @@ Plus, specific to this phase: ten infinite animation declarations (not six; four
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase to break down)
+**Wave 1**
+
+- [x] 99-01-PLAN.md — Opening operator checkpoint (SQL Server at 1433 brought up by the operator, ports 8320/8321, p99 fixtures approved, no gold needed, email suppression forced, migrator suite yes or no with migrator.env), Linux scratch setup, /Shop capture tracer
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 99-02-PLAN.md — p99 accounts and the two P99 boards, every item, status, stock and empty state through the app forms (Draft and Denied fixtures Rare or higher), day-0 aging purchases for the 24-hour Sell state, fresh-purchase and sell-status modes, each key checked under both User-Agents
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 99-03-PLAN.md — Frozen baseline on 8321, route manifest, starting test inventory, BEFORE capture of every row, baseline behaviour probes of the functional breaks, BEFORE value per owned audit finding
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 99-04-PLAN.md — Tracer: html data-theme seam (Shop/Details), Sell to Shop delegated module for the dialog and the page, tokens on the Return and Sell row forms, ShopConversionGuardTests and ShopRenderTests
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 99-05-PLAN.md — Gate 1 package A: purchase history under the grid on both layouts, the single filter card, both merchant placements with the toast, the legendary chip in amber and gold, Shop/Index look check against Direction A
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [x] 99-06-PLAN.md — Gate 1 package B: emblem tile (whole picture measured), Preview dialog, look checks for Details, the management list and a form, every copy or control proposal, table header alternative
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [x] 99-07-PLAN.md — Gate 1 local sheet, items 1 to 22 and assumptions, Gate 1 (operator answers items 1, 2, 3 and 16 with no default; redraw loop)
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [x] 99-08-PLAN.md — Rarity chips on the shop pages: ShopItemDisplay, the chip partial, shop-pages.css with the answered legendary colour (guideline line on gold), old rules narrowed
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [x] 99-09-PLAN.md — Status badges and type words on the management list and Edit, the management chips, the last old rarity rules deleted, the shop motion guard
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [x] 99-10-PLAN.md — Details partial and Shop/Details on both layouts: one body everywhere, emblem tile, wall-clock dates, phone Sell and sections, image rule, shop-details.mobile.css retired
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
+- [x] 99-11-PLAN.md — Desktop ShopManagement/Edit: View Details fixed, the shared shop-item-form.js, validation and label per Gate 1, required markers, shop-form.css
+
+**Wave 12** *(blocked on Wave 11 completion)*
+
+- [x] 99-12-PLAN.md — Create on both layouts and the phone Edit on the shared module and contract, Logout no longer intercepted, two phone sheets retired
+
+**Wave 13** *(blocked on Wave 12 completion)*
+
+- [x] 99-13-PLAN.md — Preview dialog on desktop Create (on Edit only on a Gate 1 yes): card replica from the form, existing Markdown preview endpoint, nothing saved
+
+**Wave 14** *(blocked on Wave 13 completion)*
+
+- [x] 99-14-PLAN.md — ShopManagement/Index on both layouts: confirmations on confirm-submit.js, deny and bulk dialogs on a module, tables and phone slips, Gate 1 answers, phone sheet retired
+
+**Wave 15** *(blocked on Wave 14 completion)*
+
+- [x] 99-15-PLAN.md — Shop/Index desktop browse half: hero, tabs, one filter card, keyboard cards, details dialog module, pager, empty states, old rules and animations deleted
+
+**Wave 16** *(blocked on Wave 15 completion)*
+
+- [x] 99-16-PLAN.md — Shop/Index desktop: purchase history in flow with visible Return and Sell (the 24-hour read moved into the view model), the merchant in the operator's placement with an accessible toast and capped bob, click-throughs
+
+**Wave 17** *(blocked on Wave 16 completion)*
+
+- [x] 99-17-PLAN.md — Shop/Index phone: history, Previous and Next with the count, three empty states, offcanvas and cards, omission test flipped, shop.mobile.css retired
+
+**Wave 18** *(blocked on Wave 17 completion)*
+
+- [x] 99-18-PLAN.md — shop.css out of the global list and deleted (outside pages and dialogs measured), legacy-pages.css trimmed, zero counts, final guards, planning-reference scan, no test deleted, untouched-paths diff
+
+**Wave 19** *(blocked on Wave 18 completion)*
+
+- [x] 99-21-PLAN.md — Server quantity validation (Gate 1 item 20, "20:fix in phase 99"): Purchase, Return or Sell, and Sell to Shop refuse a requested quantity below 1 before any repository read or write; item stock convention (-1 unlimited, 0 sold out, >0 limited) untouched; unit and EF InMemory integration facts
+
+**Wave 20** *(blocked on Wave 19 completion)*
+
+- [x] 99-19-PLAN.md — Timed stop: cannot start before `eligibleAt` in `~/qb-ui-review/phase-99/fixtures.json` (24 hours after the 99-02 day-0 purchases); waiting there is expected, not a stall. Closing sweep after the 24-hour Sell mark: full AFTER, click-throughs on both layouts, whole-image and accessibility checks, exceptions, finding trace, migrator suite if approved, ledger and deferred items
+
+**Wave 21** *(blocked on Wave 20 completion)*
+
+- [x] 99-20-PLAN.md — Gate 2 local sheet with findings, inherited questions and every exception and text change, Gate 2 (operator, gap-closure loop), v6.4.0 release hand-off
+
+**Wave 22** *(blocked on Wave 21 completion)*
+
+- [x] 99-22-PLAN.md — Draft details access (the Gate 2 `df` item, operator: "go, fix the draft access first"): Shop/Details, page and dialog, answers 404 to anyone outside the DungeonMasterOnly policy of the active board for Draft and Denied items, the same answer as a missing id; Published and Archived unchanged for members; board scope already held by the query filter; EF InMemory integration facts; availability window, Archive/Reopen review bypass and the cross-board existence signal recorded as found and deferred
+
+**Wave 23** *(blocked on Wave 22 completion)*
+
+- [x] 99-23-PLAN.md — Stock, review and availability gaps (operator: "Fix + 2 gaps"): limited-stock Return and Sell from the purchase history refund and restock again (the shop domain-to-entity maps stop writing navigations over tracked entities; the four skipped reproduction cases run); Archive accepts only a Published item, so Archive then Reopen can no longer publish an unreviewed Draft or Denied item; one availability rule on the board clock for the shop list, Details, Purchase and Sell to Shop (a member gets 404 for an item whose sale has not started, a closed item stays open like Archived, Return and Sell from history unchanged); the cross-board deep-link switch and the 24-hour Return edge recorded as known debt
+
+**Wave 24** *(blocked on Wave 23 completion)*
+
+- [x] 99-24-PLAN.md — Shop edit-review and delete-ownership gaps (operator: "Fix first", from the phase security audit's residual note): an edit never publishes, so a Draft or Denied item stays in review whatever rarity it is edited to, and an edit that leaves a Published or Archived item at Rare or above sends it back to review (Create still publishes Common and Uncommon at once; one shared review rule); the Edit toast says when an item went back to review; a Dungeon Master who is not an Admin may delete only their own Draft or Denied item, while Admins and SuperAdmins keep every right through the AdminOnly policy; both management lists, desktop and phone, offer Delete only where the server accepts it and keep every Edit link; a Dungeon Master publishing their own edit of another keeper's item left open for the operator's choice
 
 ### Phase 100: Admin and Platform UI conversion
 

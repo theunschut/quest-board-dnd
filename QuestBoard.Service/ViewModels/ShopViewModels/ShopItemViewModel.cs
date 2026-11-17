@@ -49,15 +49,9 @@ public class ShopItemViewModel
     public string CreatedByDmName { get; set; } = string.Empty;
 
     // Helper properties for display
-    public string RarityDisplayName => Rarity switch
-    {
-        ItemRarity.Common => "Common",
-        ItemRarity.Uncommon => "Uncommon",
-        ItemRarity.Rare => "Rare",
-        ItemRarity.VeryRare => "Very Rare",
-        ItemRarity.Legendary => "Legendary",
-        _ => "Unknown"
-    };
+    public string RarityDisplayName => ShopItemDisplay.RarityName(Rarity);
+
+    public string TypeDisplayName => ShopItemDisplay.TypeName(Type);
 
     public string RarityColorClass => Rarity switch
     {
@@ -69,14 +63,7 @@ public class ShopItemViewModel
         _ => "text-muted"
     };
 
-    public string StatusDisplayName => Status switch
-    {
-        ItemStatus.Draft => "Draft",
-        ItemStatus.Published => "Available",
-        ItemStatus.Archived => "Archived",
-        ItemStatus.Denied => "Denied",
-        _ => "Unknown"
-    };
+    public string StatusDisplayName => ShopItemDisplay.StatusName(Status);
 
     public string StatusColorClass => Status switch
     {
@@ -86,10 +73,4 @@ public class ShopItemViewModel
         ItemStatus.Denied => "text-danger",
         _ => "text-muted"
     };
-
-    public bool IsAvailable =>
-        Status == ItemStatus.Published &&
-        (AvailableFrom == null || AvailableFrom <= DateTime.UtcNow) &&
-        (AvailableUntil == null || AvailableUntil >= DateTime.UtcNow) &&
-        Quantity != 0;
 }

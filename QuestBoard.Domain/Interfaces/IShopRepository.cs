@@ -5,9 +5,9 @@ namespace QuestBoard.Domain.Interfaces;
 public interface IShopRepository : IBaseRepository<ShopItem>
 {
     /// <summary>
-    /// Returns all published items whose optional availability window includes the current time.
+    /// Returns all published items whose availability window includes the given board-local time.
     /// </summary>
-    Task<IList<ShopItem>> GetPublishedItemsAsync(CancellationToken token = default);
+    Task<IList<ShopItem>> GetPublishedItemsAsync(DateTime boardNow, CancellationToken token = default);
 
     /// <summary>
     /// Returns all shop items with the given status (int-encoded ItemStatus), newest first.
@@ -15,9 +15,9 @@ public interface IShopRepository : IBaseRepository<ShopItem>
     Task<IList<ShopItem>> GetItemsByStatusAsync(int status, CancellationToken token = default);
 
     /// <summary>
-    /// Returns published items of the given type (int-encoded ItemType) whose availability window includes the current time.
+    /// Returns published items of the given type (int-encoded ItemType) whose availability window includes the given board-local time.
     /// </summary>
-    Task<IList<ShopItem>> GetItemsByTypeAsync(int type, CancellationToken token = default);
+    Task<IList<ShopItem>> GetItemsByTypeAsync(int type, DateTime boardNow, CancellationToken token = default);
 
     /// <summary>
     /// Returns a single shop item with its creator and transaction history loaded.
@@ -30,7 +30,8 @@ public interface IShopRepository : IBaseRepository<ShopItem>
     Task<IList<ShopItem>> GetItemsByDmAsync(int dmId, CancellationToken token = default);
 
     /// <summary>
-    /// Returns a page of published, currently-available items filtered by type, rarities, and search text, in the requested sort order.
+    /// Returns a page of published items whose availability window includes the given board-local time, filtered by type,
+    /// rarities, and search text, in the requested sort order.
     /// </summary>
     Task<(IList<ShopItem> Items, int TotalCount)> GetPagedPublishedItemsAsync(
         int? type,
@@ -39,5 +40,6 @@ public interface IShopRepository : IBaseRepository<ShopItem>
         string? search,
         int page,
         int pageSize,
+        DateTime boardNow,
         CancellationToken token = default);
 }

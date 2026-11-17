@@ -1,6 +1,7 @@
 using AutoMapper;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
+using QuestBoard.Domain.Models.Shop;
 using QuestBoard.Service.Filters;
 using QuestBoard.Service.ViewModels.ShopViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -10,7 +11,13 @@ namespace QuestBoard.Service.Controllers.Shop;
 
 [Authorize]
 [BoardPage(BoardPage.Shop)]
-public class ShopController(IShopService shopService, IUserService userService, IMapper mapper) : Controller
+public class ShopController(
+    IShopService shopService,
+    IUserService userService,
+    IMapper mapper,
+    IAuthorizationService authorizationService,
+    IBoardClock boardClock
+    ) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(
@@ -66,12 +73,19 @@ public class ShopController(IShopService shopService, IUserService userService, 
     public async Task<IActionResult> Details(int id, bool isModal = false, CancellationToken token = default)
     {
         var item = await shopService.GetItemWithDetailsAsync(id, token);
-        if (item == null)
+        var boardNow = boardClock.Now;
+
+        // Items that have never been on sale (a draft, a denied item, or one whose sale has not started) open only for
+        // the board's Dungeon Masters and Admins. Anyone else gets the same not-found answer as an id that does not
+        // exist, so a guessed id reveals nothing. Archived items and items whose sale has ended stay open: they were on
+        // sale once, and a purchase refused because the item was just taken off sale lands on this page.
+        if (item == null || (IsUnreleased(item, boardNow) && !await MayReviewUnreleasedItemsAsync()))
         {
             return NotFound();
         }
 
         var viewModel = mapper.Map<ShopItemDetailsViewModel>(item);
+        viewModel.IsOnSale = ShopItemAvailability.IsOnSale(item, boardNow);
 
         if (isModal)
         {
@@ -81,6 +95,12 @@ public class ShopController(IShopService shopService, IUserService userService, 
 
         return View(viewModel);
     }
+
+    private static bool IsUnreleased(ShopItem item, DateTime boardNow) =>
+        item.Status == ItemStatus.Draft || item.Status == ItemStatus.Denied || !ShopItemAvailability.HasOpened(item, boardNow);
+
+    private async Task<bool> MayReviewUnreleasedItemsAsync() =>
+        (await authorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded;
 
     [HttpPost]
     [ValidateAntiForgeryToken]

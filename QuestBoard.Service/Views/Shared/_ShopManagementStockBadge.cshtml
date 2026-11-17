@@ -1,0 +1,17 @@
+@model int
+@if (Model == -1)
+{
+    <span class="badge bg-success"><i class="fas fa-infinity me-1" aria-hidden="true"></i>Unlimited</span>
+}
+else if (Model == 0)
+{
+    <span class="badge bg-danger"><i class="fas fa-times-circle me-1" aria-hidden="true"></i>Sold Out</span>
+}
+else if (Model <= 5)
+{
+    <span class="badge bg-warning"><i class="fas fa-exclamation-triangle me-1" aria-hidden="true"></i>@Model left</span>
+}
+else
+{
+    <span class="badge bg-info"><i class="fas fa-box me-1" aria-hidden="true"></i>@Model</span>
+}
