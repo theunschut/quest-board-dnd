@@ -57,7 +57,9 @@ public class ViewModelProfile : Profile
 
         // ShopItem to ShopItemDetailsViewModel
         CreateMap<ShopItem, ShopItemDetailsViewModel>()
-            .ForMember(dest => dest.CreatedByDmName, opt => opt.MapFrom(src => src.CreatedByDm != null ? src.CreatedByDm.Name : "Unknown"));
+            .ForMember(dest => dest.CreatedByDmName, opt => opt.MapFrom(src => src.CreatedByDm != null ? src.CreatedByDm.Name : "Unknown"))
+            // Judged on the board clock, so the controller sets it after mapping.
+            .ForMember(dest => dest.IsOnSale, opt => opt.Ignore());
 
         // UserTransaction to UserTransactionViewModel
         CreateMap<UserTransaction, UserTransactionViewModel>()

@@ -73,10 +73,4 @@ public class ShopItemViewModel
         ItemStatus.Denied => "text-danger",
         _ => "text-muted"
     };
-
-    public bool IsAvailable =>
-        Status == ItemStatus.Published &&
-        (AvailableFrom == null || AvailableFrom <= DateTime.UtcNow) &&
-        (AvailableUntil == null || AvailableUntil >= DateTime.UtcNow) &&
-        Quantity != 0;
 }

@@ -980,7 +980,18 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
     [InlineData(false, true, "Available until")]
     public async Task ShopDetails_HalfOpenWindow_RendersTheMatchingLine(bool hasFrom, bool hasUntil, string wording)
     {
-        var (client, _, itemId) = await SeedMemberAndItemAsync($"shopr_half_{wording.Length}");
+        // A start still ahead means the item has not gone on sale, so only a Dungeon Master opens it: the item's own
+        // Dungeon Master views that row. A plain member views the row whose window has already closed.
+        HttpClient client;
+        int itemId;
+        if (hasFrom)
+        {
+            (client, itemId) = await SeedEditablePageAsync($"shopr_half_{wording.Length}", ItemStatus.Published);
+        }
+        else
+        {
+            (client, _, itemId) = await SeedMemberAndItemAsync($"shopr_half_{wording.Length}");
+        }
         await UpdateItemAsync(itemId, i =>
         {
             i.AvailableFrom = hasFrom ? new DateTime(2026, 12, 1) : null;

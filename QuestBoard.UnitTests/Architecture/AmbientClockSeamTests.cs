@@ -40,6 +40,7 @@ public class AmbientClockSeamTests
         "QuestBoard.Service/Controllers/Events/EventsController.cs",
         "QuestBoard.Service/Controllers/Events/SeriesController.cs",
         "QuestBoard.Service/Controllers/MoveController.cs",
+        "QuestBoard.Service/Controllers/Shop/ShopController.cs",
         "QuestBoard.Service/Jobs/DailyReminderJob.cs",
         "QuestBoard.Service/Views/Admin/Quests.cshtml",
         "QuestBoard.Service/Views/Admin/Quests.Mobile.cshtml",
@@ -99,6 +100,7 @@ public class AmbientClockSeamTests
         "QuestBoard.Service/Controllers/QuestBoard/QuestLogController.cs",
         "QuestBoard.Service/Controllers/Events/EventsController.cs",
         "QuestBoard.Service/Controllers/Events/SeriesController.cs",
+        "QuestBoard.Service/Controllers/Shop/ShopController.cs",
         "QuestBoard.Service/Jobs/DailyReminderJob.cs",
     ];
 

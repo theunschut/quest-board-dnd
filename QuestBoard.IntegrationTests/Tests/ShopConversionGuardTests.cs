@@ -202,6 +202,20 @@ public class ShopConversionGuardTests
         "QuestBoard.IntegrationTests/Controllers/ShopControllerIntegrationTests.cs",
         "QuestBoard.Service/Controllers/Shop/ShopController.cs",
         "QuestBoard.IntegrationTests/Security/CrossBoardAuthorizationBoundaryTests.cs",
+        "QuestBoard.Repository/Automapper/EntityProfile.cs",
+        "QuestBoard.IntegrationTests/Tests/ShopFormPostEffectTests.cs",
+        "QuestBoard.UnitTests/Services/ShopServiceStockWriteTests.cs",
+        "QuestBoard.Service/Controllers/Shop/ShopManagementController.cs",
+        "QuestBoard.IntegrationTests/Controllers/ShopManagementControllerIntegrationTests.cs",
+        "QuestBoard.Domain/Models/Shop/ShopItemAvailability.cs",
+        "QuestBoard.Domain/Interfaces/IShopRepository.cs",
+        "QuestBoard.Repository/ShopRepository.cs",
+        "QuestBoard.UnitTests/Models/ShopItemAvailabilityTests.cs",
+        "QuestBoard.UnitTests/Repository/ShopRepositoryAvailabilityTests.cs",
+        "QuestBoard.UnitTests/Architecture/AmbientClockSeamTests.cs",
+        "QuestBoard.Service/ViewModels/ShopViewModels/ShopItemDetailsViewModel.cs",
+        "QuestBoard.Service/Automapper/ViewModelProfile.cs",
+        "QuestBoard.IntegrationTests/Tests/ShopAvailabilityWindowTests.cs",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it
@@ -268,14 +282,12 @@ public class ShopConversionGuardTests
         Regex.Matches(StripRazorAndHtmlComments(view), @"DateTime\.(?:UtcNow|Now|Today)\b|DateTimeOffset\.(?:UtcNow|Now)\b")
             .Select(m => m.Value).ToList();
 
-    // The real-instant reads the shop's view models are allowed, matched by the text of the line that holds each one:
-    // the 24-hour return window of a purchase, and the open and close of an item's availability window. Both compare a
-    // UTC-stored instant with the present moment; neither is a board calendar day. A file maps to the marker the line
-    // must hold and how many such lines it may have.
+    // The one real-instant read the shop's view models are allowed, matched by the text of the line that holds it: the
+    // 24-hour return window of a purchase, which compares a UTC-stored instant with the present moment and is not a
+    // board calendar day. A file maps to the marker the line must hold and how many such lines it may have.
     private static readonly Dictionary<string, (string Marker, int Count)> AllowedViewModelClockReads = new(StringComparer.Ordinal)
     {
         ["UserTransactionViewModel.cs"] = ("CanReturn", 1),
-        ["ShopItemViewModel.cs"] = ("Available", 2),
     };
 
     // What is wrong with the clock reads in a set of view model sources, keyed by file name: any local-clock read, and any
@@ -771,7 +783,7 @@ public class ShopConversionGuardTests
         sources.Should().ContainKey("UserTransactionViewModel.cs");
 
         ViewModelClockBreaks(sources).Should().BeEmpty(
-            "the shop's view models read the present moment only for the return window and the availability window");
+            "the shop's view models read the present moment only for the return window");
     }
 
     [Fact]
