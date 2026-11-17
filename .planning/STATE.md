@@ -5,16 +5,16 @@ milestone_name: Rolling Improvements
 current_phase: 99
 current_phase_name: Shop and Shop management UI conversion
 status: executing
-stopped_at: Completed 99-19-PLAN.md
-last_updated: "2026-11-17T14:54:43.955Z"
-last_activity: 2026-11-16
-last_activity_desc: Phase 99 execution started
+stopped_at: Completed 99-20-PLAN.md
+last_updated: "2026-11-17T16:45:41.712Z"
+last_activity: 2026-11-17
+last_activity_desc: "Phase 99: 21/21 plans complete, Gate 2 approved (gate2-v1), ready for the v6.4.0 release hand-off"
 progress:
   total_phases: 31
-  completed_phases: 25
+  completed_phases: 26
   total_plans: 291
-  completed_plans: 281
-  percent: 81
+  completed_plans: 282
+  percent: 84
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
 
@@ -30,10 +30,10 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 ## Current Position
 
 Phase: 99 (Shop and Shop management UI conversion) — EXECUTING
-Plan: 20 of 21
-Status: Ready to execute
+Plan: 21 of 21
+Status: Phase plans complete — Gate 2 approved; ready for verification and the v6.4.0 release
 Not complete in this milestone: Phases 78, 79 and 90, and 98 onward.
-Last activity: 2026-11-16 — Phase 99 execution started
+Last activity: 2026-11-17 — Phase 99: all 21 plans complete, Gate 2 approved on sheet gate2-v1 (WINDOWS 33 waived); v6.4.0 hand-off through the operator's pull request; verification steps not run
 
 **Phases 96 and 97 complete 2026-11-13.** Shipped as v6.1.0 (PR #170) and v6.2.0 (PR #171); the post-deploy UAT items (96: 7, 97: 5) were confirmed by the operator against production ("i think everything works. so mark as completed").
 
@@ -287,8 +287,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-17T14:54:43.914Z
-Stopped at: Completed 99-19-PLAN.md
+Last session: 2026-11-17T16:45:41.675Z
+Stopped at: Completed 99-20-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

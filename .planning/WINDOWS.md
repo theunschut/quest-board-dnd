@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 6
-waived_count: 7
+open_count: 5
+waived_count: 8
 fixed_count: 20
 total_count: 33
-last_updated: 2026-11-17T14:52:57.702Z
+last_updated: 2026-11-17T16:43:45.484Z
 ---
 
 # Broken Windows Ledger
@@ -47,7 +47,7 @@ last_updated: 2026-11-17T14:52:57.702Z
 | 30 | 95 | unmet-truth | QuestBoard.Service/wwwroot/css/quests.css |  | Poster p5 worst-glyph contrast measures 2.28 at the 304px card (320 window), under its 3.10 poster-glyph floor; operator decision needed (no zone, halo or tuning applied) | waived | User-decided (options c + a): accepted as part of the Gate 1 item 2 heavier-ink exception, held to an explicit Poster5 floor for the 320px window only (2.03 worst glyph / 1.92 darkest pixel, from today's 2.28 / 2.17 minus 0.25); the 3.10 floor still holds at every wider card. Recorded in ~/qb-ui-review/phase-95/contrast-exceptions.json | 2026-11-11T10:41:29.983Z | 2026-11-11T11:27:32.000Z |
 | 31 | 95 | deviation | QuestBoard.Service/Controllers/Characters/CharactersController.cs |  | Gate 2 follow-up for the characters phase: a character without an uploaded picture makes Quest Details, Quest Manage and similar pages request /Characters/GetCroppedPicture/{id}, which answers 404 and logs a console error (audit A-quests-017, S3; also present before Phase 95). Accepted at Gate 2 for this release; fix in the controller (placeholder image or 204). | fixed | Fixed in 98-05, in the views, not the controller: the quest queries now report whether each signup character has a picture and the shared avatar partial (_CharacterAvatar) renders the placeholder without a request on Quest Details, Quest Manage and Quest Log Details; the sweep shows the GetCroppedPicture 404 and console error present BEFORE gone AFTER on all three pages, and rendered tests prove the placeholder and the absent URL per page. The controller is unchanged and still answers 404 for a missing picture. The area's own Characters views (Index and its phone twin, Edit and its phone twin, the dead edit branch of Create, and Details) already build their picture URL only behind the repository's has-picture flag, and no Characters view carries an error handler; they are pinned per view by render facts and the CharacterPictureViews guard in the Characters details, forms and list slices (98-11, 98-17, 98-18). | 2026-11-11T13:48:48.598Z | 2026-11-13T23:49:39.397Z |
 | 32 | 95 | unrun-verify | .planning/phases/95-quests-and-quest-log-ui-conversion/95-18-PLAN.md |  | Phone UAT line from Gate 2, part of the /gsd-verify-work 95 phone UAT: on a phone, open a quest with Rewards on Manage and expand the Rewards disclosure (no review fixture has Rewards, so no sweep ever opened it); confirm it expands, announces its state and keeps 44px targets. | open | Part of the /gsd-verify-work 95 phone UAT: needs a person on a phone, and no review fixture carries Rewards so no sweep has opened the disclosure. Reviewed at the phase 95 close-out and left open for that UAT. | 2026-11-11T13:48:52.467Z |  |
-| 33 | 99 | unmet-truth | QuestBoard.Service/Views/Shop/Details.cshtml |  | No shop form opts in to the site.js submit lock (data-disable-on-submit), at the baseline or now: with the POST held back the Purchase, Save Changes and other primary buttons stay enabled, so a double click can post twice and the in-flight disabled look the UI considerations name does not exist. Gate 2 decision decision-99-no-submit-lock; one attribute per form in a follow-up. | open | Found by the phase 99 closing sweep (inflight-99-19.json); Gate 2 decision decision-99-no-submit-lock. | 2026-11-17T14:52:57.702Z |  |
+| 33 | 99 | unmet-truth | QuestBoard.Service/Views/Shop/Details.cshtml |  | No shop form opts in to the site.js submit lock (data-disable-on-submit), at the baseline or now: with the POST held back the Purchase, Save Changes and other primary buttons stay enabled, so a double click can post twice and the in-flight disabled look the UI considerations name does not exist. Gate 2 decision decision-99-no-submit-lock; one attribute per form in a follow-up. | waived | Accepted by the operator at the phase 99 Gate 2 review (2026-11-17, d1:accept, decision decision-99-no-submit-lock): the shop forms keep the baseline behaviour with no submit lock for this release. Still a candidate follow-up: opt each shop form in with data-disable-on-submit (one attribute per form) plus a test. | 2026-11-17T14:52:57.702Z | 2026-11-17T16:43:45.484Z |
 
 ````json
 [
@@ -442,10 +442,10 @@ last_updated: 2026-11-17T14:52:57.702Z
     "file": "QuestBoard.Service/Views/Shop/Details.cshtml",
     "line": null,
     "description": "No shop form opts in to the site.js submit lock (data-disable-on-submit), at the baseline or now: with the POST held back the Purchase, Save Changes and other primary buttons stay enabled, so a double click can post twice and the in-flight disabled look the UI considerations name does not exist. Gate 2 decision decision-99-no-submit-lock; one attribute per form in a follow-up.",
-    "status": "open",
-    "reason": "Found by the phase 99 closing sweep (inflight-99-19.json); Gate 2 decision decision-99-no-submit-lock.",
+    "status": "waived",
+    "reason": "Accepted by the operator at the phase 99 Gate 2 review (2026-11-17, d1:accept, decision decision-99-no-submit-lock): the shop forms keep the baseline behaviour with no submit lock for this release. Still a candidate follow-up: opt each shop form in with data-disable-on-submit (one attribute per form) plus a test.",
     "recorded_at": "2026-11-17T14:52:57.702Z",
-    "resolved_at": null
+    "resolved_at": "2026-11-17T16:43:45.484Z"
   }
 ]
 ````
