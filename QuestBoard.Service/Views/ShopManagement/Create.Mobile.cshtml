@@ -4,6 +4,7 @@
 @{
     ViewData["Title"] = "Add New Shop Item";
     ViewData["Theme"] = "shop";
+    var hasAvailabilityWindow = Model.AvailableFrom != null || Model.AvailableUntil != null;
 }
 
 <div class="card modern-card shop-form form-page">
@@ -85,7 +86,7 @@
                 <i class="fas fa-clock" aria-hidden="true"></i>Availability Window
             </h2>
             <div class="form-check mb-3">
-                <input class="form-check-input" type="checkbox" id="enableAvailabilityWindow" data-availability-toggle aria-describedby="enableAvailabilityWindow-help" />
+                <input class="form-check-input" type="checkbox" id="enableAvailabilityWindow" data-availability-toggle aria-describedby="enableAvailabilityWindow-help" checked="@hasAvailabilityWindow" />
                 <label class="form-check-label" for="enableAvailabilityWindow">
                     Set specific availability dates for this item
                 </label>
@@ -94,12 +95,12 @@
             <div class="shop-form__row">
                 <div class="mb-3">
                     <label asp-for="AvailableFrom" class="form-label"></label>
-                    <input asp-for="AvailableFrom" type="datetime-local" class="form-control" disabled />
+                    <input asp-for="AvailableFrom" type="datetime-local" class="form-control" disabled="@(!hasAvailabilityWindow)" />
                     <span asp-validation-for="AvailableFrom"></span>
                 </div>
                 <div class="mb-3">
                     <label asp-for="AvailableUntil" class="form-label"></label>
-                    <input asp-for="AvailableUntil" type="datetime-local" class="form-control" disabled />
+                    <input asp-for="AvailableUntil" type="datetime-local" class="form-control" disabled="@(!hasAvailabilityWindow)" />
                     <span asp-validation-for="AvailableUntil"></span>
                 </div>
             </div>

@@ -3,6 +3,7 @@ using QuestBoard.Domain.Enums;
 using QuestBoard.IntegrationTests.Helpers;
 using QuestBoard.Repository.Entities;
 using System.Net;
+using System.Text.RegularExpressions;
 
 namespace QuestBoard.IntegrationTests.Controllers;
 
@@ -125,5 +126,65 @@ public class ShopManagementControllerIntegrationTests(WebApplicationFactoryBase 
 
         response.StatusCode.Should().Be(HttpStatusCode.Redirect);
         (await GetAllShopItemsAsync()).Should().BeEmpty();
+    }
+
+    private const string DesktopUserAgent =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+    private const string MobileUserAgent =
+        "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
+
+    // Posts a form that the server refuses (a reference link that is not a URL) and returns the page it shows again.
+    private static async Task<string> PostRefusedFormAsync(HttpClient client, string path, Dictionary<string, string> formData, bool mobile)
+    {
+        formData["ReferenceUrl"] = "this is not a url";
+        var form = await BuildAntiForgeryFormAsync(client, path, formData);
+        var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = form };
+        request.Headers.TryAddWithoutValidation("User-Agent", mobile ? MobileUserAgent : DesktopUserAgent);
+        var response = await client.SendAsync(request, Token);
+        response.StatusCode.Should().Be(HttpStatusCode.OK, "a refused form is shown again, not redirected");
+        return await response.Content.ReadAsStringAsync(Token);
+    }
+
+    private static string InputTag(string html, string attributeName, string attributeValue)
+    {
+        var match = Regex.Match(html, $@"<input\b[^>]*\b{attributeName}=""{attributeValue}""[^>]*>");
+        match.Success.Should().BeTrue($"the page has an input with {attributeName}=\"{attributeValue}\"");
+        return match.Value;
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Create_Post_RefusedWithAvailabilityDates_ShowsTheDatesInOpenFieldsWithTheBoxChecked(bool mobile)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, $"shop_dm_create_refused_{mobile}", $"shop_dm_create_refused_{mobile}@example.com", roles: ["DungeonMaster"]);
+        var formData = ItemForm("Refused Lantern", ItemRarity.Rare);
+        formData["AvailableFrom"] = "2030-01-05T10:00";
+        formData["AvailableUntil"] = "2030-02-05T10:00";
+
+        var html = await PostRefusedFormAsync(dmClient, "/ShopManagement/Create", formData, mobile);
+
+        InputTag(html, "id", "enableAvailabilityWindow").Should().Contain("checked");
+        InputTag(html, "name", "AvailableFrom").Should().Contain("2030-01-05T10:00").And.NotContain("disabled");
+        InputTag(html, "name", "AvailableUntil").Should().Contain("2030-02-05T10:00").And.NotContain("disabled");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Create_Post_RefusedWithoutAvailabilityDates_KeepsTheBoxUncheckedAndTheFieldsDisabled(bool mobile)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, $"shop_dm_create_nodates_{mobile}", $"shop_dm_create_nodates_{mobile}@example.com", roles: ["DungeonMaster"]);
+
+        var html = await PostRefusedFormAsync(dmClient, "/ShopManagement/Create", ItemForm("Refused Lantern", ItemRarity.Rare), mobile);
+
+        InputTag(html, "id", "enableAvailabilityWindow").Should().NotContain("checked");
+        InputTag(html, "name", "AvailableFrom").Should().Contain("disabled");
+        InputTag(html, "name", "AvailableUntil").Should().Contain("disabled");
     }
 }
