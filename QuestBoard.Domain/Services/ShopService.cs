@@ -156,9 +156,8 @@ internal class ShopService(IShopRepository repository, IUserTransactionRepositor
         var item = await repository.GetByIdAsync(originalTransaction.ShopItemId, token)
             ?? throw new InvalidOperationException("Original item no longer exists.");
 
-        // Calculate time since purchase
-        var timeSincePurchase = DateTime.UtcNow - originalTransaction.TransactionDate;
-        var isReturn = timeSincePurchase.TotalHours <= 24;
+        // Full price back inside the shared return window, half price after it
+        var isReturn = ShopReturnPolicy.IsWithinReturnWindow(originalTransaction.TransactionDate, DateTime.UtcNow);
 
         // Calculate refund amount
         var originalUnitPrice = originalTransaction.Price / originalTransaction.Quantity;

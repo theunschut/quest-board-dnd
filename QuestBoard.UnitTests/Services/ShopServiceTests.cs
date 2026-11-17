@@ -192,4 +192,36 @@ public class ShopServiceTests
         item.Quantity.Should().Be(-1);
         await transactions.Received(1).AddAsync(Arg.Any<UserTransaction>(), Arg.Any<CancellationToken>());
     }
+
+    // The return window the history list offers a Return by and the one the service decides a posted return by are one
+    // definition, so for any purchase age the list's answer and the service's outcome agree.
+    [Theory]
+    [InlineData(1, true)]
+    [InlineData(23.5, true)]
+    [InlineData(24.5, false)]
+    [InlineData(48, false)]
+    public async Task ReturnOrSellItemAsync_FollowsTheSameWindowTheHistoryListOffersAReturnBy(double hoursAgo, bool expectedReturn)
+    {
+        var (service, shop, transactions) = CreateService();
+        var purchase = new UserTransaction
+        {
+            Id = 5,
+            ShopItemId = 1,
+            UserId = Member.Id,
+            Quantity = 2,
+            Price = 200m,
+            TransactionType = TransactionType.Purchase,
+            TransactionDate = DateTime.UtcNow.AddHours(-hoursAgo),
+        };
+        transactions.GetTransactionWithDetailsAsync(5, Arg.Any<CancellationToken>()).Returns(purchase);
+        transactions.GetTransactionsByUserAsync(Member.Id, Arg.Any<CancellationToken>()).Returns(new List<UserTransaction> { purchase });
+        shop.GetByIdAsync(1, Arg.Any<CancellationToken>())
+            .Returns(new ShopItem { Id = 1, Name = "Rope", Price = 100m, Quantity = -1, Status = ItemStatus.Published });
+
+        var result = await service.ReturnOrSellItemAsync(5, 2, Member, TestContext.Current.CancellationToken);
+
+        (result.Price == 200m).Should().Be(expectedReturn, "a return pays full price and a sell-back pays half");
+        var viewModel = new QuestBoard.Service.ViewModels.ShopViewModels.UserTransactionViewModel { TransactionDate = purchase.TransactionDate };
+        viewModel.CanReturn.Should().Be(expectedReturn);
+    }
 }
