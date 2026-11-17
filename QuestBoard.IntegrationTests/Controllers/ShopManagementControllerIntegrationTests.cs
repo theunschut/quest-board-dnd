@@ -187,4 +187,57 @@ public class ShopManagementControllerIntegrationTests(WebApplicationFactoryBase 
         InputTag(html, "name", "AvailableFrom").Should().Contain("disabled");
         InputTag(html, "name", "AvailableUntil").Should().Contain("disabled");
     }
+
+    [Theory]
+    [InlineData(false, ItemStatus.Published)]
+    [InlineData(true, ItemStatus.Published)]
+    [InlineData(false, ItemStatus.Archived)]
+    [InlineData(true, ItemStatus.Archived)]
+    public async Task Edit_Post_RefusedForANonDraftItem_ShowsTheItemsRealStatusAndNoUnderReviewNotice(bool mobile, ItemStatus status)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dm) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, $"shop_dm_edit_refused_{mobile}_{status}", $"shop_dm_edit_refused_{mobile}_{status}@example.com", roles: ["DungeonMaster"]);
+        var existing = await TestDataHelper.CreateShopItemAsync(factory.Services, dm.Id, "Refused Edit", rarity: ItemRarity.Rare);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var tracked = await context.ShopItems.IgnoreQueryFilters().SingleAsync(i => i.Id == existing.Id, Token);
+            tracked.Status = (int)status;
+            await context.SaveChangesAsync(Token);
+        }
+        var formData = ItemForm("Refused Edit", ItemRarity.Rare);
+        formData["Id"] = existing.Id.ToString();
+
+        var html = await PostRefusedFormAsync(dmClient, $"/ShopManagement/Edit/{existing.Id}", formData, mobile);
+
+        html.Should().NotContain("Pending Review");
+        html.Should().NotContain("awaiting DM approval");
+        html.Should().NotContain("Item Under Review");
+        html.Should().Contain(status == ItemStatus.Published ? "Available" : "Archived");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Edit_Post_RefusedForADraftItem_StillShowsItAsAwaitingApproval(bool mobile)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (dmClient, dm) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, $"shop_dm_edit_draft_{mobile}", $"shop_dm_edit_draft_{mobile}@example.com", roles: ["DungeonMaster"]);
+        var existing = await TestDataHelper.CreateShopItemAsync(factory.Services, dm.Id, "Refused Draft", rarity: ItemRarity.Rare);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var tracked = await context.ShopItems.IgnoreQueryFilters().SingleAsync(i => i.Id == existing.Id, Token);
+            tracked.Status = (int)ItemStatus.Draft;
+            await context.SaveChangesAsync(Token);
+        }
+        var formData = ItemForm("Refused Draft", ItemRarity.Rare);
+        formData["Id"] = existing.Id.ToString();
+
+        var html = await PostRefusedFormAsync(dmClient, $"/ShopManagement/Edit/{existing.Id}", formData, mobile);
+
+        html.Should().Contain("awaiting DM approval");
+    }
 }

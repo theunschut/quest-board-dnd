@@ -122,6 +122,14 @@ public class ShopManagementController(
     {
         if (!ModelState.IsValid)
         {
+            // The status is not a form field, so the posted model carries the enum default. Show the item's real status
+            // again rather than claiming the item is pending review.
+            var current = await shopService.GetByIdAsync(id, token);
+            if (current != null)
+            {
+                viewModel.Status = current.Status;
+            }
+
             return View(viewModel);
         }
 
