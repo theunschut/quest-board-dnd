@@ -200,6 +200,8 @@ public class ShopConversionGuardTests
         "QuestBoard.Domain/Interfaces/IShopService.cs",
         "QuestBoard.UnitTests/Services/ShopServiceTests.cs",
         "QuestBoard.IntegrationTests/Controllers/ShopControllerIntegrationTests.cs",
+        "QuestBoard.Service/Controllers/Shop/ShopController.cs",
+        "QuestBoard.IntegrationTests/Security/CrossBoardAuthorizationBoundaryTests.cs",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it

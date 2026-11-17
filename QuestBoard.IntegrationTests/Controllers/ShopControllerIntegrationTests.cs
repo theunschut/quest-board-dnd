@@ -418,6 +418,96 @@ public class ShopControllerIntegrationTests : IClassFixture<WebApplicationFactor
         body.Should().Contain(UnreleasedItemName);
     }
 
+    // A reviewer who did not make the item: another Dungeon Master, an Admin of the board, or a SuperAdmin who is only a
+    // Player on the board, so the SuperAdmin case shows the policy decides rather than the board role alone.
+    private async Task<HttpClient> CreateReviewerClientAsync(string viewer, string suffix)
+    {
+        var userName = $"accessreviewer_{viewer}_{suffix}";
+        var email = $"{userName}@example.com";
+        var (client, _) = viewer switch
+        {
+            "dm" => await AuthenticationHelper.CreateAuthenticatedDMClientAsync(_factory, userName, email),
+            "admin" => await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory, userName, email),
+            "superadmin" => await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory, userName, email),
+            _ => throw new ArgumentOutOfRangeException(nameof(viewer), viewer, "unknown reviewer kind"),
+        };
+        return client;
+    }
+
+    [Theory]
+    [InlineData("dm", ItemStatus.Draft, false)]
+    [InlineData("dm", ItemStatus.Draft, true)]
+    [InlineData("dm", ItemStatus.Denied, false)]
+    [InlineData("dm", ItemStatus.Denied, true)]
+    [InlineData("admin", ItemStatus.Draft, false)]
+    [InlineData("admin", ItemStatus.Draft, true)]
+    [InlineData("admin", ItemStatus.Denied, false)]
+    [InlineData("admin", ItemStatus.Denied, true)]
+    [InlineData("superadmin", ItemStatus.Draft, false)]
+    [InlineData("superadmin", ItemStatus.Draft, true)]
+    [InlineData("superadmin", ItemStatus.Denied, false)]
+    [InlineData("superadmin", ItemStatus.Denied, true)]
+    public async Task Details_DraftOrDeniedItem_OpensForAnotherDungeonMasterAnAdminOrASuperAdmin(string viewer, ItemStatus status, bool dialog)
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var itemId = await SeedKeeperItemAsync(suffix, status);
+        var client = await CreateReviewerClientAsync(viewer, suffix);
+
+        var response = await client.GetAsync(DetailsUrl(itemId, dialog), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, $"whoever reviews {status} items in shop management may open one they did not make");
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain(UnreleasedItemName);
+    }
+
+    [Theory]
+    [InlineData(ItemStatus.Published, false)]
+    [InlineData(ItemStatus.Published, true)]
+    [InlineData(ItemStatus.Archived, false)]
+    [InlineData(ItemStatus.Archived, true)]
+    public async Task Details_PublishedOrArchivedItem_StillOpensForAPlainMember(ItemStatus status, bool dialog)
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var itemId = await SeedKeeperItemAsync(suffix, status);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"accessmember_{suffix}", $"accessmember_{suffix}@example.com");
+
+        var response = await client.GetAsync(DetailsUrl(itemId, dialog), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, $"a {status} item has been on sale and stays open to members");
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain(UnreleasedItemName);
+        if (!dialog && status == ItemStatus.Published)
+            body.Should().Contain("Purchase Item");
+        if (!dialog && status == ItemStatus.Archived)
+            body.Should().Contain("This item is not currently available for purchase.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Details_RefusedItem_AnswersExactlyLikeAMissingId(bool dialog)
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var itemId = await SeedKeeperItemAsync(suffix, ItemStatus.Draft);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, $"accessmember_{suffix}", $"accessmember_{suffix}@example.com");
+        int missingId;
+        await using (var ctx = _factory.Database.CreateContext())
+        {
+            missingId = await ctx.ShopItems.IgnoreQueryFilters().MaxAsync(i => i.Id, TestContext.Current.CancellationToken) + 1000;
+        }
+
+        var refused = await client.GetAsync(DetailsUrl(itemId, dialog), TestContext.Current.CancellationToken);
+        var missing = await client.GetAsync(DetailsUrl(missingId, dialog), TestContext.Current.CancellationToken);
+
+        refused.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        missing.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var refusedBody = await refused.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var missingBody = await missing.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        refusedBody.Should().Be(missingBody, "a guessed id must not tell an unreleased item from one that does not exist");
+    }
+
     private const string QuantityRefusal = "Quantity must be at least 1.";
 
     // A signed-in member and one Published item with the given stock, for the crafted-post facts.
