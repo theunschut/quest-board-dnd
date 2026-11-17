@@ -2037,7 +2037,7 @@ Plans:
 **Goal:** Convert the shop and its management pages after the Shop theme is decided, fixing the functional breaks the conversion touches. Convert the shop and shop management pages to the foundation in the navy shop theme, relocating the floating merchant button and fixing the hidden Return and Sell buttons, the dead Preview and View Details controls and the sell confirmation script.
 **Requirements**: TBD
 **Depends on:** Phase 94 and the separate Shop item creation fix (a bug fix off `main`, outside this phase)
-**Plans:** 23/24 plans executed
+**Plans:** 24/24 plans executed
 
 **Scope:**
 
@@ -2182,7 +2182,7 @@ Plans:
 
 **Wave 24** *(blocked on Wave 23 completion)*
 
-- [ ] 99-24-PLAN.md — Shop edit-review and delete-ownership gaps (operator: "Fix first", from the phase security audit's residual note): an edit never publishes, so a Draft or Denied item stays in review whatever rarity it is edited to, and an edit that leaves a Published or Archived item at Rare or above sends it back to review (Create still publishes Common and Uncommon at once; one shared review rule); the Edit toast says when an item went back to review; a Dungeon Master who is not an Admin may delete only their own Draft or Denied item, while Admins and SuperAdmins keep every right through the AdminOnly policy; both management lists, desktop and phone, offer Delete only where the server accepts it and keep every Edit link; a Dungeon Master publishing their own edit of another keeper's item left open for the operator's choice
+- [x] 99-24-PLAN.md — Shop edit-review and delete-ownership gaps (operator: "Fix first", from the phase security audit's residual note): an edit never publishes, so a Draft or Denied item stays in review whatever rarity it is edited to, and an edit that leaves a Published or Archived item at Rare or above sends it back to review (Create still publishes Common and Uncommon at once; one shared review rule); the Edit toast says when an item went back to review; a Dungeon Master who is not an Admin may delete only their own Draft or Denied item, while Admins and SuperAdmins keep every right through the AdminOnly policy; both management lists, desktop and phone, offer Delete only where the server accepts it and keep every Edit link; a Dungeon Master publishing their own edit of another keeper's item left open for the operator's choice
 
 ### Phase 100: Admin and Platform UI conversion
 
