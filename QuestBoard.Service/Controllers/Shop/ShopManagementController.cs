@@ -215,6 +215,14 @@ public class ShopManagementController(
             return NotFound();
         }
 
+        // Only an item that is on sale can be taken off sale. Archiving a draft or a denied item and then reopening it
+        // would publish it without another Dungeon Master's review.
+        if (item.Status != ItemStatus.Published)
+        {
+            TempData["Error"] = "Only published items can be archived.";
+            return RedirectToAction(nameof(Index));
+        }
+
         await shopService.ArchiveItemAsync(id, token);
 
         TempData["Success"] = "Item archived successfully!";

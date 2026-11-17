@@ -240,4 +240,115 @@ public class ShopManagementControllerIntegrationTests(WebApplicationFactoryBase 
 
         html.Should().Contain("awaiting DM approval");
     }
+
+    // ---- Archive and Reopen: only an item on sale can be taken off sale ---------------------------------
+
+    private const string ArchiveRefusal = "Only published items can be archived.";
+
+    private async Task<(HttpClient Client, UserEntity Viewer)> SeedViewerAsync(string handle, bool admin)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        factory.TestGroupContext.ActiveGroupId = 1;
+        return admin
+            ? await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(factory, handle, $"{handle}@example.com")
+            : await AuthenticationHelper.CreateAuthenticatedDMClientAsync(factory, handle, $"{handle}@example.com");
+    }
+
+    private async Task<int> SeedItemAsync(int createdById, string name, ItemStatus status)
+    {
+        var item = await TestDataHelper.CreateShopItemAsync(factory.Services, createdById, name, rarity: ItemRarity.Rare);
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var tracked = await context.ShopItems.IgnoreQueryFilters().SingleAsync(i => i.Id == item.Id, Token);
+        tracked.Status = (int)status;
+        await context.SaveChangesAsync(Token);
+        return item.Id;
+    }
+
+    private async Task<ItemStatus> ReadStatusAsync(int itemId)
+    {
+        var item = (await GetAllShopItemsAsync()).Should().ContainSingle(i => i.Id == itemId).Subject;
+        return (ItemStatus)item.Status;
+    }
+
+    private static async Task<HttpResponseMessage> PostManagementActionAsync(HttpClient client, string action, int itemId)
+    {
+        var form = await BuildAntiForgeryFormAsync(client, "/ShopManagement", []);
+        var response = await client.PostAsync($"/ShopManagement/{action}/{itemId}", form, Token);
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect, $"{action} answers with a redirect to the management list");
+        response.Headers.Location!.OriginalString.Should().EndWith("/ShopManagement");
+        return response;
+    }
+
+    [Theory]
+    [InlineData(false, ItemStatus.Draft)]
+    [InlineData(false, ItemStatus.Denied)]
+    [InlineData(false, ItemStatus.Archived)]
+    [InlineData(true, ItemStatus.Draft)]
+    [InlineData(true, ItemStatus.Denied)]
+    [InlineData(true, ItemStatus.Archived)]
+    public async Task Archive_Post_AnItemThatIsNotPublished_IsRefusedAndKeepsItsStatus(bool admin, ItemStatus status)
+    {
+        var handle = $"shop_archive_refused_{(admin ? "admin" : "dm")}_{status}".ToLowerInvariant();
+        var (client, viewer) = await SeedViewerAsync(handle, admin);
+        var itemId = await SeedItemAsync(viewer.Id, "Not On Sale", status);
+
+        var response = await PostManagementActionAsync(client, "Archive", itemId);
+
+        var landing = await client.GetAsync(response.Headers.Location!.OriginalString, Token);
+        landing.StatusCode.Should().Be(HttpStatusCode.OK);
+        WebUtility.HtmlDecode(await landing.Content.ReadAsStringAsync(Token)).Should().Contain(ArchiveRefusal);
+        (await ReadStatusAsync(itemId)).Should().Be(status, "a refused archive changes nothing");
+    }
+
+    [Theory]
+    [InlineData(false, ItemStatus.Draft)]
+    [InlineData(false, ItemStatus.Denied)]
+    [InlineData(true, ItemStatus.Draft)]
+    [InlineData(true, ItemStatus.Denied)]
+    public async Task ArchiveThenReopen_OnTheCreatorsOwnUnreviewedItem_NeverPublishesIt(bool admin, ItemStatus status)
+    {
+        var handle = $"shop_archive_reopen_{(admin ? "admin" : "dm")}_{status}".ToLowerInvariant();
+        var (client, viewer) = await SeedViewerAsync(handle, admin);
+        var itemId = await SeedItemAsync(viewer.Id, "Unreviewed", status);
+
+        await PostManagementActionAsync(client, "Archive", itemId);
+        await PostManagementActionAsync(client, "Reopen", itemId);
+
+        (await ReadStatusAsync(itemId)).Should().Be(status, "an item no second Dungeon Master reviewed stays unpublished");
+    }
+
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    public async Task Archive_Post_APublishedItem_TakesItOffSale(bool admin, bool ownItem)
+    {
+        var handle = $"shop_archive_published_{(admin ? "admin" : "dm")}_{(ownItem ? "own" : "other")}";
+        var (client, viewer) = await SeedViewerAsync(handle, admin);
+        var ownerId = ownItem
+            ? viewer.Id
+            : (await AuthenticationHelper.CreateTestUserAsync(factory.Services, $"{handle}_keeper", $"{handle}_keeper@example.com")).Id;
+        var itemId = await SeedItemAsync(ownerId, "On Sale", ItemStatus.Published);
+
+        await PostManagementActionAsync(client, "Archive", itemId);
+
+        (await ReadStatusAsync(itemId)).Should().Be(ItemStatus.Archived);
+    }
+
+    [Fact]
+    public async Task Reopen_Post_AnItemArchivedFromSale_PutsItBackOnSale()
+    {
+        var (client, _) = await SeedViewerAsync("shop_reopen_archived", admin: false);
+        var keeper = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "shop_reopen_archived_keeper", "shop_reopen_archived_keeper@example.com");
+        var itemId = await SeedItemAsync(keeper.Id, "Back On Sale", ItemStatus.Published);
+
+        await PostManagementActionAsync(client, "Archive", itemId);
+        (await ReadStatusAsync(itemId)).Should().Be(ItemStatus.Archived);
+        await PostManagementActionAsync(client, "Reopen", itemId);
+
+        (await ReadStatusAsync(itemId)).Should().Be(ItemStatus.Published);
+    }
 }

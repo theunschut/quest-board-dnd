@@ -509,6 +509,40 @@ public class ShopRenderTests(WebApplicationFactoryBase factory) : IClassFixture<
         Regex.Matches(html, @"<form\b[^>]*\baction=""/ShopManagement/(?<action>Publish|Archive|Reopen|Delete)/\d+""[^>]*>")
             .Select(m => (m.Value, m.Groups["action"].Value)).ToList();
 
+    // Archive takes an item off sale and Reopen puts an archived item back, so the lists may offer Archive only on an
+    // item that is on sale and Reopen only on an archived one, and must offer them on every such item.
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task ShopManagementList_BothLayouts_OfferArchiveOnlyOnPublishedAndReopenOnlyOnArchivedItems(bool mobile, bool admin)
+    {
+        var client = await SeedManagementBoardAsync($"shopr_archive_{(mobile ? "m" : "d")}_{(admin ? "a" : "dm")}", admin);
+        Dictionary<int, ItemStatus> stored;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            stored = await context.ShopItems.IgnoreQueryFilters().AsNoTracking()
+                .ToDictionaryAsync(i => i.Id, i => (ItemStatus)i.Status, TestContext.Current.CancellationToken);
+        }
+
+        var html = await GetAsync(client, "/ShopManagement", AgentFor(mobile));
+
+        IEnumerable<int> Targets(string action) =>
+            Regex.Matches(html, @"<form\b[^>]*\baction=""/ShopManagement/" + action + @"/(?<id>\d+)""")
+                .Select(m => int.Parse(m.Groups["id"].Value));
+        var archiveTargets = Targets("Archive").ToList();
+        var reopenTargets = Targets("Reopen").ToList();
+
+        archiveTargets.Should().OnlyContain(id => stored[id] == ItemStatus.Published, "Archive is offered only on an item on sale");
+        reopenTargets.Should().OnlyContain(id => stored[id] == ItemStatus.Archived, "Reopen is offered only on an archived item");
+        archiveTargets.Should().BeEquivalentTo(stored.Where(p => p.Value == ItemStatus.Published).Select(p => p.Key),
+            "every listed item on sale can be archived");
+        reopenTargets.Should().BeEquivalentTo(stored.Where(p => p.Value == ItemStatus.Archived).Select(p => p.Key),
+            "every listed archived item can be reopened");
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
