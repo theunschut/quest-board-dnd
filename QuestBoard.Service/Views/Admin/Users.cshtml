@@ -71,48 +71,84 @@
                         @if (userModel.IsDungeonMaster)
                         {
                             @* DM can be promoted to Admin (one level up) *@
-                            <form asp-action="PromoteToAdmin" method="post" class="d-inline me-2">
-                                <input type="hidden" name="userId" value="@userModel.User.Id" />
-                                <button type="submit" class="btn btn-sm btn-danger">
-                                    <i class="fas fa-arrow-up me-1"></i>
-                                    Promote to Admin
-                                </button>
-                            </form>
+                            @if (userModel.IsSelf)
+                            {
+                            <button type="button" class="btn btn-sm btn-danger disabled" aria-disabled="true" aria-describedby="reason-self-@userModel.User.Id">
+                                <i class="fas fa-arrow-up me-1"></i>Promote to Admin
+                            </button>
+                            }
+                            else
+                            {
+                                <form asp-action="PromoteToAdmin" method="post" class="d-inline me-2">
+                                    <input type="hidden" name="userId" value="@userModel.User.Id" />
+                                    <button type="submit" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-arrow-up me-1"></i>
+                                        Promote to Admin
+                                    </button>
+                                </form>
+                            }
                         }
                         else if (userModel.IsPlayer)
                         {
                             @* Player can only be promoted to DM (one level up) *@
-                            <form asp-action="PromoteToDM" method="post" class="d-inline me-2">
-                                <input type="hidden" name="userId" value="@userModel.User.Id" />
-                                <button type="submit" class="btn btn-sm btn-warning">
-                                    <i class="fas fa-arrow-up me-1"></i>
-                                    Promote to DM
-                                </button>
-                            </form>
+                            @if (userModel.IsSelf)
+                            {
+                            <button type="button" class="btn btn-sm btn-warning disabled" aria-disabled="true" aria-describedby="reason-self-@userModel.User.Id">
+                                <i class="fas fa-arrow-up me-1"></i>Promote to DM
+                            </button>
+                            }
+                            else
+                            {
+                                <form asp-action="PromoteToDM" method="post" class="d-inline me-2">
+                                    <input type="hidden" name="userId" value="@userModel.User.Id" />
+                                    <button type="submit" class="btn btn-sm btn-warning">
+                                        <i class="fas fa-arrow-up me-1"></i>
+                                        Promote to DM
+                                    </button>
+                                </form>
+                            }
                         }
                         
                         @* Demote buttons second *@
                         @if (userModel.IsAdmin)
                         {
                             @* Admin can only be demoted to DM (one level down) *@
-                            <form asp-action="DemoteFromAdmin" method="post" class="d-inline me-2">
-                                <input type="hidden" name="userId" value="@userModel.User.Id" />
-                                <button type="submit" class="btn btn-sm btn-warning">
-                                    <i class="fas fa-arrow-down me-1"></i>
-                                    Demote to DM
-                                </button>
-                            </form>
+                            @if (userModel.IsSelf)
+                            {
+                            <button type="button" class="btn btn-sm btn-warning disabled" aria-disabled="true" aria-describedby="reason-self-@userModel.User.Id">
+                                <i class="fas fa-arrow-down me-1"></i>Demote to DM
+                            </button>
+                            }
+                            else
+                            {
+                                <form asp-action="DemoteFromAdmin" method="post" class="d-inline me-2">
+                                    <input type="hidden" name="userId" value="@userModel.User.Id" />
+                                    <button type="submit" class="btn btn-sm btn-warning">
+                                        <i class="fas fa-arrow-down me-1"></i>
+                                        Demote to DM
+                                    </button>
+                                </form>
+                            }
                         }
                         else if (userModel.IsDungeonMaster)
                         {
                             @* DM can be demoted to Player (one level down) *@
-                            <form asp-action="DemoteToPlayer" method="post" class="d-inline me-2">
-                                <input type="hidden" name="userId" value="@userModel.User.Id" />
-                                <button type="submit" class="btn btn-sm btn-primary">
-                                    <i class="fas fa-arrow-down me-1"></i>
-                                    Demote to Player
-                                </button>
-                            </form>
+                            @if (userModel.IsSelf)
+                            {
+                            <button type="button" class="btn btn-sm btn-primary disabled" aria-disabled="true" aria-describedby="reason-self-@userModel.User.Id">
+                                <i class="fas fa-arrow-down me-1"></i>Demote to Player
+                            </button>
+                            }
+                            else
+                            {
+                                <form asp-action="DemoteToPlayer" method="post" class="d-inline me-2">
+                                    <input type="hidden" name="userId" value="@userModel.User.Id" />
+                                    <button type="submit" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-arrow-down me-1"></i>
+                                        Demote to Player
+                                    </button>
+                                </form>
+                            }
                         }
                         
                         @* Resend Welcome Email button - only for unconfirmed users with an email address *@
@@ -134,13 +170,26 @@
                         </a>
                         
                         @* Remove from Group button - last *@
-                        <form asp-action="DeleteUser" asp-route-id="@userModel.User.Id" method="post" class="d-inline"
-                              data-confirm-message="Are you sure you want to remove this user from the group? They will keep their account and any other group memberships.">
-                            <button type="submit" class="btn btn-danger btn-sm">
-                                <i class="fas fa-user-minus"></i>
-                                Remove from Group
-                            </button>
-                        </form>
+                        @if (userModel.IsSelf)
+                        {
+                        <button type="button" class="btn btn-danger btn-sm disabled" aria-disabled="true" aria-describedby="reason-self-@userModel.User.Id">
+                            <i class="fas fa-user-minus"></i>Remove from Group
+                        </button>
+                        }
+                        else
+                        {
+                            <form asp-action="DeleteUser" asp-route-id="@userModel.User.Id" method="post" class="d-inline"
+                                  data-confirm-message="Are you sure you want to remove this user from the group? They will keep their account and any other group memberships.">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-user-minus"></i>
+                                    Remove from Group
+                                </button>
+                            </form>
+                        }
+                        @if (userModel.IsSelf)
+                        {
+                            <p class="control-reason" id="reason-self-@userModel.User.Id"><i class="fas fa-lock" aria-hidden="true"></i><span>This is your own account, so you cannot change your role or remove yourself here.</span></p>
+                        }
                     </td>
                 </tr>
             }

@@ -182,4 +182,109 @@ public class AdminPlatformRenderTests(WebApplicationFactoryBase factory)
         html.Should().MatchRegex(@"mailto:apr_cols_d[^""]*@example\.com");
         html.Should().NotContain("style=\"");
     }
+
+    // ---- Admin/Users -------------------------------------------------------------------------------
+
+    private const string SelfReason = "This is your own account, so you cannot change your role or remove yourself here.";
+
+    private async Task<UserEntity> AddMemberAsync(string tag, string name, GroupRole role, bool emailConfirmed = true, string? email = null)
+    {
+        var account = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, $"apu_{tag}", email ?? $"apu_{tag}@example.com", "Test123!", name);
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        if (!emailConfirmed)
+        {
+            var tracked = await context.Users.FindAsync([account.Id], TestContext.Current.CancellationToken);
+            tracked!.EmailConfirmed = false;
+        }
+
+        context.UserGroups.Add(new UserGroupEntity { UserId = account.Id, GroupId = 1, GroupRole = (int)role });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return account;
+    }
+
+    // The part of the Users page that belongs to one person: their table row on desktop, their slip on the phone.
+    private static string UserRow(string html, string name, bool mobile)
+    {
+        // The signed-in person's name also sits in the navigation bar, so the search starts at the page content.
+        var at = html.IndexOf(name, html.IndexOf("<main", StringComparison.Ordinal), StringComparison.Ordinal);
+        at.Should().BeGreaterThan(-1, $"{name} must be listed");
+        if (!mobile)
+        {
+            var start = html.LastIndexOf("<tr", at, StringComparison.Ordinal);
+            return html[start..(html.IndexOf("</tr>", at, StringComparison.Ordinal) + 5)];
+        }
+
+        var marker = new Regex("class=\"(?:row-slip|user-card-mobile)[ \"]");
+        var slip = marker.Matches(html).Select(m => m.Index).Last(i => i < at);
+        var next = marker.Matches(html).Select(m => m.Index).FirstOrDefault(i => i > at, html.Length);
+        return html[slip..next];
+    }
+
+    private static readonly Regex FormElement = new(@"<form\b.*?</form>", RegexOptions.Compiled | RegexOptions.Singleline);
+    private static readonly Regex RefusedButton = new(@"<button\b[^>]*aria-disabled=""true""[^>]*>.*?</button>", RegexOptions.Compiled | RegexOptions.Singleline);
+
+    // Every refused control of a row: not in a form, a plain button, no title, and pointing at a reason line that exists.
+    private static List<string> RefusedControls(string row)
+    {
+        var outsideForms = FormElement.Replace(row, "");
+        var refused = RefusedButton.Matches(outsideForms).Select(m => m.Value).ToList();
+        Regex.Matches(row, "aria-disabled=\"true\"").Count.Should().Be(refused.Count, "a refused control sits outside every form");
+        foreach (var button in refused)
+        {
+            button.Should().Contain("type=\"button\"");
+            button.Should().NotContain("title=");
+            var id = Regex.Match(button, "aria-describedby=\"([^\"]+)\"").Groups[1].Value;
+            id.Should().NotBeEmpty();
+            row.Should().MatchRegex($"<p class=\"control-reason\" id=\"{id}\"><i class=\"fas fa-lock\" aria-hidden=\"true\"></i><span>[^<]+</span></p>");
+        }
+
+        return refused;
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminUsers_OnTheSignedInAdminsOwnRow_RefusesTheRoleButtonAndRemove_WithTheSelfReason(bool mobile)
+    {
+        var client = await SeedBoardAsync(BoardType.OneShot, mobile ? "apu_self_m" : "apu_self_d");
+        await AddMemberAsync(mobile ? "peer_m" : "peer_d", "Isolde Brackenfell", GroupRole.Admin);
+
+        var html = await GetAsync(client, "/Admin/Users", AgentFor(mobile));
+
+        var row = UserRow(html, "Vashti Emberweir", mobile);
+        var refused = RefusedControls(row);
+        refused.Should().HaveCount(2);
+        refused.Should().Contain(b => b.Contains("Demote to DM"));
+        refused.Should().Contain(b => b.Contains("Remove from Group"));
+        refused.Should().OnlyContain(b => Regex.IsMatch(b, "aria-describedby=\"reason-self-\\d+\""));
+        Regex.Matches(row, "class=\"control-reason\"").Count.Should().Be(1, "one reason line serves both refused controls");
+        row.Should().Contain(SelfReason);
+        row.Should().MatchRegex("EditUser\\?userId=\\d+", "editing one's own name stays possible");
+        FormElement.Replace(row, "").Should().NotContain("DemoteFromAdmin");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminUsers_OnOtherMembersRows_KeepTheirWorkingFormsAndShowNoReason(bool mobile)
+    {
+        var client = await SeedBoardAsync(BoardType.OneShot, mobile ? "apu_keep_m" : "apu_keep_d");
+        await AddMemberAsync(mobile ? "keeppeer_m" : "keeppeer_d", "Isolde Brackenfell", GroupRole.Admin);
+        await AddMemberAsync(mobile ? "keepdm_m" : "keepdm_d", "Orrin Duskmantle", GroupRole.DungeonMaster);
+
+        var html = await GetAsync(client, "/Admin/Users", AgentFor(mobile));
+
+        var peer = UserRow(html, "Isolde Brackenfell", mobile);
+        RefusedControls(peer).Should().BeEmpty();
+        peer.Should().NotContain("control-reason");
+        peer.Should().Contain("action=\"/Admin/DemoteFromAdmin\"");
+        peer.Should().Contain("action=\"/Admin/DeleteUser/");
+
+        var dm = UserRow(html, "Orrin Duskmantle", mobile);
+        RefusedControls(dm).Should().BeEmpty();
+        dm.Should().Contain("action=\"/Admin/PromoteToAdmin\"");
+        dm.Should().Contain("action=\"/Admin/DemoteToPlayer\"");
+    }
 }

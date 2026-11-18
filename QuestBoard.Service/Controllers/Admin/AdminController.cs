@@ -32,6 +32,12 @@ public class AdminController(IUserService userService, IQuestService questServic
         var allUsers = await userService.GetAllGroupMembersAsync(groupId.Value);
         var userViewModels = new List<UserManagementViewModel>();
 
+        // The page shows what the server will accept, so each row's refusals come from the same rules that refuse a
+        // crafted request: one reach question for every row and one count of the board's Admins.
+        var actorId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var reach = await userService.GetAccountReachAsync(User, groupId.Value, allUsers.Select(u => u.Id).ToList());
+        var adminCount = await groupService.CountMembersWithRoleAsync(groupId.Value, GroupRole.Admin);
+
         foreach (var user in allUsers)
         {
             GroupRole? groupRole = await userService.GetGroupRoleByIdAsync(user.Id, groupId.Value);
@@ -42,7 +48,10 @@ public class AdminController(IUserService userService, IQuestService questServic
                 IsAdmin = groupRole == GroupRole.Admin,
                 IsDungeonMaster = groupRole == GroupRole.DungeonMaster,
                 IsPlayer = groupRole == GroupRole.Player,
-                EmailConfirmed = user.EmailConfirmed
+                EmailConfirmed = user.EmailConfirmed,
+                IsSelf = user.Id == actorId,
+                IsLastAdmin = groupRole == GroupRole.Admin && adminCount <= 1,
+                Reach = reach.GetValueOrDefault(user.Id, AccountReach.Reachable)
             });
         }
 
