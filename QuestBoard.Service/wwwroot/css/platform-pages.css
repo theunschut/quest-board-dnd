@@ -3,8 +3,9 @@
  * one pages layer block and nothing but design tokens, so changing a colour is a change to the token file.
  *
  * It holds the page title bar with its wrapping action group, the board list's name cell and its left-aligned action
- * slots, the empty-state sentence, and what the board forms add to the shared form look: a titled section, the
- * refusal above the form, and the page switch rows. The phone deltas live in platform-pages.mobile.css.
+ * slots, the right-aligned Actions cell of the account and set tables, the empty-state sentence, and what the board
+ * forms add to the shared form look: a titled section, the refusal above the form, and the page switch rows. The
+ * linked set cards and the account email link target are here too. The phone deltas live in platform-pages.mobile.css.
  */
 @layer pages {
   /* A page card's header bar: the title and its actions wrap instead of overflowing. */
@@ -45,6 +46,52 @@
   /* A button label never breaks across lines; the row wraps between buttons instead. */
   .board-actions .btn {
     white-space: nowrap;
+  }
+
+  /* The Actions cell of a table: the row's forms in one wrapping line, flush to the right edge. */
+  .row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--qb-space-sm);
+  }
+
+  .row-actions form {
+    display: flex;
+  }
+
+  .row-actions .btn {
+    white-space: nowrap;
+  }
+
+  .actions-cell,
+  .table .th-actions {
+    text-align: end;
+  }
+
+  /* The reason sits as one compact block flush to the right edge of the cell, icon beside its sentence. */
+  .table .actions-cell .control-reason {
+    max-inline-size: 44ch;
+    margin-inline-start: auto;
+    text-align: start;
+  }
+
+  /* A linked set: its two badges sit together on the right of the title band. */
+  .set-header__badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--qb-space-sm);
+  }
+
+  .set-form,
+  .set-block {
+    margin-bottom: var(--qb-space-md);
+  }
+
+  .set-delete {
+    display: flex;
+    justify-content: flex-end;
   }
 
   /*

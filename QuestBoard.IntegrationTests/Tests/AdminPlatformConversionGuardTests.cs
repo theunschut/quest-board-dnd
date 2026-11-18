@@ -117,6 +117,8 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.IntegrationTests/Controllers/BoardPageBoardListTests.cs",
         "QuestBoard.IntegrationTests/Tests/BoardPageEndToEndTests.cs",
         "QuestBoard.IntegrationTests/Controllers/LinkedBoardsPlatformIntegrationTests.cs",
+        "QuestBoard.Service/Areas/Platform/Views/LinkedBoards/Index.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/LinkedBoards/Index.Mobile.cshtml",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it
@@ -215,6 +217,8 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Areas/Platform/Views/Group/Create.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Edit.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Edit.Mobile.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/LinkedBoards/Index.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/LinkedBoards/Index.Mobile.cshtml",
     ];
 
     // Every other view of the area, still waiting for its slice. A slice moves its views from here to the converted list
@@ -224,8 +228,6 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Views/Admin/EmailStats.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Members.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Members.Mobile.cshtml",
-        "QuestBoard.Service/Areas/Platform/Views/LinkedBoards/Index.cshtml",
-        "QuestBoard.Service/Areas/Platform/Views/LinkedBoards/Index.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Users/Index.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Users/Index.Mobile.cshtml",
     ];
@@ -250,6 +252,8 @@ public class AdminPlatformConversionGuardTests
         ["QuestBoard.Service/Areas/Platform/Views/Group/Create.Mobile.cshtml"] = ["platform-pages.css", "platform-pages.mobile.css"],
         ["QuestBoard.Service/Areas/Platform/Views/Group/Edit.cshtml"] = ["platform-pages.css"],
         ["QuestBoard.Service/Areas/Platform/Views/Group/Edit.Mobile.cshtml"] = ["platform-pages.css", "platform-pages.mobile.css"],
+        ["QuestBoard.Service/Areas/Platform/Views/LinkedBoards/Index.cshtml"] = ["platform-pages.css"],
+        ["QuestBoard.Service/Areas/Platform/Views/LinkedBoards/Index.Mobile.cshtml"] = ["platform-pages.css", "platform-pages.mobile.css"],
         ["QuestBoard.Service/Areas/Platform/Views/Group/Delete.cshtml"] = ["platform-group-delete.css"],
         ["QuestBoard.Service/Areas/Platform/Views/Group/Delete.Mobile.cshtml"] = ["platform-group-delete.mobile.css"],
     };
@@ -272,7 +276,6 @@ public class AdminPlatformConversionGuardTests
     private static readonly string[] PendingSheets =
     [
         "QuestBoard.Service/wwwroot/css/platform-group.mobile.css",
-        "QuestBoard.Service/wwwroot/css/platform-linked-boards.mobile.css",
         "QuestBoard.Service/wwwroot/css/platform-users.mobile.css",
     ];
 
@@ -288,6 +291,7 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/wwwroot/css/admin-quests.mobile.css",
         "QuestBoard.Service/wwwroot/css/admin-users.mobile.css",
         "QuestBoard.Service/wwwroot/css/admin-form.mobile.css",
+        "QuestBoard.Service/wwwroot/css/platform-linked-boards.mobile.css",
     ];
 
     private static readonly string[] LayoutFiles =

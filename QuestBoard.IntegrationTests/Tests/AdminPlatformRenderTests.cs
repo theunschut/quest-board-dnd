@@ -1276,6 +1276,134 @@ public class AdminPlatformRenderTests(WebApplicationFactoryBase factory)
         html.Should().NotMatchRegex(@"<span[^>]*class=""text-danger[^""]*""[^>]*data-valmsg-for");
     }
 
+    // ---- Platform LinkedBoards ---------------------------------------------------------------------
+
+    private const int CampaignSetId = 9101;
+    private const int OneShotSetId = 9102;
+
+    // A SuperAdmin and two sets: an active Campaign set with no spare Campaign board to add, and an inactive One-Shot
+    // set with one board and one spare One-Shot board.
+    private async Task<HttpClient> SeedLinkedSetsAsync(string tag)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(
+            factory, "lb_" + tag, "lb_" + tag + "@example.com");
+        await using var context = factory.Database.CreateContext();
+        context.LinkedBoardSets.Add(new LinkedBoardSetEntity { Id = CampaignSetId, Name = "Northern Chronicles", BoardType = (int)BoardType.Campaign, CreatedAt = DateTime.UtcNow });
+        context.LinkedBoardSets.Add(new LinkedBoardSetEntity { Id = OneShotSetId, Name = "Tavern Nights", BoardType = (int)BoardType.OneShot, CreatedAt = DateTime.UtcNow });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        context.Groups.AddRange(
+            new GroupEntity { Id = 81, Name = "Ironvale Chronicle", BoardType = (int)BoardType.Campaign, CreatedAt = DateTime.UtcNow, LinkedBoardSetId = CampaignSetId },
+            new GroupEntity { Id = 82, Name = "Fallow Reach", BoardType = (int)BoardType.Campaign, CreatedAt = DateTime.UtcNow, LinkedBoardSetId = CampaignSetId },
+            new GroupEntity { Id = 83, Name = "Silverbrook Table", BoardType = (int)BoardType.OneShot, CreatedAt = DateTime.UtcNow, LinkedBoardSetId = OneShotSetId },
+            new GroupEntity { Id = 84, Name = "Quiet Hollow", BoardType = (int)BoardType.OneShot, CreatedAt = DateTime.UtcNow });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return client;
+    }
+
+    // The slice of the page for one set card: from its section to the next card.
+    private static string SetCard(string html, int setId)
+    {
+        var start = html.IndexOf($"aria-labelledby=\"set-title-{setId}\"", StringComparison.Ordinal);
+        start.Should().BeGreaterThan(-1, "the set must be listed as its own card");
+        var end = html.IndexOf("</section>", start, StringComparison.Ordinal);
+        return html[start..end];
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformLinkedBoards_HasOneTitleInTheCardHeader_AndLinksThePlatformSheets(bool mobile)
+    {
+        var client = await SeedLinkedSetsAsync(mobile ? "head_m" : "head_d");
+
+        var html = await GetAsync(client, "/platform/LinkedBoards", AgentFor(mobile));
+
+        HeadingOneCount(html).Should().Be(1);
+        html.Should().MatchRegex(CardHeaderTitle("Linked Boards"));
+        html.Should().Contain("/css/platform-pages.css");
+        if (mobile)
+            html.Should().Contain("/css/platform-pages.mobile.css");
+        else
+            html.Should().NotContain("/css/platform-pages.mobile.css");
+        html.Should().NotContain("platform-group.mobile.css");
+        html.Should().NotContain("platform-linked-boards.mobile.css");
+        html.Should().NotContain("platform-group-card-mobile");
+        html.Should().NotContain("style=\"");
+        Regex.Matches(html, @"class=""btn btn-primary""").Count.Should().Be(1, "Create Set is the page's one primary action");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformLinkedBoards_BuildsTheBoardTypeSelectFromTheSharedMapping_KeepingTheValuesAndThePlaceholder(bool mobile)
+    {
+        var client = await SeedLinkedSetsAsync(mobile ? "type_m" : "type_d");
+
+        var html = await GetAsync(client, "/platform/LinkedBoards", AgentFor(mobile));
+
+        var select = Regex.Match(html, @"<select[^>]*id=""create-set-board-type""[^>]*>.*?</select>", RegexOptions.Singleline).Value;
+        select.Should().NotBeEmpty();
+        Regex.Matches(select, @"<option[^>]*value=""(?<value>[^""]*)""[^>]*>(?<text>[^<]+)</option>")
+            .Select(m => (m.Groups["value"].Value, m.Groups["text"].Value))
+            .Should().Equal(("", "-- Select Board Type --"), ("0", "One-Shot"), ("1", "Campaign"));
+        html.Should().MatchRegex(@"<label[^>]*for=""create-set-name""[^>]*>Set name <span class=""text-danger"" aria-hidden=""true"">\*</span><span class=""visually-hidden""> \(required\)</span></label>");
+        html.Should().Contain("Every board in the set must be this type. This cannot be changed after creation.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformLinkedBoards_EachSetIsOneAsideCard_WithTheSharedTypeAndStateBadges(bool mobile)
+    {
+        var client = await SeedLinkedSetsAsync(mobile ? "cards_m" : "cards_d");
+
+        var html = await GetAsync(client, "/platform/LinkedBoards", AgentFor(mobile));
+
+        Regex.Matches(html, @"<section class=""card modern-card modern-card--aside mb-3""").Count.Should().Be(2);
+        var campaign = SetCard(html, CampaignSetId);
+        campaign.Should().MatchRegex(@"<h2 class=""mb-0"" id=""set-title-9101"">(?:\s*<i[^>]*></i>)?\s*Northern Chronicles\s*</h2>");
+        StatusBadges(campaign).Should().Equal(("bg-info", "fa-book-open", "Campaign"), ("bg-success", "fa-check-circle", "Active"));
+        var oneShot = SetCard(html, OneShotSetId);
+        StatusBadges(oneShot).Should().Equal(("bg-primary", "fa-dice-d20", "One-Shot"), ("bg-secondary", "fa-pause-circle", "Inactive"));
+        oneShot.Should().Contain("Inactive: add at least one more board to share calendars.");
+        html.Should().NotContain("text-dark");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformLinkedBoards_ExplainsADisabledAddBoardThroughItsFormText_AndOnlyThen(bool mobile)
+    {
+        var client = await SeedLinkedSetsAsync(mobile ? "add_m" : "add_d");
+
+        var html = await GetAsync(client, "/platform/LinkedBoards", AgentFor(mobile));
+
+        var campaign = SetCard(html, CampaignSetId);
+        campaign.Should().MatchRegex($@"<select[^>]*id=""add-board-{CampaignSetId}""[^>]*aria-describedby=""no-candidates-{CampaignSetId}""");
+        campaign.Should().MatchRegex($@"<div class=""form-text"" id=""no-candidates-{CampaignSetId}"">No unlinked Campaign boards are available\.</div>");
+        var oneShot = SetCard(html, OneShotSetId);
+        oneShot.Should().NotContain("no-candidates-");
+        Regex.Match(oneShot, $@"<select[^>]*id=""add-board-{OneShotSetId}""[^>]*>").Value.Should().NotContain("disabled");
+        oneShot.Should().Contain("Quiet Hollow");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformLinkedBoards_WithNoSets_ShowsTheEmptyStateWords(bool mobile)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(
+            factory, mobile ? "lbempty_m" : "lbempty_d", (mobile ? "lbempty_m" : "lbempty_d") + "@example.com");
+
+        var html = await GetAsync(client, "/platform/LinkedBoards", AgentFor(mobile));
+
+        html.Should().MatchRegex(@"<div class=""empty-state"">");
+        html.Should().MatchRegex(@"<h2 class=""empty-state-heading"">No linked sets yet\.</h2>");
+        html.Should().MatchRegex(@"<p class=""empty-state-text"">Create a set above, then add boards of the same type to share their calendars\.</p>");
+    }
+
     // Posts a form to the page's own URL with the antiforgery token the page issued, under the given User-Agent.
     private static async Task<string> PostFormAsync(HttpClient client, string url, string userAgent, Dictionary<string, string> fields)
     {

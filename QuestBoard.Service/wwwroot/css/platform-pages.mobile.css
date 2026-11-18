@@ -37,4 +37,20 @@
   .mobile-layout .page-switch .form-check-input {
     margin-top: calc((var(--qb-hit-min) - 1.25em) / 2);
   }
+
+  /* A set's own forms and its delete button are finger-sized, and Delete Set spans the card. */
+  .mobile-layout .set-form .form-control,
+  .mobile-layout .set-form .form-select,
+  .mobile-layout .set-form .btn {
+    min-height: var(--qb-hit-min);
+  }
+
+  .mobile-layout .set-delete .btn,
+  .mobile-layout .set-delete form {
+    inline-size: 100%;
+  }
+
+  .mobile-layout .set-delete .btn {
+    min-height: var(--qb-hit-min);
+  }
 }

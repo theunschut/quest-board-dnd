@@ -20,6 +20,10 @@ public class LinkedBoardsPlatformIntegrationTests : IClassFixture<WebApplication
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
+    // A set's state as the shared mapping draws it: the fill, the icon and the word.
+    private const string ActiveBadge = "<span class=\"badge bg-success\"><i class=\"fas fa-check-circle me-1\" aria-hidden=\"true\"></i>Active</span>";
+    private const string InactiveBadge = "<span class=\"badge bg-secondary\"><i class=\"fas fa-pause-circle me-1\" aria-hidden=\"true\"></i>Inactive</span>";
+
     private static FormUrlEncodedContent Form(params (string Key, string Value)[] fields)
         => new(fields.ToDictionary(f => f.Key, f => f.Value));
 
@@ -98,7 +102,7 @@ public class LinkedBoardsPlatformIntegrationTests : IClassFixture<WebApplication
         html.Should().Contain("Weekend Set");
         html.Should().Contain("Friday Table");
         html.Should().Contain("Saturday Table");
-        html.Should().Contain("badge bg-success\">Active");
+        html.Should().Contain(ActiveBadge);
     }
 
     private async Task<string> GetIndexHtmlAsync(HttpClient client)
@@ -356,7 +360,7 @@ public class LinkedBoardsPlatformIntegrationTests : IClassFixture<WebApplication
         (await GetBoardSetIdAsync(31)).Should().Be(setId);
         var html = await GetIndexHtmlAsync(client);
         html.Should().Contain("Pair Set");
-        html.Should().Contain("badge bg-secondary\">Inactive");
+        html.Should().Contain(InactiveBadge);
         html.Should().Contain("Inactive: add at least one more board to share calendars.");
     }
 
@@ -386,7 +390,7 @@ public class LinkedBoardsPlatformIntegrationTests : IClassFixture<WebApplication
         var html = await GetIndexHtmlAsync(client);
 
         html.Should().Contain("No boards in this set yet.");
-        html.Should().Contain("badge bg-secondary\">Inactive");
+        html.Should().Contain(InactiveBadge);
     }
 
     [Fact]
@@ -525,30 +529,67 @@ public class LinkedBoardsPlatformIntegrationTests : IClassFixture<WebApplication
         html.IndexOf("Alpha Set", StringComparison.Ordinal).Should().BeLessThan(html.IndexOf("Zulu Set", StringComparison.Ordinal));
     }
 
+    // A name that tries every way out of an attribute and out of a text node.
+    private const string HostileName = "O'Brien \"Q\" <script>alert(1)</script>";
+
+    // The post forms of a page that ask before they submit: where they post and the sentence they ask, as the
+    // browser reads the attribute (decoded once).
+    private static List<(string Action, string Message)> ConfirmForms(string html) =>
+        Regex.Matches(html, "<form\\b[^>]*>")
+            .Select(m => m.Value)
+            .Where(tag => tag.Contains("data-confirm-message=", StringComparison.Ordinal))
+            .Select(tag => (
+                WebUtility.HtmlDecode(Regex.Match(tag, "action=\"([^\"]*)\"").Groups[1].Value),
+                WebUtility.HtmlDecode(Regex.Match(tag, "data-confirm-message=\"([^\"]*)\"").Groups[1].Value)))
+            .ToList();
+
+    private static void ShouldAskThroughInertAttributes(string html, int setId, string setName, string boardName)
+    {
+        html.Should().NotContain("O'Brien", "every name is HTML-encoded wherever it is written");
+        html.Should().NotContain("<script>alert(1)", "a name is text, never markup");
+        html.Should().NotMatchRegex("\\son(submit|click)\\s*=", "no confirmation is an inline handler");
+
+        var forms = ConfirmForms(html);
+        forms.Should().HaveCount(2);
+        forms.Should().Contain((
+            $"/platform/LinkedBoards/Delete/{setId}",
+            $"Delete the set \"{setName}\"? Every board in it goes back to showing only its own calendar. Boards, quests and events are not deleted."));
+        forms.Should().Contain((
+            $"/platform/LinkedBoards/RemoveBoard/{setId}",
+            $"Remove \"{boardName}\" from \"{setName}\"? Its calendar stops showing the other boards, and theirs stop showing its entries."));
+
+        html.Should().MatchRegex("<script[^>]*type=\"module\"[^>]*src=\"/js/confirm-submit\\.js");
+    }
+
     [Fact]
-    public async Task ConfirmPrompts_EscapeQuotesAndApostrophesInNamesForJavaScript()
+    public async Task ConfirmPrompts_CarryTheSentenceAsAnEncodedAttribute_AndNoHandler()
     {
         await TestDataHelper.ClearDatabaseAsync(_factory.Services);
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
-        const string trickyName = "O'Brien \"Q\"";
-        var setId = await SeedSetAsync(trickyName);
-        await SeedBoardAsync(50, trickyName, linkedBoardSetId: setId);
+        var setId = await SeedSetAsync(HostileName);
+        await SeedBoardAsync(50, HostileName, linkedBoardSetId: setId);
 
         var html = await GetIndexHtmlAsync(client);
 
-        html.Should().NotContain("O'Brien", "every name is HTML-encoded wherever it is written");
-        var handlers = Regex.Matches(html, "onsubmit=\"([^\"]*)\"")
-            .Select(m => WebUtility.HtmlDecode(m.Groups[1].Value))
-            .Where(h => h.Contains("confirm("))
-            .ToList();
-        handlers.Should().HaveCount(2);
-        foreach (var handler in handlers)
-        {
-            handler.Should().StartWith("return confirm(\"").And.EndWith("\");");
-            handler.Should().Contain("O\\u0027Brien");
-            handler.Should().Contain("\\u0022Q\\u0022");
-            handler.Should().NotContain("O'Brien");
-        }
+        ShouldAskThroughInertAttributes(html, setId, HostileName, HostileName);
+    }
+
+    [Fact]
+    public async Task DeleteSetForm_AsRendered_DeletesTheSetAndKeepsItsBoards()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var setId = await SeedSetAsync(HostileName);
+        await SeedBoardAsync(51, "Kept Board", linkedBoardSetId: setId);
+
+        var html = await GetIndexHtmlAsync(client);
+        var deleteForm = ConfirmForms(html).Single(f => f.Action.Contains("/Delete/", StringComparison.Ordinal));
+        var response = await PostAsync(client, deleteForm.Action);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        await using var context = _factory.Database.CreateContext();
+        (await context.LinkedBoardSets.AnyAsync(s => s.Id == setId, Token)).Should().BeFalse();
+        (await GetBoardSetIdAsync(51)).Should().BeNull();
     }
 
     // ---------------------------------------------------------------------------
@@ -607,8 +648,10 @@ public class LinkedBoardsPlatformIntegrationTests : IClassFixture<WebApplication
 
         var html = await GetMobileIndexHtmlAsync(client);
 
-        html.Should().Contain("platform-group-card-mobile");
-        html.Should().Contain("platform-linked-boards.mobile.css");
+        html.Should().Contain("platform-pages.mobile.css");
+        html.Should().NotContain("platform-group-card-mobile");
+        html.Should().NotContain("platform-linked-boards.mobile.css");
+        html.Should().NotContain("platform-group.mobile.css");
         html.Should().Contain("Create Set");
     }
 
@@ -634,7 +677,7 @@ public class LinkedBoardsPlatformIntegrationTests : IClassFixture<WebApplication
         (await GetBoardSetIdAsync(60)).Should().Be(setId);
         var html = await GetMobileIndexHtmlAsync(client);
         html.Should().Contain("Phone Set");
-        Regex.IsMatch(html, "linked-set-board-row\".*?Phone Table", RegexOptions.Singleline).Should().BeTrue();
+        Regex.IsMatch(html, "class=\"row-slip\".*?Phone Table", RegexOptions.Singleline).Should().BeTrue();
     }
 
     [Fact]
@@ -659,7 +702,7 @@ public class LinkedBoardsPlatformIntegrationTests : IClassFixture<WebApplication
 
         var html = await GetMobileIndexHtmlAsync(client);
 
-        html.Should().Contain("badge bg-secondary\">Inactive");
+        html.Should().Contain(InactiveBadge);
         html.Should().Contain("Inactive: add at least one more board to share calendars.");
     }
 
@@ -673,7 +716,7 @@ public class LinkedBoardsPlatformIntegrationTests : IClassFixture<WebApplication
         var html = await GetMobileIndexHtmlAsync(client);
 
         html.Should().Contain("No boards in this set yet.");
-        html.Should().Contain("badge bg-secondary\">Inactive");
+        html.Should().Contain(InactiveBadge);
     }
 
     [Fact]
@@ -704,35 +747,40 @@ public class LinkedBoardsPlatformIntegrationTests : IClassFixture<WebApplication
 
         var html = await GetMobileIndexHtmlAsync(client);
 
-        Regex.Matches(html, "class=\"linked-set-board-row\"").Should().HaveCount(2);
+        Regex.Matches(html, "class=\"row-slip\"").Should().HaveCount(2);
         Regex.Matches(html, $"action=\"/platform/LinkedBoards/RemoveBoard/{setId}\"").Should().HaveCount(2);
-        html.Should().Contain("badge bg-success\">Active");
+        html.Should().Contain(ActiveBadge);
     }
 
     [Fact]
-    public async Task MobileConfirmPrompts_EscapeQuotesAndApostrophesInNamesForJavaScript()
+    public async Task MobileConfirmPrompts_CarryTheSentenceAsAnEncodedAttribute_AndNoHandler()
     {
         await TestDataHelper.ClearDatabaseAsync(_factory.Services);
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
-        const string trickyName = "O'Brien \"Q\"";
-        var setId = await SeedSetAsync(trickyName);
-        await SeedBoardAsync(65, trickyName, linkedBoardSetId: setId);
+        var setId = await SeedSetAsync(HostileName);
+        await SeedBoardAsync(65, HostileName, linkedBoardSetId: setId);
 
         var html = await GetMobileIndexHtmlAsync(client);
 
-        html.Should().NotContain("O'Brien", "every name is HTML-encoded wherever it is written");
-        var handlers = Regex.Matches(html, "onsubmit=\"([^\"]*)\"")
-            .Select(m => WebUtility.HtmlDecode(m.Groups[1].Value))
-            .Where(h => h.Contains("confirm("))
-            .ToList();
-        handlers.Should().HaveCount(2);
-        foreach (var handler in handlers)
-        {
-            handler.Should().StartWith("return confirm(\"").And.EndWith("\");");
-            handler.Should().Contain("O\\u0027Brien");
-            handler.Should().Contain("\\u0022Q\\u0022");
-            handler.Should().NotContain("O'Brien");
-        }
+        ShouldAskThroughInertAttributes(html, setId, HostileName, HostileName);
+    }
+
+    [Fact]
+    public async Task MobileDeleteSetForm_AsRendered_DeletesTheSetAndKeepsItsBoards()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var setId = await SeedSetAsync(HostileName);
+        await SeedBoardAsync(68, "Kept Phone Board", linkedBoardSetId: setId);
+
+        var html = await GetMobileIndexHtmlAsync(client);
+        var deleteForm = ConfirmForms(html).Single(f => f.Action.Contains("/Delete/", StringComparison.Ordinal));
+        var response = await MobilePostAsync(client, deleteForm.Action);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        await using var context = _factory.Database.CreateContext();
+        (await context.LinkedBoardSets.AnyAsync(s => s.Id == setId, Token)).Should().BeFalse();
+        (await GetBoardSetIdAsync(68)).Should().BeNull();
     }
 
     [Fact]
@@ -749,7 +797,7 @@ public class LinkedBoardsPlatformIntegrationTests : IClassFixture<WebApplication
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
         (await GetBoardSetIdAsync(67)).Should().BeNull();
         var html = await GetMobileIndexHtmlAsync(client);
-        html.Should().Contain("badge bg-secondary\">Inactive");
+        html.Should().Contain(InactiveBadge);
         html.Should().Contain("Inactive: add at least one more board to share calendars.");
     }
 }
