@@ -245,6 +245,13 @@ public class AdminController(IUserService userService, IQuestService questServic
             }
 
             var emailChanged = !string.Equals(user.Email, model.Email, StringComparison.OrdinalIgnoreCase);
+            var newEmail = emailChanged && !string.IsNullOrEmpty(model.Email) ? model.Email : null;
+
+            // Rate-limited on the same per-target-user budget as SendConfirmationEmail — only email-changing saves
+            // are counted. Asked before anything is saved, so a refused change leaves the account exactly as it was.
+            using var lease = newEmail != null ? emailResendLimiter.AttemptAcquire(model.Id) : null;
+            if (lease is { IsAcquired: false })
+                return this.RedirectWithError(nameof(Users), AdminActionMessages.EmailRateLimited);
 
             user.Name = model.Name;
             user.HasKey = model.HasKey;
@@ -255,31 +262,22 @@ public class AdminController(IUserService userService, IQuestService questServic
 
             await userService.UpdateAsync(user);
 
-            if (emailChanged && !string.IsNullOrEmpty(model.Email))
+            if (newEmail != null)
             {
-                // Rate-limited on the same per-target-user budget as
-                // SendConfirmationEmail — only email-changing saves are counted.
-                using var lease = emailResendLimiter.AttemptAcquire(model.Id);
-                if (!lease.IsAcquired)
-                {
-                    Response.StatusCode = StatusCodes.Status429TooManyRequests;
-                    return Content("Too many requests. Please try again later.");
-                }
-
-                var rawToken = await identityService.GenerateChangeEmailTokenAsync(user.Id, model.Email);
+                var rawToken = await identityService.GenerateChangeEmailTokenAsync(user.Id, newEmail);
                 if (rawToken != null)
                 {
                     var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(rawToken));
                     var callbackUrl = Url.Action("ConfirmEmailChange", "Account",
-                        new { userId = user.Id, newEmail = model.Email, token = encodedToken }, Request.Scheme);
+                        new { userId = user.Id, newEmail, token = encodedToken }, Request.Scheme);
                     if (callbackUrl == null)
                     {
                         logger.LogError("Failed to generate ConfirmEmailChange callback URL for userId {UserId}", user.Id);
-                        return this.RedirectWithError(nameof(Users), $"Failed to send confirmation email to {model.Email} for {user.Name}. Please try again.");
+                        return this.RedirectWithError(nameof(Users), $"Failed to send confirmation email to {newEmail} for {user.Name}. Please try again.");
                     }
 
-                    jobClient.Enqueue<ChangeEmailConfirmationJob>(j => j.ExecuteAsync(model.Email, user.Name, callbackUrl, CancellationToken.None));
-                    return this.RedirectWithSuccess(nameof(Users), $"A confirmation email has been sent to {model.Email} for {user.Name}. The address will update once confirmed.");
+                    jobClient.Enqueue<ChangeEmailConfirmationJob>(j => j.ExecuteAsync(newEmail, user.Name, callbackUrl, CancellationToken.None));
+                    return this.RedirectWithSuccess(nameof(Users), $"A confirmation email has been sent to {newEmail} for {user.Name}. The address will update once confirmed.");
                 }
             }
 
@@ -378,15 +376,6 @@ public class AdminController(IUserService userService, IQuestService questServic
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SendConfirmationEmail(int userId)
     {
-        // Repeatable manual resend button, rate-limited per target user (3/hour)
-        // to protect the Resend relay's 100/day quota from accidental button-mashing.
-        using var lease = emailResendLimiter.AttemptAcquire(userId);
-        if (!lease.IsAcquired)
-        {
-            Response.StatusCode = StatusCodes.Status429TooManyRequests;
-            return Content("Too many requests. Please try again later.");
-        }
-
         var groupId = activeGroupContext.ActiveGroupId;
         if (groupId == null) return RedirectToAction(nameof(Users));
         // Guard against a crafted POST for a user outside the active group
@@ -406,6 +395,13 @@ public class AdminController(IUserService userService, IQuestService questServic
         {
             return this.RedirectWithError(nameof(Users), $"{user.Name} has already confirmed their account.");
         }
+
+        // Repeatable manual resend button, rate-limited per target user (3/hour) to protect the Resend relay's
+        // 100/day quota from accidental button-mashing. The permit is taken only once every check above has passed,
+        // so a request that is refused, out of board or pointless never spends the account's own budget.
+        using var lease = emailResendLimiter.AttemptAcquire(userId);
+        if (!lease.IsAcquired)
+            return this.RedirectWithError(nameof(Users), AdminActionMessages.EmailRateLimited);
 
         var rawToken = await identityService.GeneratePasswordResetTokenForUserAsync(userId);
         if (rawToken == null || string.IsNullOrEmpty(user.Email))

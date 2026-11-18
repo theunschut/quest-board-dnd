@@ -2,7 +2,9 @@ using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.IntegrationTests.Helpers;
 using System.Net;
+using System.Text.RegularExpressions;
 using QuestBoard.Service.Jobs;
+using QuestBoard.Service.ViewModels.AdminViewModels;
 
 namespace QuestBoard.IntegrationTests.Controllers;
 
@@ -63,20 +65,54 @@ public class AdminControllerRateLimitIntegrationTests : IClassFixture<WebApplica
         return await adminClient.PostAsync("/Admin/SendConfirmationEmail", formContent, TestContext.Current.CancellationToken);
     }
 
+    // A refused send is a redirect to the Users page carrying the approved Error toast. The toast travels in temp data
+    // and is shown once, so it is read from the page the redirect lands on.
+    private static async Task AssertRefusedWithTheRateLimitToastAsync(HttpClient client, HttpResponseMessage response)
+    {
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect, "a refused send is an answer, not a bare status");
+        response.Headers.Location!.OriginalString.Should().Contain("/Admin/Users");
+
+        var landed = await client.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
+        landed.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        ToastKinds(html).Should().Contain("Error");
+        html.Should().Contain(AdminActionMessages.EmailRateLimited);
+    }
+
+    private static async Task AssertRefusedWithTheCreateLimitToastAsync(HttpClient client, HttpResponseMessage response)
+    {
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect, "a refused create is an answer, not a bare status");
+        response.Headers.Location!.OriginalString.Should().Contain("/Admin/Users");
+
+        var landed = await client.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
+        landed.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        ToastKinds(html).Should().Contain("Error");
+        html.Should().Contain(AdminActionMessages.CreateLimited);
+    }
+
+    // The heading of every toast the page shows (Success, Error, Warning, Info).
+    private static List<string> ToastKinds(string html) =>
+        Regex.Matches(html, "<strong class=\"me-auto\">(\\w+)</strong>").Select(m => m.Groups[1].Value).ToList();
+
+    private int WelcomeMailsSentTo(string email) =>
+        _factory.JobClient.EnqueuedJobs
+            .Count(j => j.Type == typeof(WelcomeEmailJob) && j.Args.Count > 0 && (j.Args[0] as string) == email);
+
     // The 4th resend to the SAME target user within the 1-hour window
-    // must be rejected with 429. Program.cs's emailResendLimiter is a singleton
+    // must be refused with the rate-limit toast and send nothing. Program.cs's emailResendLimiter is a singleton
     // PartitionedRateLimiter<int> keyed "email-resend:{userId}", PermitLimit=3/hour — this test
     // uses a fresh target userId, and this class's dedicated fixture guarantees no sibling
     // test's exhausted budget bleeds in.
     [Fact]
-    public async Task SendConfirmationEmail_ExceedingRateLimit_ShouldReturn429()
+    public async Task SendConfirmationEmail_ExceedingRateLimit_IsRefusedWithAToast_AndSendsNothingMore()
     {
         // Arrange
         var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
 
         var uniqueSuffix = Guid.NewGuid().ToString("N")[..8];
-        var targetUserId = await CreateUnconfirmedTargetUserAsync(
-            $"emailrate01_{uniqueSuffix}@example.com", "Email Rate 01 Target");
+        var targetEmail = $"emailrate01_{uniqueSuffix}@example.com";
+        var targetUserId = await CreateUnconfirmedTargetUserAsync(targetEmail, "Email Rate 01 Target");
 
         // Act — 4 rapid resends to the same target user.
         var responses = new List<HttpResponseMessage>();
@@ -85,56 +121,50 @@ public class AdminControllerRateLimitIntegrationTests : IClassFixture<WebApplica
             responses.Add(await PostSendConfirmationEmailAsync(adminClient, targetUserId));
         }
 
-        // Assert — at least one of the 4 rapid requests was rejected with 429 (mirrors the
-        // ForgotPassword rate-limit analog's "at least one" assertion for robustness).
-        responses.Should().Contain(r => r.StatusCode == HttpStatusCode.TooManyRequests);
+        // Assert — the fourth is the refusal; only the first three queued a mail.
+        await AssertRefusedWithTheRateLimitToastAsync(adminClient, responses[3]);
+        WelcomeMailsSentTo(targetEmail).Should().Be(3, "the refused fourth request must not send anything");
     }
 
     // Two DISTINCT target users must have INDEPENDENT resend budgets —
     // proving the partition key is the target userId (not e.g. the requesting admin or a
-    // shared/global bucket, which would be the RESEARCH Pitfall 1 "unknown partition" collapse).
+    // shared or global bucket).
     [Fact]
-    public async Task SendConfirmationEmail_DifferentTargetUsers_ShouldHaveIndependentBudgets()
+    public async Task SendConfirmationEmail_DifferentTargetUsers_HaveIndependentBudgets()
     {
         // Arrange
         var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
 
         var uniqueSuffix = Guid.NewGuid().ToString("N")[..8];
-        var targetUserIdA = await CreateUnconfirmedTargetUserAsync(
-            $"emailrate02a_{uniqueSuffix}@example.com", "Email Rate 02 Target A");
-        var targetUserIdB = await CreateUnconfirmedTargetUserAsync(
-            $"emailrate02b_{uniqueSuffix}@example.com", "Email Rate 02 Target B");
+        var emailA = $"emailrate02a_{uniqueSuffix}@example.com";
+        var emailB = $"emailrate02b_{uniqueSuffix}@example.com";
+        var targetUserIdA = await CreateUnconfirmedTargetUserAsync(emailA, "Email Rate 02 Target A");
+        var targetUserIdB = await CreateUnconfirmedTargetUserAsync(emailB, "Email Rate 02 Target B");
 
         // Act — 3 resends for A (within budget), then 3 for B (within budget), then a 4th for A.
-        var responsesA = new List<HttpResponseMessage>();
         for (var i = 1; i <= 3; i++)
         {
-            responsesA.Add(await PostSendConfirmationEmailAsync(adminClient, targetUserIdA));
+            await PostSendConfirmationEmailAsync(adminClient, targetUserIdA);
         }
 
-        var responsesB = new List<HttpResponseMessage>();
         for (var i = 1; i <= 3; i++)
         {
-            responsesB.Add(await PostSendConfirmationEmailAsync(adminClient, targetUserIdB));
+            await PostSendConfirmationEmailAsync(adminClient, targetUserIdB);
         }
 
         var fourthForA = await PostSendConfirmationEmailAsync(adminClient, targetUserIdA);
 
-        // Assert — each target user's first-3 sequence is 429-free (independent budgets),
-        // while A's 4th request over its own budget is rejected, proving B's separate budget
-        // was never touched by A's requests.
-        responsesA.Should().NotContain(r => r.StatusCode == HttpStatusCode.TooManyRequests,
-            "target user A's first 3 resends should be within its own budget");
-        responsesB.Should().NotContain(r => r.StatusCode == HttpStatusCode.TooManyRequests,
-            "target user B's first 3 resends should be within its own independent budget");
-        fourthForA.StatusCode.Should().Be(HttpStatusCode.TooManyRequests,
-            "target user A's 4th resend should exceed its own budget, proving the partition key is per-target-user");
+        // Assert — each target user's first 3 resends are within their own budgets (three mails each), while A's 4th
+        // exceeds its own budget and is refused, proving B's separate budget was never touched by A's requests.
+        WelcomeMailsSentTo(emailA).Should().Be(3, "target user A's first 3 resends should be within its own budget");
+        WelcomeMailsSentTo(emailB).Should().Be(3, "target user B's first 3 resends should be within its own independent budget");
+        await AssertRefusedWithTheRateLimitToastAsync(adminClient, fourthForA);
     }
 
     // EditUser's email-change path shares the same per-target-user
-    // rate limit as SendConfirmationEmail (only email-changing saves are counted).
+    // rate limit as SendConfirmationEmail (only email-changing saves are counted); a refusal answers with the same toast.
     [Fact]
-    public async Task EditUser_EmailChange_ExceedingRateLimit_ShouldReturn429()
+    public async Task EditUser_EmailChange_ExceedingRateLimit_IsRefusedWithAToast()
     {
         // Arrange
         var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
@@ -177,8 +207,8 @@ public class AdminControllerRateLimitIntegrationTests : IClassFixture<WebApplica
             responses.Add(await PostEditUserWithEmailChangeAsync($"emailrate03_changed{i}_{uniqueSuffix}@example.com"));
         }
 
-        // Assert — at least one of the 4 rapid email-changing saves was rejected with 429.
-        responses.Should().Contain(r => r.StatusCode == HttpStatusCode.TooManyRequests);
+        // Assert — the fourth email-changing save is the refusal.
+        await AssertRefusedWithTheRateLimitToastAsync(adminClient, responses[3]);
     }
 
     // CreateUser's one-shot automated welcome email is explicitly EXEMPT
@@ -227,7 +257,7 @@ public class AdminControllerRateLimitIntegrationTests : IClassFixture<WebApplica
     // The resend budget belongs to the person receiving the mail. A resend that is refused because the person is not on
     // the Admin's board must not spend any of it, or an Admin of one board could lock the person's own board Admin out
     // for an hour. The person is on board 2 only; an Admin of board 1 asks three times, then the Admin of board 2 asks.
-    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    [Fact]
     public async Task SendConfirmationEmail_ResendsRefusedAsOutOfBoard_DoNotSpendTheTargetsBudget()
     {
         // Arrange
@@ -282,7 +312,7 @@ public class AdminControllerRateLimitIntegrationTests : IClassFixture<WebApplica
 
     // A refused email change must change nothing: the name and key flag were being saved before the hourly limit was
     // consulted, so a refusal still left half of the edit behind.
-    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    [Fact]
     public async Task EditUser_RefusedEmailChange_LeavesTheNameUnchanged()
     {
         // Arrange
@@ -313,6 +343,6 @@ public class AdminControllerRateLimitIntegrationTests : IClassFixture<WebApplica
         var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
         var reloaded = await userService.GetByIdAsync(targetUserId);
         reloaded!.Name.Should().Be("Email Rate 06 Target", "a save that is refused must not write any of its fields");
-        refused.StatusCode.Should().NotBe(HttpStatusCode.OK);
+        refused.StatusCode.Should().Be(HttpStatusCode.Redirect);
     }
 }
