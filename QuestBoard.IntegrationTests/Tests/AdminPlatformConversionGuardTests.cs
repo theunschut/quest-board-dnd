@@ -97,6 +97,11 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Views/Shared/_RoleBadge.cshtml",
         "QuestBoard.Service/Views/Admin/EditUser.cshtml",
         "QuestBoard.Service/Views/Admin/EditUser.Mobile.cshtml",
+        "QuestBoard.Service/Views/Admin/CreateUser.cshtml",
+        "QuestBoard.Service/Views/Admin/CreateUser.Mobile.cshtml",
+        "QuestBoard.Service/Views/Admin/ResetPassword.cshtml",
+        "QuestBoard.Service/Views/Admin/ResetPassword.Mobile.cshtml",
+        "QuestBoard.Service/ViewModels/AdminViewModels/ResetPasswordViewModel.cs",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it
@@ -181,17 +186,17 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Views/Shared/_RoleBadge.cshtml",
         "QuestBoard.Service/Views/Admin/EditUser.cshtml",
         "QuestBoard.Service/Views/Admin/EditUser.Mobile.cshtml",
+        "QuestBoard.Service/Views/Admin/CreateUser.cshtml",
+        "QuestBoard.Service/Views/Admin/CreateUser.Mobile.cshtml",
+        "QuestBoard.Service/Views/Admin/ResetPassword.cshtml",
+        "QuestBoard.Service/Views/Admin/ResetPassword.Mobile.cshtml",
     ];
 
     // Every other view of the area, still waiting for its slice. A slice moves its views from here to the converted list
     // in the commit that converts them.
     private static readonly string[] PendingViews =
     [
-        "QuestBoard.Service/Views/Admin/CreateUser.cshtml",
-        "QuestBoard.Service/Views/Admin/CreateUser.Mobile.cshtml",
         "QuestBoard.Service/Views/Admin/EmailStats.cshtml",
-        "QuestBoard.Service/Views/Admin/ResetPassword.cshtml",
-        "QuestBoard.Service/Views/Admin/ResetPassword.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/_BoardDeleteBody.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Create.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Create.Mobile.cshtml",
@@ -219,6 +224,10 @@ public class AdminPlatformConversionGuardTests
         ["QuestBoard.Service/Views/Admin/Users.Mobile.cshtml"] = ["admin-pages.css", "admin-pages.mobile.css"],
         ["QuestBoard.Service/Views/Admin/EditUser.cshtml"] = ["admin-pages.css"],
         ["QuestBoard.Service/Views/Admin/EditUser.Mobile.cshtml"] = ["admin-pages.css", "admin-pages.mobile.css"],
+        ["QuestBoard.Service/Views/Admin/CreateUser.cshtml"] = ["admin-pages.css"],
+        ["QuestBoard.Service/Views/Admin/CreateUser.Mobile.cshtml"] = ["admin-pages.css", "admin-pages.mobile.css"],
+        ["QuestBoard.Service/Views/Admin/ResetPassword.cshtml"] = ["admin-pages.css"],
+        ["QuestBoard.Service/Views/Admin/ResetPassword.Mobile.cshtml"] = ["admin-pages.css", "admin-pages.mobile.css"],
     };
 
     // The sheets that follow the layered rules: one pages block, tokens only, no endless motion, no cropped picture. The
@@ -236,7 +245,6 @@ public class AdminPlatformConversionGuardTests
     // moves the name to the retired list.
     private static readonly string[] PendingSheets =
     [
-        "QuestBoard.Service/wwwroot/css/admin-form.mobile.css",
         "QuestBoard.Service/wwwroot/css/platform-group.mobile.css",
         "QuestBoard.Service/wwwroot/css/platform-linked-boards.mobile.css",
         "QuestBoard.Service/wwwroot/css/platform-users.mobile.css",
@@ -253,6 +261,7 @@ public class AdminPlatformConversionGuardTests
     [
         "QuestBoard.Service/wwwroot/css/admin-quests.mobile.css",
         "QuestBoard.Service/wwwroot/css/admin-users.mobile.css",
+        "QuestBoard.Service/wwwroot/css/admin-form.mobile.css",
     ];
 
     private static readonly string[] LayoutFiles =

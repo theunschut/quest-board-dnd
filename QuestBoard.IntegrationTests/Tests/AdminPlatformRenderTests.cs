@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
 using QuestBoard.Domain.Enums;
 using QuestBoard.IntegrationTests.Helpers;
+using QuestBoard.Service.ViewModels.AdminViewModels;
 
 namespace QuestBoard.IntegrationTests.Tests;
 
@@ -602,6 +603,150 @@ public class AdminPlatformRenderTests(WebApplicationFactoryBase factory)
 
         html.Should().MatchRegex(@"<span[^>]*class=""field-validation-error""[^>]*data-valmsg-for=""Name""|<span[^>]*data-valmsg-for=""Name""[^>]*class=""field-validation-error""");
         html.Should().NotMatchRegex(@"<span[^>]*class=""text-danger[^""]*""[^>]*data-valmsg-for");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminCreateUser_HasOneTitleInTheCardHeader_AndTheFormContract(bool mobile)
+    {
+        var client = await SeedBoardAsync(BoardType.OneShot, mobile ? "apf_create_m" : "apf_create_d");
+
+        var html = await GetAsync(client, "/Admin/CreateUser", AgentFor(mobile));
+
+        HeadingOneCount(html).Should().Be(1);
+        html.Should().MatchRegex(CardHeaderTitle("Create New User"));
+        html.Should().MatchRegex(@"<form[^>]*class=""form-page""");
+        html.Should().MatchRegex(@"<div class=""form-actions"">\s*<a[^>]*class=""btn btn-secondary""[^>]*>(?:\s*<i[^>]*></i>)?\s*Back to Users\s*</a>\s*<button type=""submit"" class=""btn btn-primary"">(?:\s*<i[^>]*></i>)?\s*Create User\s*</button>");
+        foreach (var field in new[] { "Email", "GroupRole" })
+        {
+            html.Should().MatchRegex(@"<label[^>]*for=""" + field + @"""[^>]*>[^<]+<span class=""text-danger"" aria-hidden=""true"">\*</span><span class=""visually-hidden""> \(required\)</span></label>");
+        }
+        html.Should().MatchRegex(@"<label[^>]*for=""Name""[^>]*>Display Name <span class=""text-danger"" aria-hidden=""true"">\*</span>");
+        html.Should().MatchRegex(@"<input[^>]*id=""Email""[^>]*autocomplete=""off""|<input[^>]*autocomplete=""off""[^>]*id=""Email""");
+        html.Should().MatchRegex(@"<input[^>]*id=""Name""[^>]*autocomplete=""off""|<input[^>]*autocomplete=""off""[^>]*id=""Name""");
+        html.Should().Contain("/css/admin-pages.css");
+        html.Should().NotContain("admin-form.mobile.css");
+        html.Should().NotContain("admin-form-card-mobile");
+        html.Should().NotContain("style=\"");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminCreateUser_BuildsTheRoleSelectFromTheSharedMapping_KeepingTheOptionValues(bool mobile)
+    {
+        var client = await SeedBoardAsync(BoardType.OneShot, mobile ? "apf_role_m" : "apf_role_d");
+
+        var html = await GetAsync(client, "/Admin/CreateUser", AgentFor(mobile));
+
+        var select = Regex.Match(html, @"<select[^>]*id=""GroupRole""[^>]*>.*?</select>", RegexOptions.Singleline).Value;
+        select.Should().NotBeEmpty();
+        var options = Regex.Matches(select, @"<option[^>]*value=""(?<value>\d+)""[^>]*>(?<text>[^<]+)</option>")
+            .Select(m => (m.Groups["value"].Value, m.Groups["text"].Value.Trim()))
+            .ToList();
+        options.Should().Equal(
+            AdminPlatformDisplay.GroupRoleOptions().Select(o => (o.Value, o.Text)));
+        options.Select(o => o.Item2).Should().BeEquivalentTo(["Admin", "Dungeon Master", "Player"]);
+        Regex.Match(select, @"<option[^>]*selected=""selected""[^>]*>(?<text>[^<]+)</option>").Groups["text"].Value
+            .Should().Be("Player", "a new person starts as a Player");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminCreateUser_WithAnInvalidPost_ShowsTheMessagesOnTheFoundationTreatment(bool mobile)
+    {
+        var client = await SeedBoardAsync(BoardType.OneShot, mobile ? "apf_createbad_m" : "apf_createbad_d");
+
+        var html = await PostFormAsync(client, "/Admin/CreateUser", AgentFor(mobile), new Dictionary<string, string>
+        {
+            ["Email"] = "not-an-address",
+            ["Name"] = "",
+            ["GroupRole"] = ((int)GroupRole.Player).ToString(),
+        });
+
+        html.Should().MatchRegex(@"<span[^>]*data-valmsg-for=""Email""[^>]*>[^<]*valid e-mail address");
+        html.Should().NotMatchRegex(@"<span[^>]*class=""text-danger[^""]*""[^>]*data-valmsg-for");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminResetPassword_NamesThePersonInTheTitle_AndOffersNewPasswordInputsThatAllowPaste(bool mobile)
+    {
+        var (client, target) = await SeedFormAsync(mobile ? "reset_m" : "reset_d", "Lysandra Thistledown-Verrenmoor");
+
+        var html = await GetAsync(client, $"/Admin/ResetPassword?userId={target.Id}", AgentFor(mobile));
+
+        HeadingOneCount(html).Should().Be(1);
+        html.Should().MatchRegex(CardHeaderTitle("Reset Password for Lysandra Thistledown-Verrenmoor"));
+        html.Should().MatchRegex(@"<form[^>]*class=""form-page""");
+        foreach (var field in new[] { "NewPassword", "ConfirmPassword" })
+        {
+            var input = Regex.Match(html, @"<input[^>]*id=""" + field + @"""[^>]*>").Value;
+            input.Should().Contain("type=\"password\"").And.Contain("autocomplete=\"new-password\"");
+            input.Should().NotContain("onpaste").And.NotContain("autocomplete=\"off\"");
+            html.Should().MatchRegex(@"<label[^>]*for=""" + field + @"""[^>]*>[^<]+<span class=""text-danger"" aria-hidden=""true"">\*</span><span class=""visually-hidden""> \(required\)</span></label>");
+        }
+        html.Should().MatchRegex(@"<div class=""form-actions"">\s*<a[^>]*class=""btn btn-secondary""[^>]*>(?:\s*<i[^>]*></i>)?\s*Back to Users\s*</a>\s*<button type=""submit"" class=""btn btn-primary"">(?:\s*<i[^>]*></i>)?\s*Reset Password\s*</button>");
+        html.Should().NotContain("admin-form.mobile.css");
+        html.Should().NotContain("admin-form-card-mobile");
+        html.Should().Contain("<div class=\"alert alert-warning\">");
+        WebUtility.HtmlDecode(html).Should().Contain("This will reset the password for Lysandra Thistledown-Verrenmoor. The user will need to use the new password to log in.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminResetPassword_ShowsThePasswordRuleHint_AlignedToTheServerPolicy(bool mobile)
+    {
+        var (client, target) = await SeedFormAsync(mobile ? "hint_m" : "hint_d");
+
+        var html = await GetAsync(client, $"/Admin/ResetPassword?userId={target.Id}", AgentFor(mobile));
+
+        html.Should().MatchRegex(@"<div class=""form-text"" id=""NewPassword-hint"">At least 8 characters, with an upper-case letter, a lower-case letter and a digit\.</div>");
+        Regex.Match(html, @"<input[^>]*id=""NewPassword""[^>]*>").Value.Should().Contain("aria-describedby=\"NewPassword-hint NewPassword-error\"");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminResetPassword_WithASevenCharacterPassword_ShowsTheLengthMessageWithTheHint(bool mobile)
+    {
+        var (client, target) = await SeedFormAsync(mobile ? "short_m" : "short_d");
+
+        var html = await PostFormAsync(client, "/Admin/ResetPassword", AgentFor(mobile), new Dictionary<string, string>
+        {
+            ["UserId"] = target.Id.ToString(),
+            ["UserName"] = "Brindle Oakenfeather",
+            ["NewPassword"] = "Abcdef1",
+            ["ConfirmPassword"] = "Abcdef1",
+        });
+
+        WebUtility.HtmlDecode(html).Should().MatchRegex(@"<span[^>]*data-valmsg-for=""NewPassword""[^>]*>[^<]*must be at least 8 and at max 100 characters long");
+        html.Should().Contain("id=\"NewPassword-hint\"");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminResetPassword_WithMismatchedPasswords_ShowsTheMessageOnTheFoundationTreatment(bool mobile)
+    {
+        var (client, target) = await SeedFormAsync(mobile ? "mism_m" : "mism_d");
+
+        var html = await PostFormAsync(client, "/Admin/ResetPassword", AgentFor(mobile), new Dictionary<string, string>
+        {
+            ["UserId"] = target.Id.ToString(),
+            ["UserName"] = "Brindle Oakenfeather",
+            ["NewPassword"] = "Abcdefg1h",
+            ["ConfirmPassword"] = "Different1x",
+        });
+
+        html.Should().MatchRegex(@"<span[^>]*data-valmsg-for=""ConfirmPassword""[^>]*>[^<]*do not match");
+        html.Should().Contain("validation-summary-errors");
+        html.Should().NotMatchRegex(@"<span[^>]*class=""text-danger[^""]*""[^>]*data-valmsg-for");
+        html.Should().NotMatchRegex(@"class=""text-danger mb-3""");
     }
 
     // Posts a form to the page's own URL with the antiforgery token the page issued, under the given User-Agent.
