@@ -191,6 +191,27 @@ internal class UserService(IIdentityService identityService, IUserRepository rep
     }
 
     /// <inheritdoc/>
+    public async Task<MemberChangeOutcome> TryRemoveMemberAsync(int groupId, int actingUserId, int targetUserId, CancellationToken token = default)
+    {
+        var currentRole = await repository.GetGroupRoleAsync(targetUserId, groupId);
+        if (currentRole == null)
+            return MemberChangeOutcome.NotAMember;
+
+        if (actingUserId == targetUserId)
+            return MemberChangeOutcome.Self;
+
+        if (currentRole == GroupRole.Admin)
+        {
+            var admins = await groupService.CountMembersWithRoleAsync(groupId, GroupRole.Admin, token);
+            if (admins <= 1)
+                return MemberChangeOutcome.LastAdmin;
+        }
+
+        await groupService.RemoveMemberAsync(groupId, targetUserId, token);
+        return MemberChangeOutcome.Changed;
+    }
+
+    /// <inheritdoc/>
     public async Task<CreateOrAddToGroupResult> CreateOrAddToGroupAsync(string email, string name, int groupId, GroupRole role, CancellationToken token = default)
     {
         var userId = await identityService.GetIdByEmailAsync(email);

@@ -139,6 +139,14 @@ public interface IUserService : IBaseService<User>
     Task<MemberChangeOutcome> ChangeMemberRoleAsync(int groupId, int actingUserId, int targetUserId, GroupRole newRole, CancellationToken token = default);
 
     /// <summary>
+    /// Removes a member from the board unless the removal is refused: NotAMember when the person is not on the board,
+    /// Self when the acting user is the person being removed, and LastAdmin when the person is the board's only Admin,
+    /// whoever acts. Nobody is removed for any answer but Changed. Platform board management removes members through
+    /// <see cref="IGroupService.RemoveMemberAsync"/> directly, so a platform administrator can still empty a board.
+    /// </summary>
+    Task<MemberChangeOutcome> TryRemoveMemberAsync(int groupId, int actingUserId, int targetUserId, CancellationToken token = default);
+
+    /// <summary>
     /// Collision-aware user creation: creates a brand-new account when the email is unused,
     /// or adds the existing account to the group when the email already belongs to a user.
     /// </summary>

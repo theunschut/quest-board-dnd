@@ -218,6 +218,74 @@ public class UserServiceTests
         result.Should().Be(MemberChangeOutcome.Changed);
     }
 
+    // ---------------------------------------------------------------------------
+    // TryRemoveMemberAsync
+    // ---------------------------------------------------------------------------
+
+    private async Task AssertNobodyRemovedAsync() =>
+        await _groupService.DidNotReceive().RemoveMemberAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+
+    [Theory]
+    [InlineData(GroupRole.Admin)]
+    [InlineData(GroupRole.DungeonMaster)]
+    [InlineData(GroupRole.Player)]
+    public async Task TryRemoveMemberAsync_WhenActorRemovesThemselves_ReturnsSelfAndRemovesNobody(GroupRole current)
+    {
+        GivenBoard(1, 7, current, admins: 2);
+
+        var result = await _sut.TryRemoveMemberAsync(1, actingUserId: 7, targetUserId: 7, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.Self);
+        await AssertNobodyRemovedAsync();
+    }
+
+    [Fact]
+    public async Task TryRemoveMemberAsync_WhenTargetIsTheOnlyAdmin_ReturnsLastAdminWhoeverActsAndRemovesNobody()
+    {
+        GivenBoard(1, 7, GroupRole.Admin, admins: 1);
+
+        var result = await _sut.TryRemoveMemberAsync(1, actingUserId: 99, targetUserId: 7, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.LastAdmin);
+        await AssertNobodyRemovedAsync();
+    }
+
+    [Fact]
+    public async Task TryRemoveMemberAsync_WhenAnotherAdminRemains_RemovesTheAdminAndReturnsChanged()
+    {
+        GivenBoard(1, 7, GroupRole.Admin, admins: 2);
+
+        var result = await _sut.TryRemoveMemberAsync(1, actingUserId: 99, targetUserId: 7, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.Changed);
+        await _groupService.Received(1).RemoveMemberAsync(1, 7, Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(GroupRole.DungeonMaster)]
+    [InlineData(GroupRole.Player)]
+    public async Task TryRemoveMemberAsync_WhenTargetIsNotAnAdmin_RemovesThemWithoutCountingAdmins(GroupRole current)
+    {
+        GivenBoard(1, 7, current, admins: 1);
+
+        var result = await _sut.TryRemoveMemberAsync(1, actingUserId: 99, targetUserId: 7, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.Changed);
+        await _groupService.Received(1).RemoveMemberAsync(1, 7, Arg.Any<CancellationToken>());
+        await _groupService.DidNotReceive().CountMembersWithRoleAsync(Arg.Any<int>(), Arg.Any<GroupRole>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TryRemoveMemberAsync_WhenTargetIsNotAMember_ReturnsNotAMemberAndRemovesNobody()
+    {
+        GivenBoard(1, 7, null, admins: 1);
+
+        var result = await _sut.TryRemoveMemberAsync(1, actingUserId: 99, targetUserId: 7, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.NotAMember);
+        await AssertNobodyRemovedAsync();
+    }
+
     [Fact]
     public async Task CreateOrAddToGroupAsync_WhenEmailIsBrandNew_CreatesAccountAndReturnsNewAccountCreated()
     {

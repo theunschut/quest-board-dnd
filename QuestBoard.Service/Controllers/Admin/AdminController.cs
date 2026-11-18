@@ -348,18 +348,23 @@ public class AdminController(IUserService userService, IQuestService questServic
         var groupId = activeGroupContext.ActiveGroupId;
         if (groupId == null) return RedirectToAction(nameof(Users));
 
-        // Guard against a crafted request for a user outside the active group
-        var targetRole = await userService.GetGroupRoleByIdAsync(id, groupId.Value);
-        if (targetRole == null) return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
-
         var user = await userService.GetByIdAsync(id);
         if (user == null)
         {
             return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
         }
 
-        await groupService.RemoveMemberAsync(groupId.Value, id);
-        return this.RedirectWithSuccess(nameof(Users), AdminActionMessages.MemberRemoved(user.Name));
+        // The Domain refuses the removal of the acting user and of the board's only Admin, and answers NotAMember for
+        // a crafted request that names someone outside the active group.
+        var actorId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var outcome = await userService.TryRemoveMemberAsync(groupId.Value, actorId, id);
+        return outcome switch
+        {
+            MemberChangeOutcome.NotAMember => this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale),
+            MemberChangeOutcome.Self => this.RedirectWithError(nameof(Users), AdminActionMessages.SelfRefused),
+            MemberChangeOutcome.LastAdmin => this.RedirectWithError(nameof(Users), AdminActionMessages.LastAdminRefused),
+            _ => this.RedirectWithSuccess(nameof(Users), AdminActionMessages.MemberRemoved(user.Name))
+        };
     }
 
     [HttpPost]

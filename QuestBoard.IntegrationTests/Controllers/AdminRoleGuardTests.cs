@@ -101,7 +101,7 @@ public class AdminRoleGuardTests : IClassFixture<WebApplicationFactoryBase>
         await AssertSelfDemotionRefusedAsync("PromoteToDM");
 
     // Remove from Group is a posted form like the role actions: a refusal is an Error toast and the membership stays.
-    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    [Fact]
     public async Task DeleteUser_OnTheActorThemselves_IsRefused_AndTheirMembershipStays()
     {
         await TestDataHelper.ClearDatabaseAsync(_factory.Services);
