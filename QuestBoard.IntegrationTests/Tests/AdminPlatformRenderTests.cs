@@ -791,6 +791,116 @@ public class AdminPlatformRenderTests(WebApplicationFactoryBase factory)
         html.Should().NotContain("text-dark");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupIndex_HasOneTitleInTheCardHeader_AndTheHeaderActionsWrapInOneGroup(bool mobile)
+    {
+        var client = await SeedBoardListAsync(mobile ? "head_m" : "head_d");
+
+        var html = await GetAsync(client, "/platform/Group", AgentFor(mobile));
+
+        HeadingOneCount(html).Should().Be(1);
+        html.Should().MatchRegex(CardHeaderTitle("Group Management"));
+        var actions = Regex.Match(html, @"<div class=""page-bar__actions"">(?<body>.*?)</div>", RegexOptions.Singleline).Groups["body"].Value;
+        actions.Should().NotBeEmpty("the header actions sit in one wrapping group");
+        Regex.Matches(actions, @"<a [^>]*class=""btn (?<role>btn-[a-z]+)""[^>]*>(?:\s*<i[^>]*></i>)?\s*(?<label>[A-Za-z ]+?)\s*</a>")
+            .Select(m => (m.Groups["role"].Value, m.Groups["label"].Value))
+            .Should().Equal(("btn-primary", "Create Group"), ("btn-secondary", "Manage Users"), ("btn-info", "Linked Boards"));
+        Regex.Matches(html, @"class=""btn btn-primary""").Count.Should().Be(1, "Create Group is the page's one primary action");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupIndex_RowActionsKeepTheirOrder_AndDeleteIsOnlyForAnEmptyBoard(bool mobile)
+    {
+        var client = await SeedBoardListAsync(mobile ? "slots_m" : "slots_d");
+
+        var html = await GetAsync(client, "/platform/Group", AgentFor(mobile));
+
+        static List<string> Labels(string row) =>
+            Regex.Matches(row, @"<(?:button|a)\b[^>]*class=""btn btn-sm [^""]*""[^>]*>(?:\s*<i[^>]*></i>)?\s*(?<label>[A-Za-z ]+?)\s*</(?:button|a)>")
+                .Select(m => m.Groups["label"].Value).ToList();
+
+        Labels(BoardListRow(html, "Silverbrook Table")).Should().Equal("Open Board", "Members", "Edit");
+        Labels(BoardListRow(html, "Ironvale Chronicle")).Should().Equal("Open Board", "Members", "Edit");
+        Labels(BoardListRow(html, "Quiet Hollow")).Should().Equal("Open Board", "Members", "Edit", "Delete");
+        Labels(BoardListRow(html, "Fallow Reach")).Should().Equal("Open Board", "Members", "Edit", "Delete");
+        html.Should().NotContain("text-end");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupIndex_OpenBoardIsAPostedFormWithAToken(bool mobile)
+    {
+        var client = await SeedBoardListAsync(mobile ? "open_m" : "open_d");
+
+        var html = await GetAsync(client, "/platform/Group", AgentFor(mobile));
+
+        var row = BoardListRow(html, "Silverbrook Table");
+        row.Should().MatchRegex(@"<form[^>]*method=""post""[^>]*action=""/GroupPicker/SelectGroup""|<form[^>]*action=""/GroupPicker/SelectGroup""[^>]*method=""post""");
+        row.Should().Contain("name=\"__RequestVerificationToken\"");
+        row.Should().Contain($"name=\"groupId\" value=\"{OneShotBoardId}\"");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupIndex_KeepsTheCreatedDateAsALocalTime_AndTheMemberCount(bool mobile)
+    {
+        var client = await SeedBoardListAsync(mobile ? "date_m" : "date_d");
+
+        var html = await GetAsync(client, "/platform/Group", AgentFor(mobile));
+
+        var row = BoardListRow(html, "Silverbrook Table");
+        row.Should().MatchRegex(@"<time class=""local-time""[^>]*datetime=""\d{4}-\d\d-\d\dT[\d:.]+Z""");
+        if (mobile)
+            row.Should().MatchRegex(@"Members: 1 &middot; Created: <time");
+        else
+            row.Should().MatchRegex(@"<td>1</td>");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupIndex_WithNoBoards_ShowsTheEmptyStateWords(bool mobile)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(
+            factory, mobile ? "empty_m" : "empty_d", (mobile ? "empty_m" : "empty_d") + "@example.com");
+        await using (var context = factory.Database.CreateContext())
+        {
+            context.Groups.RemoveRange(context.Groups);
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var html = await GetAsync(client, "/platform/Group", AgentFor(mobile));
+
+        html.Should().MatchRegex(@"<div class=""empty-state"">");
+        html.Should().MatchRegex(@"<h2 class=""empty-state-heading"">No groups yet\.</h2>");
+        html.Should().MatchRegex(@"<p class=""empty-state-text"">Create the first group to get started\.</p>");
+        html.Should().NotContain("<table");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupDelete_HasOneTitleInTheCardHeader_AndKeepsTheNameConfirmation(bool mobile)
+    {
+        var client = await SeedBoardListAsync(mobile ? "delh_m" : "delh_d");
+
+        var html = await GetAsync(client, $"/platform/Group/Delete/{EmptyBoardId}", AgentFor(mobile));
+
+        HeadingOneCount(html).Should().Be(1);
+        html.Should().MatchRegex(CardHeaderTitle("Delete board"));
+        html.Should().Contain("Type the board name to confirm");
+        html.Should().Contain("name=\"confirmName\"");
+        html.Should().Contain("/css/platform-group-delete.");
+        html.Should().Contain("/js/platform-board-delete.js");
+    }
+
     // A desktop row is a <tr>, a phone row is a row-slip block; the one that names the board and carries its Open Board
     // button is the board's own row on either layout.
     private static string BoardListRow(string html, string boardName)

@@ -105,6 +105,8 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Views/Shared/_BoardTypeBadge.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Index.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Index.Mobile.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/Group/Delete.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/Group/Delete.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/_BoardDeleteBody.cshtml",
         "QuestBoard.Service/wwwroot/css/platform-pages.css",
         "QuestBoard.Service/wwwroot/css/platform-pages.mobile.css",
@@ -199,6 +201,8 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Views/Shared/_BoardTypeBadge.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Index.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Index.Mobile.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/Group/Delete.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/Group/Delete.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/_BoardDeleteBody.cshtml",
     ];
 
@@ -209,8 +213,6 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Views/Admin/EmailStats.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Create.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Create.Mobile.cshtml",
-        "QuestBoard.Service/Areas/Platform/Views/Group/Delete.cshtml",
-        "QuestBoard.Service/Areas/Platform/Views/Group/Delete.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Edit.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Edit.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Members.cshtml",
@@ -237,6 +239,8 @@ public class AdminPlatformConversionGuardTests
         ["QuestBoard.Service/Views/Admin/ResetPassword.Mobile.cshtml"] = ["admin-pages.css", "admin-pages.mobile.css"],
         ["QuestBoard.Service/Areas/Platform/Views/Group/Index.cshtml"] = ["platform-pages.css"],
         ["QuestBoard.Service/Areas/Platform/Views/Group/Index.Mobile.cshtml"] = ["platform-pages.css", "platform-pages.mobile.css"],
+        ["QuestBoard.Service/Areas/Platform/Views/Group/Delete.cshtml"] = ["platform-group-delete.css"],
+        ["QuestBoard.Service/Areas/Platform/Views/Group/Delete.Mobile.cshtml"] = ["platform-group-delete.mobile.css"],
     };
 
     // The sheets that follow the layered rules: one pages block, tokens only, no endless motion, no cropped picture. The
