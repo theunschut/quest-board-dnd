@@ -1067,6 +1067,215 @@ public class AdminPlatformRenderTests(WebApplicationFactoryBase factory)
         context.Groups.Single(g => g.Name == name).BoardType.Should().Be((int)BoardType.Campaign);
     }
 
+    private const int EditOneShotBoardId = 75;
+    private const int EditCampaignBoardId = 76;
+
+    // Seeds a One-Shot board and a Campaign board and signs in as a platform administrator who belongs to neither.
+    private async Task<HttpClient> SeedBoardEditAsync(string tag)
+    {
+        var client = await SeedGroupFormAsync(tag);
+        await BoardMoveSeed.SeedBoardAsync(factory, EditOneShotBoardId, "Oakhollow Table", BoardType.OneShot);
+        await BoardMoveSeed.SeedBoardAsync(factory, EditCampaignBoardId, "Stormwatch Chronicle", BoardType.Campaign);
+        return client;
+    }
+
+    private static string EditUrl(int boardId) => $"/platform/Group/Edit/{boardId}";
+
+    private static readonly string[] SwitchLabels =
+        ["Quest list", "Calendar", "Events", "Quest Log", "Characters", "Contacts", "Players", "Shop", "DM profile"];
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupEdit_HasOneTitleInTheCardHeader_AndAPagesHeadingAboveTheSwitches(bool mobile)
+    {
+        var client = await SeedBoardEditAsync(mobile ? "edit_m" : "edit_d");
+
+        var html = await GetAsync(client, EditUrl(EditOneShotBoardId), AgentFor(mobile));
+
+        HeadingOneCount(html).Should().Be(1);
+        html.Should().MatchRegex(CardHeaderTitle("Edit Group"));
+        Regex.Matches(html, @"<h2\b[^>]*>(?:\s*<i[^>]*></i>)?\s*Pages\s*</h2>").Count.Should().Be(1);
+        Regex.Matches(html, @"<h2\b").Count.Should().Be(1);
+        html.Should().NotMatchRegex(@"<h[3-6]\b");
+        html.Should().MatchRegex(@"<form[^>]*class=""form-page""");
+        html.Should().MatchRegex(@"<div class=""form-actions( form-actions--stack)?"">\s*<a[^>]*class=""btn btn-secondary""[^>]*>(?:\s*<i[^>]*></i>)?\s*Back to Groups\s*</a>\s*<button type=""submit"" class=""btn btn-primary"">(?:\s*<i[^>]*></i>)?\s*Save Changes\s*</button>");
+        html.Contains("form-actions--stack").Should().Be(mobile);
+        html.Should().NotContain("btn-warning");
+        html.Should().Contain("/css/platform-pages.css");
+        if (mobile)
+            html.Should().Contain("/css/platform-pages.mobile.css");
+        else
+            html.Should().NotContain("/css/platform-pages.mobile.css");
+        html.Should().NotContain("platform-group.mobile.css");
+        html.Should().NotContain("platform-group-card-mobile");
+        html.Should().NotContain("platform-group-pages-mobile");
+        html.Should().NotContain("style=\"");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupEdit_ShowsOneSwitchRowPerPage_WithTheLabelAsTheWholeRow(bool mobile)
+    {
+        var client = await SeedBoardEditAsync(mobile ? "rows_m" : "rows_d");
+
+        var html = await GetAsync(client, EditUrl(EditOneShotBoardId), AgentFor(mobile));
+
+        Regex.Matches(html, @"class=""form-check form-switch page-switch""").Count.Should().Be(SwitchLabels.Length);
+        foreach (var label in SwitchLabels)
+        {
+            html.Should().MatchRegex(@"<label class=""form-check-label"" for=""page-\w+"">" + Regex.Escape(label) + "</label>");
+        }
+        html.Should().NotContain("text-muted");
+        html.Should().NotContain("<small");
+        html.Should().MatchRegex(@"<div class=""form-text mb-2"" id=""pages-hint"">Switch off the pages this board doesn't use\. Nothing is deleted\.</div>");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupEdit_ShowsEachLockedRowsSentenceAsAControlReason(bool mobile)
+    {
+        var client = await SeedBoardEditAsync(mobile ? "lock_m" : "lock_d");
+
+        var html = await GetAsync(client, EditUrl(EditCampaignBoardId), AgentFor(mobile));
+
+        foreach (var page in new[] { BoardPage.Shop, BoardPage.Players, BoardPage.DungeonMasterProfile })
+        {
+            html.Should().MatchRegex(@"<p class=""control-reason"" id=""page-reason-" + page + @"""><i class=""fas fa-lock"" aria-hidden=""true""></i><span>Not available on Campaign boards\.</span></p>");
+            html.Should().MatchRegex(@"<input[^>]*id=""page-" + page + @"""[^>]*aria-describedby=""page-reason-" + page + @"""|<input[^>]*aria-describedby=""page-reason-" + page + @"""[^>]*id=""page-" + page + @"""");
+            Regex.Match(html, @"<input[^>]*id=""page-" + page + @"""[^>]*>").Value.Should().Contain("disabled");
+        }
+        Regex.Matches(html, @"class=""control-reason""").Count.Should().Be(3);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupEdit_ShowsTheBoardTypeAsTheMappedWordInADisabledSelect(bool mobile)
+    {
+        var client = await SeedBoardEditAsync(mobile ? "typ_m" : "typ_d");
+
+        foreach (var (boardId, word) in new[] { (EditOneShotBoardId, "One-Shot"), (EditCampaignBoardId, "Campaign") })
+        {
+            var html = await GetAsync(client, EditUrl(boardId), AgentFor(mobile));
+
+            var select = Regex.Match(html, @"<select[^>]*id=""BoardType""[^>]*>.*?</select>", RegexOptions.Singleline).Value;
+            select.Should().Contain("disabled");
+            Regex.Match(select, @"<option[^>]*selected=""selected""[^>]*>(?<text>[^<]+)</option>").Groups["text"].Value.Should().Be(word);
+            Regex.Matches(select, @"<option\b").Count.Should().Be(2);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupEdit_KeepsTheHiddenFieldsAndTheFormNames(bool mobile)
+    {
+        var client = await SeedBoardEditAsync(mobile ? "names_m" : "names_d");
+
+        var html = await GetAsync(client, EditUrl(EditOneShotBoardId), AgentFor(mobile));
+
+        foreach (var name in new[] { "Id", "RenderedDisabledPages", "RenderedHomePage" })
+        {
+            html.Should().MatchRegex(@"<input[^>]*type=""hidden""[^>]*name=""" + name + @"""|<input[^>]*name=""" + name + @"""[^>]*type=""hidden""");
+        }
+        html.Should().MatchRegex(@"<input[^>]*name=""Name""");
+        html.Should().MatchRegex(@"<select[^>]*name=""HomePage""");
+        Regex.Matches(html, @"name=""Pages\[\d+\]\.Page""").Count.Should().Be(SwitchLabels.Length);
+        Regex.Matches(html, @"name=""Pages\[\d+\]\.Enabled""[^>]*value=""true""").Count.Should().Be(SwitchLabels.Length);
+        Regex.Matches(html, @"name=""Pages\[\d+\]\.Enabled""[^>]*value=""false""").Count.Should().Be(SwitchLabels.Length);
+    }
+
+    // What a browser posts from the rendered Edit form, with the given fields replaced.
+    private async Task<HttpResponseMessage> PostRenderedEditAsync(
+        HttpClient client, int boardId, string userAgent, Dictionary<string, string> overrides)
+    {
+        var page = await GetAsync(client, EditUrl(boardId), userAgent);
+        var token = Regex.Match(page, @"name=""__RequestVerificationToken""[^>]*value=""([^""]+)""").Groups[1].Value;
+        token.Should().NotBeEmpty();
+        var fields = new List<KeyValuePair<string, string>>
+        {
+            new("__RequestVerificationToken", token),
+            new("Id", boardId.ToString()),
+            new("Name", "Oakhollow Table"),
+        };
+        foreach (var hidden in new[] { "RenderedDisabledPages", "RenderedHomePage" })
+        {
+            var value = Regex.Match(page, @"<input[^>]*name=""" + hidden + @"""[^>]*value=""([^""]*)""").Groups[1].Value;
+            fields.Add(new(hidden, value));
+        }
+        foreach (Match field in Regex.Matches(page, @"<input[^>]*name=""(Pages\[\d+\]\.Page)""[^>]*value=""(\w+)""[^>]*>"))
+        {
+            var enabled = field.Groups[1].Value.Replace(".Page", ".Enabled");
+            fields.Add(new(field.Groups[1].Value, field.Groups[2].Value));
+            fields.Add(new(enabled, "true"));
+            fields.Add(new(enabled, "false"));
+        }
+        fields.Add(new("HomePage", Regex.Match(page, @"<select[^>]*name=""HomePage"".*?<option selected=""selected"" value=""(\w+)""", RegexOptions.Singleline).Groups[1].Value));
+        foreach (var (key, value) in overrides)
+        {
+            fields.RemoveAll(f => f.Key == key);
+            fields.Add(new(key, value));
+        }
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/platform/Group/Edit") { Content = new FormUrlEncodedContent(fields) };
+        request.Headers.TryAddWithoutValidation("User-Agent", userAgent);
+        return await client.SendAsync(request, TestContext.Current.CancellationToken);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupEdit_ARenderedFormPostsAndRenamesTheBoard(bool mobile)
+    {
+        var client = await SeedBoardEditAsync(mobile ? "save_m" : "save_d");
+        var name = "Renamed " + (mobile ? "Mobile" : "Desktop");
+
+        var response = await PostRenderedEditAsync(client, EditOneShotBoardId, AgentFor(mobile), new() { ["Name"] = name });
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        context.Groups.Single(g => g.Id == EditOneShotBoardId).Name.Should().Be(name);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupEdit_APageLevelRefusal_ShowsAsARefusalLineWithAnAlertAboveTheForm(bool mobile)
+    {
+        var client = await SeedBoardEditAsync(mobile ? "refuse_m" : "refuse_d");
+
+        var response = await PostRenderedEditAsync(client, EditOneShotBoardId, AgentFor(mobile), new() { ["RenderedDisabledPages"] = "12345" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, "a refused post shows the form again");
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var refusal = Regex.Match(html, @"<div role=""alert"" class=""refusal-line"">\s*<i class=""fas fa-circle-exclamation"" aria-hidden=""true""></i>\s*<span>(?<text>[^<]+)</span>\s*</div>");
+        refusal.Success.Should().BeTrue();
+        refusal.Groups["text"].Value.Should().Contain("Someone else changed this board while you were editing.");
+        var formTag = html.LastIndexOf("<form", html.IndexOf("class=\"form-page\"", StringComparison.Ordinal), StringComparison.Ordinal);
+        refusal.Index.Should().BeLessThan(formTag, "the refusal sits above the form");
+        html.Should().NotMatchRegex(@"class=""text-danger mb-1""");
+        HeadingOneCount(html).Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupEdit_WithAnEmptyName_ShowsTheMessageOnTheFoundationTreatment(bool mobile)
+    {
+        var client = await SeedBoardEditAsync(mobile ? "badname_m" : "badname_d");
+
+        var response = await PostRenderedEditAsync(client, EditOneShotBoardId, AgentFor(mobile), new() { ["Name"] = "" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        html.Should().MatchRegex(@"<span[^>]*data-valmsg-for=""Name""[^>]*>[^<]*Group name is required");
+        html.Should().NotMatchRegex(@"<span[^>]*class=""text-danger[^""]*""[^>]*data-valmsg-for");
+    }
+
     // Posts a form to the page's own URL with the antiforgery token the page issued, under the given User-Agent.
     private static async Task<string> PostFormAsync(HttpClient client, string url, string userAgent, Dictionary<string, string> fields)
     {

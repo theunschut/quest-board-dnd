@@ -23,4 +23,18 @@
     font-size: var(--qb-text-sm);
     overflow-wrap: anywhere;
   }
+
+  /* A page switch row on the phone is the finger-sized target: the row and its label are at least 44px tall. */
+  .mobile-layout .page-switch {
+    min-height: var(--qb-hit-min);
+  }
+
+  .mobile-layout .page-switch .form-check-label {
+    min-height: var(--qb-hit-min);
+    padding-block: calc((var(--qb-hit-min) - 1.5em) / 2);
+  }
+
+  .mobile-layout .page-switch .form-check-input {
+    margin-top: calc((var(--qb-hit-min) - 1.25em) / 2);
+  }
 }

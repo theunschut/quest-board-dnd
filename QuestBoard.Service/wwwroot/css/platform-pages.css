@@ -3,7 +3,8 @@
  * one pages layer block and nothing but design tokens, so changing a colour is a change to the token file.
  *
  * It holds the page title bar with its wrapping action group, the board list's name cell and its left-aligned action
- * slots, and the empty-state sentence. The phone deltas live in platform-pages.mobile.css.
+ * slots, the empty-state sentence, and what the board forms add to the shared form look: a titled section, the
+ * refusal above the form, and the page switch rows. The phone deltas live in platform-pages.mobile.css.
  */
 @layer pages {
   /* A page card's header bar: the title and its actions wrap instead of overflowing. */
@@ -51,6 +52,60 @@
    * lightest board pixel; here it takes the card's own colour instead.
    */
   .modern-card .empty-state-text {
+    color: inherit;
+  }
+
+  /* A titled section inside a form card, such as the Pages section on the board form. */
+  .form-section-title {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--qb-space-sm);
+  }
+
+  /*
+   * The sentence that says why a form was refused sits above the form. The danger text holds 4.5:1 only on the opaque
+   * overlay surface, not on the card's glass, so the line carries that surface and a stripe, like the validation summary.
+   */
+  .modern-card-body > .refusal-line {
+    margin-bottom: var(--qb-space-md);
+    padding: var(--qb-space-sm) var(--qb-space-md);
+    border-left: 4px solid var(--qb-danger-text);
+    border-radius: var(--qb-radius-md);
+    background-color: var(--qb-surface-overlay);
+  }
+
+  /*
+   * One page switch: the label covers the whole row, so the row is the target, and the row is at least 32px tall. The
+   * checked state is the gold the reserved list allows for switches. A locked row keeps its label at full strength and
+   * says why in a line under it; the reason takes the card's colour because the muted tone falls under 4.5:1 on glass.
+   */
+  .page-switch {
+    min-height: var(--qb-space-xl);
+  }
+
+  .page-switch .form-check-label {
+    display: block;
+    min-height: var(--qb-space-xl);
+    padding-block: calc((var(--qb-space-xl) - 1.5em) / 2);
+  }
+
+  /* The shared checkbox rule squares the box; a switch is a pill twice as wide as it is tall. */
+  .page-switch .form-check-input {
+    width: 2em;
+    margin-top: calc((var(--qb-space-xl) - 1.25em) / 2);
+    accent-color: var(--qb-accent);
+  }
+
+  .page-switch .form-check-input:checked {
+    background-color: var(--qb-accent);
+  }
+
+  .page-switch .form-check-input:disabled ~ .form-check-label {
+    opacity: 1;
+  }
+
+  .page-switch .control-reason {
+    margin-block-end: var(--qb-space-sm);
     color: inherit;
   }
 }
