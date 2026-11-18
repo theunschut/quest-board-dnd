@@ -199,6 +199,8 @@ Each fix plan that adds a database write registers it here with method, entity, 
 
 | Plan | Method | Entity | Rows touched | Why it is tracked |
 |------|--------|--------|--------------|-------------------|
+| 100-08 | `QuestRepository.RemoveAsync` (override; removes the quest's reminder rows) | `ReminderLogEntity` (`ReminderLogs`) | every row whose `QuestId` is the quest being deleted; read with `IgnoreQueryFilters` selected by that id alone | `RemoveRange` on tracked entities, saved in the same `SaveChangesAsync` as the quest. Approved by the operator at O-11 (yes). No raw SQL, `ExecuteDelete`, `Attach` or hand-set state. |
+| 100-08 | `QuestRepository.RemoveAsync` (override; unlinks a follow-up quest) | `QuestEntity` (`Quests`), column `OriginalQuestId` | each quest whose `OriginalQuestId` is the quest being deleted, usually on another board; read with `IgnoreQueryFilters` selected by that id alone | tracked property set to null, saved in the same `SaveChangesAsync` as the quest delete, so it goes through the change tracker and the feed revision guard. `OriginalQuestId` is not a field the calendar feed revision watches. Approved by the operator at O-11 (yes). |
 
 ## Threat register
 

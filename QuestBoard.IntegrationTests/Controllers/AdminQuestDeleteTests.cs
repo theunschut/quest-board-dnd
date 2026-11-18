@@ -10,7 +10,7 @@ namespace QuestBoard.IntegrationTests.Controllers;
 /// limited to the active board: a crafted request for a quest of another board answers an Error toast and removes nothing. Deleting a quest of the active board must also remove the
 /// reminder rows that point at it and unlink a follow-up quest that lives on another board, or the delete throws on a
 /// real database. The in-memory database does not enforce foreign keys, so those two facts assert the rows are gone,
-/// not that the delete failed. The facts marked as reproducing an open gap stay skipped until the cleanup exists.
+/// not that the delete failed; the real-foreign-key proof is the SQL Server fact.
 /// </summary>
 public class AdminQuestDeleteTests : IClassFixture<WebApplicationFactoryBase>
 {
@@ -121,7 +121,7 @@ public class AdminQuestDeleteTests : IClassFixture<WebApplicationFactoryBase>
 
     // ---- Reproduction facts: what the delete must also clean up ------------------------------------
 
-    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    [Fact]
     public async Task DeleteQuest_RemovesTheReminderRowsOfTheQuest()
     {
         var (adminClient, dungeonMaster) = await ArrangeAsync();
@@ -142,7 +142,7 @@ public class AdminQuestDeleteTests : IClassFixture<WebApplicationFactoryBase>
             .Should().Be(0, "a reminder row left pointing at a deleted quest makes the delete fail on a real database");
     }
 
-    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    [Fact]
     public async Task DeleteQuest_ClearsTheLinkOfAFollowUpQuestOnAnotherBoard()
     {
         var (adminClient, dungeonMaster) = await ArrangeAsync();

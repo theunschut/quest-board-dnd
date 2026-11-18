@@ -62,7 +62,7 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
         var response = await _client.GetAsync(endpoint, TestContext.Current.CancellationToken);
 
         // Assert
-        // Note: DeleteUser returns 405 Method Not Allowed since it requires DELETE not GET
+        // Note: DeleteUser returns 405 Method Not Allowed since it only accepts a posted form, not a GET
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.Unauthorized, HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed);
     }
 
@@ -387,6 +387,58 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
         return resolvedUserId!.Value;
     }
 
+    // The toast travels in temp data and is shown once, so it is read from the page the redirect lands on.
+    private static async Task<List<string>> UsersPageToastsAsync(HttpClient client, HttpResponseMessage response)
+    {
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect, "a removal answers a redirect back to the user list");
+        response.Headers.Location!.OriginalString.Should().Contain("/Admin/Users");
+
+        var landed = await client.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
+        landed.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        return System.Text.RegularExpressions.Regex.Matches(html, "<strong class=\"me-auto\">(\\w+)</strong>[\\s\\S]*?</div>\\s*</div>")
+            .Select(m => m.Value).ToList();
+    }
+
+    private static Task<HttpResponseMessage> PostDeleteUserAsync(HttpClient client, int userId) =>
+        client.PostAsync($"/Admin/DeleteUser/{userId}", new FormUrlEncodedContent(new Dictionary<string, string>()), TestContext.Current.CancellationToken);
+
+    // Both layouts show Remove from Group as a posted form that carries the antiforgery token and today's confirm
+    // sentence, and neither carries a script that sends the request itself.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UsersPage_RendersRemoveFromGroupAsAConfirmedPostForm_OnBothLayouts(bool phone)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var target = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "renderremove", "renderremove@example.com", name: "Render Remove");
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.UserGroups.Add(new UserGroupEntity { UserId = target.Id, GroupId = 1, GroupRole = (int)GroupRole.Player });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/Admin/Users");
+        if (phone)
+            request.Headers.TryAddWithoutValidation("User-Agent",
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1");
+        var response = await adminClient.SendAsync(request, TestContext.Current.CancellationToken);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var form = System.Text.RegularExpressions.Regex.Match(html,
+            $"<form[^>]*action=\"/Admin/DeleteUser/{target.Id}\"[^>]*>(.*?)</form>", System.Text.RegularExpressions.RegexOptions.Singleline);
+        form.Success.Should().BeTrue("each member row carries its own remove form");
+        form.Value.Should().Contain("method=\"post\"");
+        form.Value.Should().Contain("data-confirm-message=\"Are you sure you want to remove this user from the group? They will keep their account and any other group memberships.\"");
+        form.Value.Should().Contain("name=\"__RequestVerificationToken\"");
+        html.Should().Contain("js/confirm-submit.js");
+        html.Should().NotContain("removeFromGroup(").And.NotContain("method: \"DELETE\"");
+    }
+
     // DeleteUser must remove only the active-group membership row — the account itself
     // and any other group memberships must survive.
     [Fact]
@@ -409,10 +461,11 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
         }
 
         // Act — active group is group 1 (_factory.TestGroupContext.ActiveGroupId defaults to 1)
-        var response = await adminClient.DeleteAsync($"/Admin/DeleteUser/{targetUser.Id}", TestContext.Current.CancellationToken);
+        var response = await PostDeleteUserAsync(adminClient, targetUser.Id);
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var toasts = await UsersPageToastsAsync(adminClient, response);
+        toasts.Should().ContainSingle().Which.Should().Contain("Success").And.Contain("Removal Target was removed from the group.");
 
         using var assertScope = _factory.Services.CreateScope();
         var userManager = assertScope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
@@ -472,10 +525,10 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
         }
 
         // Act
-        var response = await adminClient.DeleteAsync($"/Admin/DeleteUser/{targetUser.Id}", TestContext.Current.CancellationToken);
+        var response = await PostDeleteUserAsync(adminClient, targetUser.Id);
 
         // Assert — no unhandled DbUpdateException (would surface as a 500)
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await UsersPageToastsAsync(adminClient, response)).Should().ContainSingle().Which.Should().Contain("Success");
 
         using var assertScope = _factory.Services.CreateScope();
         var userManager = assertScope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();

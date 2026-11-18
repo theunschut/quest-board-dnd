@@ -360,25 +360,25 @@ public class AdminController(IUserService userService, IQuestService questServic
         return View(model);
     }
 
-    [HttpDelete]
+    [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteUser(int id)
     {
         var groupId = activeGroupContext.ActiveGroupId;
-        if (groupId == null) return NotFound();
+        if (groupId == null) return RedirectToAction(nameof(Users));
 
         // Guard against a crafted request for a user outside the active group
         var targetRole = await userService.GetGroupRoleByIdAsync(id, groupId.Value);
-        if (targetRole == null) return NotFound();
+        if (targetRole == null) return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
 
         var user = await userService.GetByIdAsync(id);
         if (user == null)
         {
-            return NotFound();
+            return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
         }
 
         await groupService.RemoveMemberAsync(groupId.Value, id);
-        return Ok();
+        return this.RedirectWithSuccess(nameof(Users), AdminActionMessages.MemberRemoved(user.Name));
     }
 
     [HttpPost]

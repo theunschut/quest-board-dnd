@@ -2,10 +2,6 @@
 @using QuestBoard.Service.ViewModels.AdminViewModels
 @model IEnumerable<UserManagementViewModel>
 
-@{
-    var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
-}
-
 @section Styles {
     <link href="~/css/admin-users.mobile.css" asp-append-version="true" rel="stylesheet" />
 }
@@ -98,9 +94,12 @@
                     </a>
 
                     @* Remove from Group button *@
-                    <button type="button" class="btn btn-danger btn-sm" onclick="removeFromGroup(@userModel.User.Id)">
-                        <i class="fas fa-user-minus"></i>Remove from Group
-                    </button>
+                    <form asp-action="DeleteUser" asp-route-id="@userModel.User.Id" method="post" class="d-inline"
+                          data-confirm-message="Are you sure you want to remove this user from the group? They will keep their account and any other group memberships.">
+                        <button type="submit" class="btn btn-danger btn-sm">
+                            <i class="fas fa-user-minus"></i>Remove from Group
+                        </button>
+                    </form>
                 </div>
             </div>
         }
@@ -115,22 +114,5 @@
 </div>
 
 @section Scripts {
-    <script>
-        function removeFromGroup(id) {
-            if (confirm("Are you sure you want to remove this user from the group? They will keep their account and any other group memberships.")) {
-                fetch(`/Admin/DeleteUser/${id}`, {
-                    method: "DELETE",
-                    headers: {
-                        'RequestVerificationToken': '@tokens.RequestToken'
-                    }
-                }).then(res => {
-                    if (res.ok) {
-                        location.reload();
-                    } else {
-                        alert("Remove from group failed.");
-                    }
-                });
-            }
-        }
-    </script>
+    <script type="module" src="~/js/confirm-submit.js" asp-append-version="true"></script>
 }
