@@ -54,6 +54,10 @@ public class AdminRoleGuardTests : IClassFixture<WebApplicationFactoryBase>
             new FormUrlEncodedContent(new Dictionary<string, string> { ["userId"] = userId.ToString() }),
             TestContext.Current.CancellationToken);
 
+    private static Task<HttpResponseMessage> PostDeleteUserAsync(HttpClient client, int userId) =>
+        client.PostAsync($"/Admin/DeleteUser/{userId}", new FormUrlEncodedContent(new Dictionary<string, string>()),
+            TestContext.Current.CancellationToken);
+
     // A refusal is a redirect to the Users page; the Error toast is read from the page the redirect lands on, because
     // the toast travels in temp data and is shown once.
     private static async Task AssertRefusedWithErrorToastAsync(HttpClient client, HttpResponseMessage response)
@@ -96,8 +100,7 @@ public class AdminRoleGuardTests : IClassFixture<WebApplicationFactoryBase>
     public async Task PromoteToDM_OnTheActorThemselves_IsRefused_AndTheirRoleIsUnchanged() =>
         await AssertSelfDemotionRefusedAsync("PromoteToDM");
 
-    // Remove from Group is a DELETE today, so a refusal cannot be a toast yet; the fact pins the part that does not
-    // depend on the verb: the membership stays and the request does not answer success.
+    // Remove from Group is a posted form like the role actions: a refusal is an Error toast and the membership stays.
     [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
     public async Task DeleteUser_OnTheActorThemselves_IsRefused_AndTheirMembershipStays()
     {
@@ -105,10 +108,10 @@ public class AdminRoleGuardTests : IClassFixture<WebApplicationFactoryBase>
         var (adminClient, actor) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
         await SeedMemberAsync("peeradmin", GroupRole.Admin);
 
-        var response = await adminClient.DeleteAsync($"/Admin/DeleteUser/{actor.Id}", TestContext.Current.CancellationToken);
+        var response = await PostDeleteUserAsync(adminClient, actor.Id);
 
         (await RoleOnBoardAsync(actor.Id)).Should().Be(GroupRole.Admin, "an Admin may not remove themselves from the board");
-        response.StatusCode.Should().NotBe(HttpStatusCode.OK);
+        await AssertRefusedWithErrorToastAsync(adminClient, response);
     }
 
     // The actor is a platform administrator who is only a Player here, so the target is the sole Admin of the board and
@@ -136,10 +139,10 @@ public class AdminRoleGuardTests : IClassFixture<WebApplicationFactoryBase>
         var (superAdminClient, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
         var onlyAdmin = await SeedMemberAsync("onlyadmin", GroupRole.Admin);
 
-        var response = await superAdminClient.DeleteAsync($"/Admin/DeleteUser/{onlyAdmin.Id}", TestContext.Current.CancellationToken);
+        var response = await PostDeleteUserAsync(superAdminClient, onlyAdmin.Id);
 
         (await RoleOnBoardAsync(onlyAdmin.Id)).Should().Be(GroupRole.Admin, "a board must not be left without an Admin");
-        response.StatusCode.Should().NotBe(HttpStatusCode.OK);
+        await AssertRefusedWithErrorToastAsync(superAdminClient, response);
     }
 
     // A page that was open while the person left the board still posts their id; the answer must say so.
@@ -212,9 +215,9 @@ public class AdminRoleGuardTests : IClassFixture<WebApplicationFactoryBase>
         var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
         var player = await SeedMemberAsync("player", GroupRole.Player);
 
-        var response = await adminClient.DeleteAsync($"/Admin/DeleteUser/{player.Id}", TestContext.Current.CancellationToken);
+        var response = await PostDeleteUserAsync(adminClient, player.Id);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
         (await RoleOnBoardAsync(player.Id)).Should().BeNull();
     }
 }
