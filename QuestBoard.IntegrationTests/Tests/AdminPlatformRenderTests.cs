@@ -1404,6 +1404,146 @@ public class AdminPlatformRenderTests(WebApplicationFactoryBase factory)
         html.Should().MatchRegex(@"<p class=""empty-state-text"">Create a set above, then add boards of the same type to share their calendars\.</p>");
     }
 
+    // ---- Platform Users ----------------------------------------------------------------------------
+
+    private const string DisableConfirmSentence =
+        "Disable this account? They will be signed out and unable to log in until re-enabled. No data will be deleted.";
+
+    // The signed-in SuperAdmin, an active account that is not confirmed and a disabled account.
+    private async Task<(HttpClient Client, UserEntity Self, UserEntity Active, UserEntity Disabled)> SeedPlatformUsersAsync(string tag)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, self) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(
+            factory, "pu_" + tag, "pu_" + tag + "@example.com", name: "Isolde Marchwood");
+        var active = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "pu_active", "pu_active@example.com", name: "Brindle Oakenfeather");
+        var disabled = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "pu_disabled", "pu_disabled@example.com", name: "Tamsin Hollowreed");
+        using var scope = factory.Services.CreateScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
+        var entity = await users.FindByIdAsync(disabled.Id.ToString());
+        entity!.EmailConfirmed = false;
+        await users.UpdateAsync(entity);
+        await users.SetLockoutEndDateAsync(entity, DateTimeOffset.MaxValue);
+        return (client, self, active, disabled);
+    }
+
+    // The slice of the page for one account: from its name to the end of its row (desktop) or slip (phone).
+    private static string AccountRow(string html, string name)
+    {
+        var start = html.IndexOf(name, StringComparison.Ordinal);
+        start.Should().BeGreaterThan(-1, $"'{name}' must be listed");
+        var end = html.IndexOf("</tr>", start, StringComparison.Ordinal);
+        if (end < 0) end = html.IndexOf("class=\"row-slip\"", start + 1, StringComparison.Ordinal);
+        return end < 0 ? html[start..] : html[start..end];
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformUsers_HasOneTitleInTheCardHeader_LinksItsSheets_AndLoadsTheConfirmModule(bool mobile)
+    {
+        var (client, _, _, _) = await SeedPlatformUsersAsync(mobile ? "head_m" : "head_d");
+
+        var html = await GetAsync(client, "/platform/Users", AgentFor(mobile));
+
+        HeadingOneCount(html).Should().Be(1);
+        html.Should().MatchRegex(CardHeaderTitle("User Accounts"));
+        html.Should().Contain("/css/platform-pages.css");
+        if (mobile)
+        {
+            html.Should().Contain("/css/platform-pages.mobile.css");
+            html.Should().Contain("/css/platform-users-boards.mobile.css");
+        }
+        else
+        {
+            html.Should().NotContain("/css/platform-pages.mobile.css");
+        }
+        html.Should().NotContain("platform-users.mobile.css");
+        html.Should().MatchRegex("<script[^>]*type=\"module\"[^>]*src=\"/js/confirm-submit\\.js");
+        html.Should().NotMatchRegex("\\son(submit|click)\\s*=");
+        html.Should().NotContain("style=\"");
+        html.Should().NotContain("text-danger me-2");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformUsers_DisableOfAnotherAccount_IsAPostFormThatAsksWithTodaysSentence(bool mobile)
+    {
+        var (client, _, _, _) = await SeedPlatformUsersAsync(mobile ? "ask_m" : "ask_d");
+
+        var html = await GetAsync(client, "/platform/Users", AgentFor(mobile));
+
+        var row = AccountRow(html, "Brindle Oakenfeather");
+        var form = Regex.Match(row, @"<form\b[^>]*action=""/platform/Users/Disable""[^>]*>", RegexOptions.IgnoreCase).Value;
+        form.Should().NotBeEmpty();
+        form.Should().Contain("method=\"post\"");
+        form.Should().Contain("data-confirm-message=\"" + DisableConfirmSentence + "\"");
+        row.Should().Contain("name=\"__RequestVerificationToken\"");
+        row.Should().NotContain("aria-disabled");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformUsers_OwnDisable_IsTheRefusedControlWithItsReasonLine(bool mobile)
+    {
+        var (client, self, _, _) = await SeedPlatformUsersAsync(mobile ? "own_m" : "own_d");
+
+        var html = await GetAsync(client, "/platform/Users", AgentFor(mobile));
+
+        var row = AccountRow(html, "Isolde Marchwood");
+        var button = Regex.Match(row, @"<button\b[^>]*aria-disabled=""true""[^>]*>").Value;
+        button.Should().NotBeEmpty();
+        button.Should().Contain("type=\"button\"");
+        button.Should().Contain($"aria-describedby=\"reason-own-{self.Id}\"");
+        button.Should().NotContain("title=");
+        row.Should().MatchRegex($@"<p class=""control-reason"" id=""reason-own-{self.Id}""><i class=""fas fa-lock"" aria-hidden=""true""></i><span>You cannot disable your own account\.</span></p>");
+        row.Should().NotContain("/platform/Users/Disable", "the refused control is outside any form");
+        row.Should().NotContain("data-confirm-message");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformUsers_DisabledAccount_OffersEnableAndShowsTheSharedBadges(bool mobile)
+    {
+        var (client, _, _, _) = await SeedPlatformUsersAsync(mobile ? "badge_m" : "badge_d");
+
+        var html = await GetAsync(client, "/platform/Users", AgentFor(mobile));
+
+        var disabled = AccountRow(html, "Tamsin Hollowreed");
+        StatusBadges(disabled).Should().Equal(("bg-secondary", "fa-question-circle", "Unconfirmed"), ("bg-danger", "fa-user-lock", "Disabled"));
+        disabled.Should().Contain("/platform/Users/Enable");
+        disabled.Should().NotContain("/platform/Users/Disable");
+        var active = AccountRow(html, "Brindle Oakenfeather");
+        StatusBadges(active).Should().Equal(("bg-success", "fa-check-circle", "Confirmed"), ("bg-success", "fa-check-circle", "Active"));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformUsers_ShowsTheEmailAsALink_AndTheBoardsCellKeepsItsWords(bool mobile)
+    {
+        var (client, _, _, _) = await SeedPlatformUsersAsync(mobile ? "mail_m" : "mail_d");
+
+        var html = await GetAsync(client, "/platform/Users", AgentFor(mobile));
+
+        var row = AccountRow(html, "Brindle Oakenfeather");
+        row.Should().MatchRegex(@"<a href=""mailto:[^""]+"" class=""email-link"">pu_active_[0-9a-f]{8}@example\.com</a>");
+        if (mobile)
+        {
+            row.Should().Contain("0 boards");
+            row.Should().MatchRegex(@"<p class=""slip-line"">\s*<a href=""mailto:");
+        }
+        else
+        {
+            row.Should().Contain("<td>0</td>");
+            html.Should().Contain("<th scope=\"col\">Boards</th>");
+        }
+    }
+
     // Posts a form to the page's own URL with the antiforgery token the page issued, under the given User-Agent.
     private static async Task<string> PostFormAsync(HttpClient client, string url, string userAgent, Dictionary<string, string> fields)
     {

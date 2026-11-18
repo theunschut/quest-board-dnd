@@ -1,15 +1,23 @@
+@using QuestBoard.Service.ViewModels.AdminViewModels
 @model IEnumerable<PlatformUserViewModel>
 @{
     ViewData["Title"] = "User Accounts";
     var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/platform-pages.css" asp-append-version="true" />
+}
+
+@section Scripts {
+    <script type="module" src="~/js/confirm-submit.js" asp-append-version="true"></script>
+}
+
 <div class="card modern-card">
-    <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
-        <h2 class="mb-0">
-            <i class="fas fa-users-cog text-danger me-2"></i>
-            User Accounts
-        </h2>
+    <div class="card-header modern-card-header">
+        <h1 class="mb-0">
+            <i class="fas fa-users-cog me-2" aria-hidden="true"></i>User Accounts
+        </h1>
     </div>
     <div class="card-body modern-card-body">
         @if (Model.Any())
@@ -23,16 +31,17 @@
                             <th scope="col">Boards</th>
                             <th scope="col">Confirmed</th>
                             <th scope="col">Status</th>
-                            <th scope="col">Actions</th>
+                            <th scope="col" class="th-actions">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var item in Model)
                         {
+                            var confirmation = AdminPlatformDisplay.AccountConfirmation(item.User.EmailConfirmed);
+                            var accountState = AdminPlatformDisplay.AccountState(item.IsDisabled);
                             <tr>
-                                <td>
-                                    <i class="fas fa-user text-muted me-2"></i>
-                                    @item.User.Name
+                                <td class="name-cell">
+                                    <i class="fas fa-user me-2" aria-hidden="true"></i>@item.User.Name
                                 </td>
                                 <td>
                                     @if (!string.IsNullOrEmpty(item.User.Email))
@@ -41,7 +50,7 @@
                                     }
                                     else
                                     {
-                                        <span class="text-muted fst-italic">No email provided</span>
+                                        <span class="email-none">No email provided</span>
                                     }
                                 </td>
                                 @if (item.BoardNames.Count == 0)
@@ -54,49 +63,42 @@
                                     <td title="@boardList">@(item.BoardNames.Count)<span class="visually-hidden"> @(item.BoardNames.Count == 1 ? "board" : "boards"): @boardList</span></td>
                                 }
                                 <td>
-                                    @if (item.User.EmailConfirmed)
-                                    {
-                                        <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Confirmed</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-secondary"><i class="fas fa-question-circle me-1"></i>Unconfirmed</span>
-                                    }
+                                    <span class="badge @confirmation.FillClass"><i class="fas @confirmation.Icon me-1" aria-hidden="true"></i>@confirmation.Word</span>
                                 </td>
                                 <td>
-                                    @if (item.IsDisabled)
-                                    {
-                                        <span class="badge bg-danger"><i class="fas fa-user-lock me-1"></i>Disabled</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Active</span>
-                                    }
+                                    <span class="badge @accountState.FillClass"><i class="fas @accountState.Icon me-1" aria-hidden="true"></i>@accountState.Word</span>
                                 </td>
-                                <td class="text-end">
-                                    @if (item.IsDisabled)
-                                    {
-                                        <form asp-action="Enable" method="post" class="d-inline">
-                                            <input type="hidden" name="userId" value="@item.User.Id" />
-                                            <button type="submit" class="btn btn-sm btn-success">
-                                                <i class="fas fa-user-check me-1"></i>Enable
+                                <td class="actions-cell">
+                                    <div class="row-actions">
+                                        @if (item.IsDisabled)
+                                        {
+                                            <form asp-action="Enable" method="post">
+                                                <input type="hidden" name="userId" value="@item.User.Id" />
+                                                <button type="submit" class="btn btn-sm btn-success">
+                                                    <i class="fas fa-user-check me-2" aria-hidden="true"></i>Enable
+                                                </button>
+                                            </form>
+                                        }
+                                        else if (currentUserId == item.User.Id.ToString())
+                                        {
+                                            <button type="button" class="btn btn-sm btn-danger disabled" aria-disabled="true" aria-describedby="reason-own-@item.User.Id">
+                                                <i class="fas fa-user-lock me-2" aria-hidden="true"></i>Disable
                                             </button>
-                                        </form>
-                                    }
-                                    else if (currentUserId == item.User.Id.ToString())
+                                        }
+                                        else
+                                        {
+                                            <form asp-action="Disable" method="post"
+                                                  data-confirm-message="Disable this account? They will be signed out and unable to log in until re-enabled. No data will be deleted.">
+                                                <input type="hidden" name="userId" value="@item.User.Id" />
+                                                <button type="submit" class="btn btn-sm btn-danger">
+                                                    <i class="fas fa-user-lock me-2" aria-hidden="true"></i>Disable
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                    @if (!item.IsDisabled && currentUserId == item.User.Id.ToString())
                                     {
-                                        <button type="button" class="btn btn-sm btn-danger" disabled title="You cannot disable your own account.">
-                                            <i class="fas fa-user-lock me-1"></i>Disable
-                                        </button>
-                                    }
-                                    else
-                                    {
-                                        <form asp-action="Disable" method="post" class="d-inline">
-                                            <input type="hidden" name="userId" value="@item.User.Id" />
-                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Disable this account? They will be signed out and unable to log in until re-enabled. No data will be deleted.');">
-                                                <i class="fas fa-user-lock me-1"></i>Disable
-                                            </button>
-                                        </form>
+                                        <p class="control-reason" id="reason-own-@item.User.Id"><i class="fas fa-lock" aria-hidden="true"></i><span>You cannot disable your own account.</span></p>
                                     }
                                 </td>
                             </tr>
@@ -107,9 +109,9 @@
         }
         else
         {
-            <div class="py-5 text-center">
-                <i class="fas fa-users fa-3x text-muted mb-3"></i>
-                <p class="text-muted">No users found.</p>
+            <div class="empty-state">
+                <i class="fas fa-users empty-state-icon" aria-hidden="true"></i>
+                <h2 class="empty-state-heading">No users found.</h2>
             </div>
         }
     </div>

@@ -12,7 +12,7 @@
     min-height: var(--qb-hit-min);
   }
 
-  .mobile-layout .board-slip__name {
+  .mobile-layout :is(.board-slip__name, .user-slip__name) {
     font-weight: var(--qb-weight-strong);
     overflow-wrap: anywhere;
     min-inline-size: 0;
@@ -36,6 +36,18 @@
 
   .mobile-layout .page-switch .form-check-input {
     margin-top: calc((var(--qb-hit-min) - 1.25em) / 2);
+  }
+
+  /* The address on a phone slip is a finger-sized target, on one line of its own. */
+  .mobile-layout .email-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--qb-hit-min);
+  }
+
+  /* The slip's sentence for an account without an address keeps the slip's own colour. */
+  .mobile-layout .row-slip .email-none {
+    color: inherit;
   }
 
   /* A set's own forms and its delete button are finger-sized, and Delete Set spans the card. */

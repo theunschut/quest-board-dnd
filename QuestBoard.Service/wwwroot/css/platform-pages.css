@@ -76,6 +76,22 @@
     text-align: start;
   }
 
+  /*
+   * An account's address links out of a table cell or a phone slip. The padding gives the link a target of at least 24px;
+   * the phone sheet raises it to the finger-sized minimum. The sentence for an account without an address takes the muted
+   * ink of paper.
+   */
+  .email-link {
+    display: inline-block;
+    padding-block: var(--qb-space-xs);
+    overflow-wrap: anywhere;
+  }
+
+  .email-none {
+    color: var(--qb-ink-muted);
+    font-style: italic;
+  }
+
   /* A linked set: its two badges sit together on the right of the title band. */
   .set-header__badges {
     display: flex;
