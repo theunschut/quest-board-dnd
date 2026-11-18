@@ -126,6 +126,8 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Areas/Platform/Views/Group/Members.Mobile.cshtml",
         "QuestBoard.IntegrationTests/Tests/BoardPageStaticGuardTests.cs",
         "QuestBoard.Service/Views/Admin/EmailStats.cshtml",
+        "QuestBoard.IntegrationTests/Controllers/BoardPageGateMatrixTests.cs",
+        "QuestBoard.IntegrationTests/Tests/LinkedBoardStaticGuardTests.cs",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it
@@ -754,6 +756,79 @@ public class AdminPlatformConversionGuardTests
         files.Where(file => !PhaseSourceFiles.Contains(file)).Should().BeEmpty(
             "a converted view or admin sheet left out of the list would escape the planning-reference scan");
     }
+
+    // ---- Reproduction facts and verbs ---------------------------------------------------------------
+
+    // The test files that held a fact written ahead of its fix, skipped with one fixed reason until the fix landed.
+    private static readonly string[] ReproductionFactFiles =
+    [
+        "QuestBoard.IntegrationTests/Controllers/AdminAccountReachTests.cs",
+        "QuestBoard.IntegrationTests/Controllers/AdminRoleGuardTests.cs",
+        "QuestBoard.IntegrationTests/Controllers/AdminQuestDeleteTests.cs",
+        "QuestBoard.IntegrationTests/Controllers/AdminControllerRateLimitIntegrationTests.cs",
+        "QuestBoard.IntegrationTests/Controllers/GroupManagementIntegrationTests.cs",
+    ];
+
+    // The skip reason those facts carried, built from two pieces so this file never holds the reason it forbids.
+    private const string ReproductionSkipReason = "Reproduces an open " + "gap";
+
+    // A skip attribute argument that carries the reproduction reason; a skip for any other reason is not matched.
+    private static List<string> ReproductionSkips(string source) =>
+        Regex.Matches(source, @"Skip\s*=\s*""[^""]*" + Regex.Escape(ReproductionSkipReason))
+            .Select(m => m.Value).ToList();
+
+    [Fact]
+    public void ReproductionFacts_AreAllEnabled()
+    {
+        foreach (var path in ReproductionFactFiles)
+            ReproductionSkips(ReadRepoFile(path)).Should().BeEmpty(
+                $"{path} holds no fact still skipped as a reproduction: each was enabled by the change that fixed it");
+    }
+
+    [Fact]
+    public void ReproductionSkipScanner_FlagsTheReasonAndLeavesOtherSkipsAlone()
+    {
+        var seeded = "[Fact(Skip = \"" + ReproductionSkipReason + "; enabled by its fix\")]";
+        ReproductionSkips(seeded).Should().ContainSingle();
+        ReproductionSkips("[Theory(Skip=\"" + ReproductionSkipReason + "\")]").Should().ContainSingle();
+        ReproductionSkips("[Fact(Skip = \"Needs a SQL Server instance\")]").Should().BeEmpty("a skip for another reason is left alone");
+        ReproductionSkips("[Fact] // " + ReproductionSkipReason).Should().BeEmpty("a mention outside a skip attribute is not a skip");
+    }
+
+    // The controllers of the area: the Admin controller and the three Platform controllers.
+    private static readonly string[] AreaControllers =
+    [
+        "QuestBoard.Service/Controllers/Admin/AdminController.cs",
+        "QuestBoard.Service/Areas/Platform/Controllers/GroupController.cs",
+        "QuestBoard.Service/Areas/Platform/Controllers/LinkedBoardsController.cs",
+        "QuestBoard.Service/Areas/Platform/Controllers/UsersController.cs",
+    ];
+
+    // A delete verb on an action: the attribute, written bare, with a route template or among others in one bracket.
+    private static List<string> DeleteVerbs(string source) =>
+        Regex.Matches(source, @"\bHttpDelete(?:Attribute)?\b").Select(m => m.Value).ToList();
+
+    [Fact]
+    public void AreaControllers_UseNoDeleteVerb()
+    {
+        foreach (var path in AreaControllers)
+            DeleteVerbs(StripCodeComments(ReadRepoFile(path))).Should().BeEmpty(
+                $"{path} removes through a posted form with an antiforgery token, never a delete verb");
+    }
+
+    [Fact]
+    public void DeleteVerbScanner_FlagsTheAttributeAndIgnoresPostAndComments()
+    {
+        DeleteVerbs("[HttpDelete]").Should().ContainSingle();
+        DeleteVerbs("[HttpDelete(\"Quest/{id}\")]").Should().ContainSingle();
+        DeleteVerbs("[Authorize, HttpDelete]").Should().ContainSingle();
+        DeleteVerbs("[Authorize(Policy = \"AdminOnly\"), HttpDelete(\"x\")]").Should().ContainSingle();
+        DeleteVerbs("[HttpPost, ValidateAntiForgeryToken]").Should().BeEmpty();
+        DeleteVerbs(StripCodeComments("// [HttpDelete]\n/* [HttpDelete] */")).Should().BeEmpty("a comment is not an attribute");
+    }
+
+    private static string StripCodeComments(string source) =>
+        Regex.Replace(Regex.Replace(source, @"/\*[\s\S]*?\*/", " "), @"//[^\r\n]*", " ");
 
     // The Email Stats tiles are siblings in one grid: the sheet holds the grid and the tile rules, and the view holds no
     // Bootstrap status colour utility. A file name in an alert's code element keeps the alert's light text.

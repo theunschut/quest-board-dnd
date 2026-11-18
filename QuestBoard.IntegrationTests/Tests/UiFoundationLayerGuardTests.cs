@@ -336,6 +336,31 @@ public class UiFoundationLayerGuardTests
             "the global sheet was renamed, so no file by the old name may remain");
     }
 
+    // The four page sheets of the Admin and Platform pages are scanned for a layer and for colour literals, and none of
+    // the old phone sheets those pages replaced stays on either list.
+    [Fact]
+    public void LayeredAndNoLiteralFiles_HoldTheAdminAndPlatformSheets_AndNoRetiredPhoneSheet()
+    {
+        string[] pageSheets = ["admin-pages.css", "admin-pages.mobile.css", "platform-pages.css", "platform-pages.mobile.css"];
+        string[] retired =
+        [
+            "admin-form.mobile.css", "admin-quests.mobile.css", "admin-users.mobile.css",
+            "platform-group.mobile.css", "platform-linked-boards.mobile.css", "platform-users.mobile.css",
+        ];
+
+        foreach (var sheet in pageSheets)
+        {
+            LayeredFiles.Should().Contain(l => l.File == sheet && l.Layer == "pages", $"{sheet} opens the pages layer");
+            NoLiteralFiles.Should().Contain(sheet, $"{sheet} holds no colour literal");
+        }
+
+        foreach (var sheet in retired)
+        {
+            LayeredFiles.Should().NotContain(l => l.File == sheet, $"{sheet} was retired");
+            NoLiteralFiles.Should().NotContain(sheet, $"{sheet} was retired");
+        }
+    }
+
     [Fact]
     public void LayeredFiles_DeclareTheirLayer()
     {
