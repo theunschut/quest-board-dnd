@@ -2189,7 +2189,7 @@ Plans:
 **Goal:** Convert the admin pages and the Platform area on top of the foundation's Platform layouts. Convert the admin and Platform pages to the foundation with their approved relayouts and readable badges, tables and mailto links, keeping the three Platform Group twins.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the foundation's Platform layouts, which this phase verifies)
-**Plans:** 2/23 plans executed
+**Plans:** 3/23 plans executed
 
 **Scope:**
 
@@ -2255,7 +2255,7 @@ Scope drift recorded at planning (research, re-measured by 100-01): the area is 
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 100-03-PLAN.md — Frozen baseline on 8341, route manifest, BEFORE of every row under both User-Agents (Q-126's first populated BEFORE), owned findings' BEFORE values and the finding-owner table, starting test inventory, all before any source change
+- [x] 100-03-PLAN.md — Frozen baseline on 8341, route manifest, BEFORE of every row under both User-Agents (Q-126's first populated BEFORE), owned findings' BEFORE values and the finding-owner table, starting test inventory, all before any source change
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
