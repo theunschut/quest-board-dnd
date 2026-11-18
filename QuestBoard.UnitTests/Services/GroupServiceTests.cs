@@ -22,6 +22,21 @@ public class GroupServiceTests
     }
 
     // ---------------------------------------------------------------------------
+    // CountMembersWithRoleAsync
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task CountMembersWithRoleAsync_DelegatesToRepositoryAndReturnsItsCount()
+    {
+        _repository.CountMembersWithRoleAsync(3, GroupRole.Admin, Arg.Any<CancellationToken>()).Returns(2);
+
+        var result = await _sut.CountMembersWithRoleAsync(3, GroupRole.Admin, TestContext.Current.CancellationToken);
+
+        result.Should().Be(2);
+        await _repository.Received(1).CountMembersWithRoleAsync(3, GroupRole.Admin, Arg.Any<CancellationToken>());
+    }
+
+    // ---------------------------------------------------------------------------
     // GetMembersAsync
     // ---------------------------------------------------------------------------
 

@@ -24,6 +24,12 @@ public static class AdminActionMessages
     /// <summary>Shown when the person to remove is no longer a member of the board.</summary>
     public const string MemberStale = "That person is not a member of this board any more.";
 
+    /// <summary>Shown when an administrator tries to change their own role or remove themselves from the board.</summary>
+    public const string SelfRefused = "You cannot change your own role or remove yourself from the board.";
+
+    /// <summary>Shown when a change would leave the board with nobody who can manage it.</summary>
+    public const string LastAdminRefused = "A board must keep at least one member who can manage it. Give someone else that role first.";
+
     /// <summary>Shown after a quest was deleted from the board.</summary>
     public const string QuestDeleted = "Quest deleted.";
 

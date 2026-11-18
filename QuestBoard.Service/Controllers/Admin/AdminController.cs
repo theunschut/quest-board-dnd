@@ -57,54 +57,35 @@ public class AdminController(IUserService userService, IQuestService questServic
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> PromoteToAdmin(int userId)
-    {
-        var groupId = activeGroupContext.ActiveGroupId;
-        if (groupId == null) return RedirectToAction(nameof(Users));
-        // Guard against a crafted POST for a user outside the active group
-        var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
-        if (targetRole == null) return RedirectToAction(nameof(Users));
-        await userService.SetGroupRoleAsync(userId, groupId.Value, GroupRole.Admin);
-        return RedirectToAction(nameof(Users));
-    }
+    public Task<IActionResult> PromoteToAdmin(int userId) => ChangeRoleAsync(userId, GroupRole.Admin);
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DemoteFromAdmin(int userId)
-    {
-        var groupId = activeGroupContext.ActiveGroupId;
-        if (groupId == null) return RedirectToAction(nameof(Users));
-        // Guard against a crafted POST for a user outside the active group
-        var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
-        if (targetRole == null) return RedirectToAction(nameof(Users));
-        await userService.SetGroupRoleAsync(userId, groupId.Value, GroupRole.Player);
-        return RedirectToAction(nameof(Users));
-    }
+    public Task<IActionResult> DemoteFromAdmin(int userId) => ChangeRoleAsync(userId, GroupRole.DungeonMaster);
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> PromoteToDM(int userId)
-    {
-        var groupId = activeGroupContext.ActiveGroupId;
-        if (groupId == null) return RedirectToAction(nameof(Users));
-        // Guard against a crafted POST for a user outside the active group
-        var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
-        if (targetRole == null) return RedirectToAction(nameof(Users));
-        await userService.SetGroupRoleAsync(userId, groupId.Value, GroupRole.DungeonMaster);
-        return RedirectToAction(nameof(Users));
-    }
+    public Task<IActionResult> PromoteToDM(int userId) => ChangeRoleAsync(userId, GroupRole.DungeonMaster);
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DemoteToPlayer(int userId)
+    public Task<IActionResult> DemoteToPlayer(int userId) => ChangeRoleAsync(userId, GroupRole.Player);
+
+    // All four role buttons end here. The Domain judges the change on the role the person would end up with, so a
+    // request that names the wrong button cannot get past the self and last-Admin rules.
+    private async Task<IActionResult> ChangeRoleAsync(int userId, GroupRole newRole)
     {
         var groupId = activeGroupContext.ActiveGroupId;
         if (groupId == null) return RedirectToAction(nameof(Users));
-        // Guard against a crafted POST for a user outside the active group
-        var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
-        if (targetRole == null) return RedirectToAction(nameof(Users));
-        await userService.SetGroupRoleAsync(userId, groupId.Value, GroupRole.Player);
-        return RedirectToAction(nameof(Users));
+
+        var actorId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var outcome = await userService.ChangeMemberRoleAsync(groupId.Value, actorId, userId, newRole);
+        return outcome switch
+        {
+            MemberChangeOutcome.Self => this.RedirectWithError(nameof(Users), AdminActionMessages.SelfRefused),
+            MemberChangeOutcome.LastAdmin => this.RedirectWithError(nameof(Users), AdminActionMessages.LastAdminRefused),
+            _ => RedirectToAction(nameof(Users))
+        };
     }
 
     [HttpGet]

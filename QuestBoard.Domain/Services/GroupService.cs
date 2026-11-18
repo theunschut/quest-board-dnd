@@ -22,6 +22,10 @@ internal class GroupService(IGroupRepository repository, IMapper mapper)
     public async Task<bool> HasMembersAsync(int groupId, CancellationToken token = default)
         => await repository.HasMembersAsync(groupId, token);
 
+    /// <inheritdoc/>
+    public async Task<int> CountMembersWithRoleAsync(int groupId, GroupRole role, CancellationToken token = default)
+        => await repository.CountMembersWithRoleAsync(groupId, role, token);
+
     /// <summary>
     /// The single chokepoint every membership addition funnels through — the Platform group
     /// page and the invite flow via the user service both call this and nowhere else. Anything

@@ -117,6 +117,107 @@ public class UserServiceTests
     // CreateOrAddToGroupAsync
     // ---------------------------------------------------------------------------
 
+    // ---------------------------------------------------------------------------
+    // ChangeMemberRoleAsync
+    // ---------------------------------------------------------------------------
+
+    private void GivenBoard(int groupId, int targetId, GroupRole? targetRole, int admins)
+    {
+        _repository.GetGroupRoleAsync(targetId, groupId).Returns(targetRole);
+        _groupService.CountMembersWithRoleAsync(groupId, GroupRole.Admin, Arg.Any<CancellationToken>()).Returns(admins);
+    }
+
+    private async Task AssertNothingWrittenAsync() =>
+        await _repository.DidNotReceive().SetGroupRoleAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<GroupRole>());
+
+    [Theory]
+    [InlineData(GroupRole.Admin, GroupRole.DungeonMaster)]
+    [InlineData(GroupRole.Admin, GroupRole.Player)]
+    [InlineData(GroupRole.DungeonMaster, GroupRole.Admin)]
+    [InlineData(GroupRole.Player, GroupRole.DungeonMaster)]
+    public async Task ChangeMemberRoleAsync_WhenActorChangesTheirOwnRole_ReturnsSelfAndWritesNothing(GroupRole current, GroupRole requested)
+    {
+        GivenBoard(1, 7, current, admins: 2);
+
+        var result = await _sut.ChangeMemberRoleAsync(1, actingUserId: 7, targetUserId: 7, requested, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.Self);
+        await AssertNothingWrittenAsync();
+    }
+
+    [Theory]
+    [InlineData(GroupRole.DungeonMaster)]
+    [InlineData(GroupRole.Player)]
+    public async Task ChangeMemberRoleAsync_WhenTargetIsTheOnlyAdminAndWouldNoLongerBeOne_ReturnsLastAdminWhoeverActs(GroupRole requested)
+    {
+        // The actor is a different account (for example a platform administrator), so only the resulting role matters.
+        GivenBoard(1, 7, GroupRole.Admin, admins: 1);
+
+        var result = await _sut.ChangeMemberRoleAsync(1, actingUserId: 99, targetUserId: 7, requested, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.LastAdmin);
+        await AssertNothingWrittenAsync();
+    }
+
+    [Fact]
+    public async Task ChangeMemberRoleAsync_WhenAnotherAdminRemains_DemotesTheAdminAndReturnsChanged()
+    {
+        GivenBoard(1, 7, GroupRole.Admin, admins: 2);
+
+        var result = await _sut.ChangeMemberRoleAsync(1, actingUserId: 99, targetUserId: 7, GroupRole.DungeonMaster, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.Changed);
+        await _repository.Received(1).SetGroupRoleAsync(7, 1, GroupRole.DungeonMaster);
+    }
+
+    [Theory]
+    [InlineData(GroupRole.Player, GroupRole.Admin)]
+    [InlineData(GroupRole.Player, GroupRole.DungeonMaster)]
+    [InlineData(GroupRole.DungeonMaster, GroupRole.Admin)]
+    [InlineData(GroupRole.DungeonMaster, GroupRole.Player)]
+    public async Task ChangeMemberRoleAsync_WhenTargetIsNotAnAdmin_ReturnsChangedWithoutCountingAdmins(GroupRole current, GroupRole requested)
+    {
+        GivenBoard(1, 7, current, admins: 1);
+
+        var result = await _sut.ChangeMemberRoleAsync(1, actingUserId: 99, targetUserId: 7, requested, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.Changed);
+        await _repository.Received(1).SetGroupRoleAsync(7, 1, requested);
+        await _groupService.DidNotReceive().CountMembersWithRoleAsync(Arg.Any<int>(), Arg.Any<GroupRole>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ChangeMemberRoleAsync_WhenTargetStaysAnAdmin_ReturnsChangedEvenWhenOnlyOne()
+    {
+        GivenBoard(1, 7, GroupRole.Admin, admins: 1);
+
+        var result = await _sut.ChangeMemberRoleAsync(1, actingUserId: 99, targetUserId: 7, GroupRole.Admin, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.Changed);
+    }
+
+    [Fact]
+    public async Task ChangeMemberRoleAsync_WhenTargetIsNotAMember_ReturnsNotAMemberAndWritesNothing()
+    {
+        GivenBoard(1, 7, null, admins: 1);
+
+        var result = await _sut.ChangeMemberRoleAsync(1, actingUserId: 99, targetUserId: 7, GroupRole.Admin, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.NotAMember);
+        await AssertNothingWrittenAsync();
+    }
+
+    [Fact]
+    public async Task ChangeMemberRoleAsync_WhenActorIsNotAMemberAndTargetIsAnother_IsNeverSelf()
+    {
+        // A platform administrator who is not on the board has an id that never matches a member's.
+        GivenBoard(1, 7, GroupRole.Player, admins: 1);
+
+        var result = await _sut.ChangeMemberRoleAsync(1, actingUserId: 1000, targetUserId: 7, GroupRole.DungeonMaster, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.Changed);
+    }
+
     [Fact]
     public async Task CreateOrAddToGroupAsync_WhenEmailIsBrandNew_CreatesAccountAndReturnsNewAccountCreated()
     {

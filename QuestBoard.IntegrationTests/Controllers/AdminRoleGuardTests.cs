@@ -87,7 +87,7 @@ public class AdminRoleGuardTests : IClassFixture<WebApplicationFactoryBase>
         await AssertRefusedWithErrorToastAsync(adminClient, response);
     }
 
-    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    [Fact]
     public async Task DemoteFromAdmin_OnTheActorThemselves_IsRefused_AndTheirRoleIsUnchanged() =>
         await AssertSelfDemotionRefusedAsync("DemoteFromAdmin");
 
