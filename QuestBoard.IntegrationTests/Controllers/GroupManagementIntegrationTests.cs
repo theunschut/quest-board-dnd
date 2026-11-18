@@ -1029,4 +1029,28 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
             modalTag.Should().Contain("data-open-on-load", "a page that re-renders the dialog must mark it to open itself again");
         }
     }
+
+    // The Create New User dialog names its fields with a "CreateMember." prefix, so a form submitted the way the dialog
+    // builds it has to create the account; the other tests post unprefixed names, which is why they never see this.
+    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    public async Task CreateMember_PostedWithTheFieldNamesTheDialogUses_CreatesTheAccount()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var email = $"dialogcreate{Guid.NewGuid().ToString("N")[..8]}@test.com";
+
+        var response = await client.PostAsync("/platform/Group/CreateMember/1",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["CreateMember.Email"] = email,
+                ["CreateMember.Name"] = "Dialog Created",
+                ["CreateMember.GroupRole"] = ((int)GroupRole.Player).ToString()
+            }), TestContext.Current.CancellationToken);
+
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        context.Users.Any(u => u.Email == email).Should().BeTrue(
+            "the dialog's own field names must reach the action, or creating a user from the page can never work");
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+    }
 }
