@@ -434,7 +434,7 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
             $"<form[^>]*action=\"/Admin/DeleteUser/{target.Id}\"[^>]*>(.*?)</form>", System.Text.RegularExpressions.RegexOptions.Singleline);
         form.Success.Should().BeTrue("each member row carries its own remove form");
         form.Value.Should().Contain("method=\"post\"");
-        form.Value.Should().Contain("data-confirm-message=\"Are you sure you want to remove this user from the group? They will keep their account and any other group memberships.\"");
+        form.Value.Should().Contain("data-confirm-message=\"Are you sure you want to remove this user from the group? Their availability answers for events on this board will be deleted and cannot be recovered. They will keep their account and any other group memberships.\"");
         form.Value.Should().Contain("name=\"__RequestVerificationToken\"");
         html.Should().Contain("js/confirm-submit.js");
         html.Should().NotContain("removeFromGroup(").And.NotContain("method: \"DELETE\"");

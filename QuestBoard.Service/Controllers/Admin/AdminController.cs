@@ -45,6 +45,7 @@ public class AdminController(IUserService userService, IQuestService questServic
             userViewModels.Add(new UserManagementViewModel
             {
                 User = user,
+                Role = groupRole,
                 IsAdmin = groupRole == GroupRole.Admin,
                 IsDungeonMaster = groupRole == GroupRole.DungeonMaster,
                 IsPlayer = groupRole == GroupRole.Player,

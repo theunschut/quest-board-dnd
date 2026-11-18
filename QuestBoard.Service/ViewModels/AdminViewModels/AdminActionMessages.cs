@@ -41,4 +41,16 @@ public static class AdminActionMessages
 
     /// <summary>Shown when the database refused the delete and left the quest as it was.</summary>
     public const string QuestRefused = "That quest could not be deleted. Nothing was changed.";
+
+    /// <summary>The reason shown beside the controls refused on the signed-in person's own row of the Users page.</summary>
+    public const string ReasonSelf = "This is your own account, so you cannot change your role or remove yourself here.";
+
+    /// <summary>The reason shown beside the controls refused on the row of the board's only Admin.</summary>
+    public const string ReasonLastAdmin = "This person is the only one who can manage this board. Give someone else that role first.";
+
+    /// <summary>The reason shown beside the controls refused on an account only a platform administrator may change.</summary>
+    public const string ReasonReach = "Only a SuperAdmin can change this account.";
+
+    /// <summary>The question asked before a member is removed from the board.</summary>
+    public const string RemoveMemberConfirm = "Are you sure you want to remove this user from the group? Their availability answers for events on this board will be deleted and cannot be recovered. They will keep their account and any other group memberships.";
 }

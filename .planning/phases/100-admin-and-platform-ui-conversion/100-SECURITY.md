@@ -179,6 +179,12 @@ All 15 approved verbatim ("sentences as proposed"); `{name}` is replaced by the 
 | toastCreateMemberFailed | The account could not be created. Check the details and try again. | approved (O-12 toast) |
 | toastPlatformNonMember | {name} was not a member of this group. | approved (G-13) |
 
+### Gate 1 answers that reach the Admin Users page (100-14)
+
+- Item 6c answered "Admin": the role badge word comes from the shared display mapping through the `_RoleBadge` partial on both layouts. The three reason sentences stay role-free as approved, so no sentence on the Users page carries a mapped role word and `sentenceChanges` is empty.
+- Item 8 answered yes: the Remove from Group confirm sentence on both layouts is the corrected one that names the deleted availability answers (`AdminActionMessages.RemoveMemberConfirm`).
+- The refused controls are `type="button"` with `aria-disabled="true"` and `aria-describedby` pointing at one reason line per refusal kind per row; none sits inside a POST form and none carries a title. The flags come from the server (`IsSelf`, `IsLastAdmin`, `Reach` per row, one `GetAccountReachAsync` call and one Admin count per page); the crafted-request refusals of 100-06, 100-09 and 100-10 are unchanged.
+
 ### Which plan implements each rule
 
 | Rule | Plan |

@@ -6,6 +6,7 @@ namespace QuestBoard.Service.ViewModels.AdminViewModels;
 public class UserManagementViewModel
 {
     public User User { get; set; } = new();
+    public GroupRole? Role { get; set; }
     public bool IsAdmin { get; set; }
     public bool IsDungeonMaster { get; set; }
     public bool IsPlayer { get; set; }

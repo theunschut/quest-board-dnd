@@ -1,0 +1,7 @@
+@using QuestBoard.Domain.Enums
+@using QuestBoard.Service.ViewModels.AdminViewModels
+@model GroupRole
+@{
+    var badge = AdminPlatformDisplay.GroupRoleBadge(Model);
+}
+<span class="badge @badge.FillClass"><i class="fas @badge.Icon me-1" aria-hidden="true"></i>@badge.Word</span>

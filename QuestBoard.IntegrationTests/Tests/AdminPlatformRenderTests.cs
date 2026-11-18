@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Identity;
 using QuestBoard.Domain.Enums;
 using QuestBoard.IntegrationTests.Helpers;
 
@@ -216,7 +217,7 @@ public class AdminPlatformRenderTests(WebApplicationFactoryBase factory)
             return html[start..(html.IndexOf("</tr>", at, StringComparison.Ordinal) + 5)];
         }
 
-        var marker = new Regex("class=\"(?:row-slip|user-card-mobile)[ \"]");
+        var marker = new Regex("class=\"row-slip\"");
         var slip = marker.Matches(html).Select(m => m.Index).Last(i => i < at);
         var next = marker.Matches(html).Select(m => m.Index).FirstOrDefault(i => i > at, html.Length);
         return html[slip..next];
@@ -286,5 +287,238 @@ public class AdminPlatformRenderTests(WebApplicationFactoryBase factory)
         RefusedControls(dm).Should().BeEmpty();
         dm.Should().Contain("action=\"/Admin/PromoteToAdmin\"");
         dm.Should().Contain("action=\"/Admin/DemoteToPlayer\"");
+    }
+
+    private const string LastAdminReason = "This person is the only one who can manage this board. Give someone else that role first.";
+    private const string ReachReason = "Only a SuperAdmin can change this account.";
+
+    private async Task MakePlatformAdministratorAsync(UserEntity account)
+    {
+        using var scope = factory.Services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
+        var tracked = await userManager.FindByIdAsync(account.Id.ToString());
+        (await userManager.AddToRoleAsync(tracked!, "SuperAdmin")).Succeeded.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminUsers_ForTheOnlyAdmin_RefusesTheDemotionAndRemove_WithTheLastAdminReason(bool mobile)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(
+            factory, mobile ? "apu_last_m" : "apu_last_d", (mobile ? "apu_last_m" : "apu_last_d") + "@example.com", name: "Platform Overseer");
+        var only = await AddMemberAsync(mobile ? "only_m" : "only_d", "Vashti Emberweir", GroupRole.Admin);
+        await AddMemberAsync(mobile ? "lastdm_m" : "lastdm_d", "Orrin Duskmantle", GroupRole.DungeonMaster);
+
+        var html = await GetAsync(client, "/Admin/Users", AgentFor(mobile));
+
+        var row = UserRow(html, "Vashti Emberweir", mobile);
+        var refused = RefusedControls(row);
+        refused.Should().HaveCount(2);
+        refused.Should().Contain(b => b.Contains("Demote to DM"));
+        refused.Should().Contain(b => b.Contains("Remove from Group"));
+        refused.Should().OnlyContain(b => b.Contains($"aria-describedby=\"reason-last-{only.Id}\""));
+        row.Should().Contain(LastAdminReason);
+        row.Should().NotContain(SelfReason);
+        Regex.Matches(row, "class=\"control-reason\"").Count.Should().Be(1);
+        row.Should().MatchRegex("EditUser\\?userId=\\d+");
+
+        RefusedControls(UserRow(html, "Orrin Duskmantle", mobile)).Should().BeEmpty("the DM is not the last Admin");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminUsers_ForAnAccountOutsideTheActorsReach_RefusesEditAndResend_WithTheReachReason(bool mobile)
+    {
+        var client = await SeedBoardAsync(BoardType.OneShot, mobile ? "apu_reach_m" : "apu_reach_d");
+        var elevated = await AddMemberAsync(mobile ? "elev_m" : "elev_d", "Orrin Duskmantle", GroupRole.Player, emailConfirmed: false);
+        await MakePlatformAdministratorAsync(elevated);
+
+        var html = await GetAsync(client, "/Admin/Users", AgentFor(mobile));
+
+        var row = UserRow(html, "Orrin Duskmantle", mobile);
+        var refused = RefusedControls(row);
+        refused.Should().HaveCount(2);
+        refused.Should().Contain(b => b.Contains("Edit"));
+        refused.Should().Contain(b => b.Contains("Resend Welcome Email"));
+        refused.Should().OnlyContain(b => b.Contains($"aria-describedby=\"reason-reach-{elevated.Id}\""));
+        row.Should().Contain(ReachReason);
+        Regex.Matches(row, "class=\"control-reason\"").Count.Should().Be(1);
+        FormElement.Replace(row, "").Should().NotContain("SendConfirmationEmail").And.NotContain("EditUser?");
+        row.Should().Contain("action=\"/Admin/PromoteToDM\"", "the role buttons are not part of the reach rule");
+        row.Should().Contain("action=\"/Admin/DeleteUser/");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminUsers_ShowsTheRoleBadgeFromTheSharedMapping_WithTheApprovedWords(bool mobile)
+    {
+        var client = await SeedBoardAsync(BoardType.OneShot, mobile ? "apu_badge_m" : "apu_badge_d");
+        await AddMemberAsync(mobile ? "badgedm_m" : "badgedm_d", "Orrin Duskmantle", GroupRole.DungeonMaster);
+        await AddMemberAsync(mobile ? "badgepl_m" : "badgepl_d", "Brindle Oakenfeather", GroupRole.Player);
+
+        var html = await GetAsync(client, "/Admin/Users", AgentFor(mobile));
+
+        var badges = StatusBadges(html);
+        badges.Should().Contain(("bg-danger", "fa-shield-alt", "Admin"));
+        badges.Should().Contain(("bg-warning", "fa-crown", "Dungeon Master"));
+        badges.Should().Contain(("bg-primary", "fa-dice-d20", "Player"));
+        badges.Should().HaveCount(3);
+        html.Should().NotContain("Administrator");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminUsers_HasOnePageTitleWithTheCreateButton_AndLinksItsSheets(bool mobile)
+    {
+        var client = await SeedBoardAsync(BoardType.OneShot, mobile ? "apu_title_m" : "apu_title_d");
+
+        var html = await GetAsync(client, "/Admin/Users", AgentFor(mobile));
+
+        HeadingOneCount(html).Should().Be(1);
+        html.Should().MatchRegex(@"modern-card-header[^>]*>\s*<h1[^>]*>(?:\s*<i[^>]*></i>)?\s*User Management\s*</h1>");
+        Regex.Matches(html, @"<a[^>]*class=""btn btn-primary""[^>]*>[^<]*<i[^>]*></i>Create User\s*</a>").Count.Should().Be(1);
+        html.Should().Contain("/css/admin-pages.css");
+        html.Should().NotContain("admin-users.mobile.css");
+        if (mobile)
+            html.Should().Contain("/css/admin-pages.mobile.css");
+        else
+            html.Should().NotContain("/css/admin-pages.mobile.css");
+    }
+
+    [Fact]
+    public async Task AdminUsers_OnDesktop_ShowsTheEmailUnderTheName_InAColumnOfNameRoleAndActions()
+    {
+        var client = await SeedBoardAsync(BoardType.OneShot, "apu_cols_d");
+        var noAddress = await AddMemberAsync("noaddr_d", "Orrin Duskmantle", GroupRole.Player);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            (await context.Users.FindAsync([noAddress.Id], TestContext.Current.CancellationToken))!.Email = null;
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var html = await GetAsync(client, "/Admin/Users", DesktopUserAgent);
+
+        Regex.Matches(html, "<th scope=\"col\"[^>]*>([^<]+)</th>").Select(m => m.Groups[1].Value)
+            .Should().Equal("Name", "Current Role", "Actions");
+        html.Should().Contain("<th scope=\"col\" class=\"th-actions\">Actions</th>");
+        html.Should().Contain("<td class=\"actions-cell\">");
+        html.Should().MatchRegex(@"user-cell__name"">Vashti Emberweir</span>\s*<a href=""mailto:apu_cols_d[^""]*@example\.com"" class=""email-link user-cell__email"">");
+        UserRow(html, "Orrin Duskmantle", false).Should().Contain("<span class=\"user-cell__email user-cell__email--none\">No email provided</span>")
+            .And.NotContain("mailto:");
+        html.Should().NotContain("style=\"");
+    }
+
+    [Fact]
+    public async Task AdminUsers_OnThePhone_ShowsEachPersonAsASlip_WithoutTheirAddress()
+    {
+        var client = await SeedBoardAsync(BoardType.OneShot, "apu_slip_m");
+        await AddMemberAsync("slip2_m", "Orrin Duskmantle", GroupRole.Player);
+
+        var html = await GetAsync(client, "/Admin/Users", MobileUserAgent);
+
+        Regex.Matches(html, "class=\"row-slip\"").Count.Should().Be(2);
+        html.Should().Contain("row-slip__head").And.Contain("row-slip__actions");
+        html.Should().NotContain("mailto:", "the phone list carries no address");
+        html.Should().NotContain("<table");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminUsers_OffersResendWelcomeEmailOnlyToAnUnconfirmedPersonWithAnAddress(bool mobile)
+    {
+        var client = await SeedBoardAsync(BoardType.OneShot, mobile ? "apu_resend_m" : "apu_resend_d");
+        await AddMemberAsync(mobile ? "unconf_m" : "unconf_d", "Tamsin Hollowreed", GroupRole.Player, emailConfirmed: false);
+        await AddMemberAsync(mobile ? "conf_m" : "conf_d", "Brindle Oakenfeather", GroupRole.Player);
+
+        var html = await GetAsync(client, "/Admin/Users", AgentFor(mobile));
+
+        var unconfirmed = UserRow(html, "Tamsin Hollowreed", mobile);
+        unconfirmed.Should().Contain("action=\"/Admin/SendConfirmationEmail\"");
+        unconfirmed.Should().MatchRegex(@"<i class=""fas fa-envelope me-2"" aria-hidden=""true""></i>\s*Resend Welcome Email");
+        UserRow(html, "Brindle Oakenfeather", mobile).Should().NotContain("SendConfirmationEmail");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminUsers_KeepsTheControlsInOneOrder_AndTheRemoveFormWithItsConfirmSentence(bool mobile)
+    {
+        var client = await SeedBoardAsync(BoardType.OneShot, mobile ? "apu_order_m" : "apu_order_d");
+        await AddMemberAsync(mobile ? "ordr_m" : "ordr_d", "Tamsin Hollowreed", GroupRole.DungeonMaster, emailConfirmed: false);
+
+        var html = await GetAsync(client, "/Admin/Users", AgentFor(mobile));
+
+        var row = UserRow(html, "Tamsin Hollowreed", mobile);
+        var order = new[] { "PromoteToAdmin", "DemoteToPlayer", "SendConfirmationEmail", "EditUser?", "DeleteUser/" }
+            .Select(marker => row.IndexOf(marker, StringComparison.Ordinal)).ToList();
+        order.Should().OnlyContain(at => at > -1);
+        order.Should().BeInAscendingOrder("promote, demote, Resend Welcome Email, Edit, Remove from Group keep one order");
+        row.Should().Contain("data-confirm-message=\"Are you sure you want to remove this user from the group? Their availability answers for events on this board will be deleted and cannot be recovered. They will keep their account and any other group memberships.\"");
+        row.Should().Contain("name=\"__RequestVerificationToken\"");
+        html.Should().Contain("/js/confirm-submit.js");
+        RefusedControls(row).Should().BeEmpty();
+        row.Should().NotContain("title=");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminUsers_WithNoMembers_ShowsTheEmptyStateInEachLayoutsWords(bool mobile)
+    {
+        // A platform administrator who is not a member of the board sees a board nobody has joined yet.
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(
+            factory, mobile ? "apu_empty_m" : "apu_empty_d", (mobile ? "apu_empty_m" : "apu_empty_d") + "@example.com");
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.UserGroups.RemoveRange(context.UserGroups);
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var response = await client.SendAsync(
+            new HttpRequestMessage(HttpMethod.Get, "/Admin/Users") { Headers = { { "User-Agent", AgentFor(mobile) } } },
+            TestContext.Current.CancellationToken);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        html.Should().Contain("class=\"empty-state\"");
+        html.Should().MatchRegex(@"<h2 class=""empty-state-heading"">\s*No users found\.\s*</h2>");
+        if (mobile)
+            html.Should().MatchRegex(@"<p class=""empty-state-text"">\s*Users appear here once registered\.\s*</p>");
+        else
+            html.Should().NotContain("empty-state-text");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminUsers_ListsALongNameInFull_AndAPersonWithNoNameWithoutBreakingTheRow(bool mobile)
+    {
+        const string longName = "Lysandra Thistledown-Verrenmoor of the Seven Silverbirch Hollows and Beyond";
+        var client = await SeedBoardAsync(BoardType.OneShot, mobile ? "apu_long_m" : "apu_long_d");
+        await AddMemberAsync(mobile ? "long_m" : "long_d", longName, GroupRole.Player);
+        var nameless = await AddMemberAsync(mobile ? "blank_m" : "blank_d", "Placeholder Name", GroupRole.Player);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            (await context.Users.FindAsync([nameless.Id], TestContext.Current.CancellationToken))!.Name = "";
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var html = await GetAsync(client, "/Admin/Users", AgentFor(mobile));
+
+        html.Should().Contain(longName);
+        var blankRow = Regex.Match(html, $@"<form[^>]*action=""/Admin/DeleteUser/{nameless.Id}""").Success;
+        blankRow.Should().BeTrue("a person with no name keeps their row and their controls");
+        html.Should().MatchRegex(mobile
+            ? @"user-slip__name""><i class=""fas fa-user me-2"" aria-hidden=""true""></i></span>"
+            : @"user-cell__name""></span>");
     }
 }
