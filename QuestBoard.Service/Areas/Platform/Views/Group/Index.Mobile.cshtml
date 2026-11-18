@@ -5,80 +5,75 @@
 }
 
 @section Styles {
-    <link href="~/css/platform-group.mobile.css" asp-append-version="true" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/platform-pages.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/platform-pages.mobile.css" asp-append-version="true" />
 }
 
-<div class="platform-group-card-mobile mb-3">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h5 class="mb-0">
-            <i class="fas fa-layer-group text-danger me-2"></i>Group Management
-        </h5>
-        <div class="d-flex flex-wrap gap-2">
-            <a asp-controller="Group" asp-action="Create" asp-area="Platform" class="btn btn-success btn-sm">
-                <i class="fas fa-plus me-2"></i>Create Group
+<div class="card modern-card">
+    <div class="card-header modern-card-header page-bar">
+        <h1 class="mb-0">
+            <i class="fas fa-layer-group me-2" aria-hidden="true"></i>Group Management
+        </h1>
+        <div class="page-bar__actions">
+            <a asp-controller="Group" asp-action="Create" asp-area="Platform" class="btn btn-primary">
+                <i class="fas fa-plus me-2" aria-hidden="true"></i>Create Group
             </a>
-            <a asp-controller="Users" asp-action="Index" asp-area="Platform" class="btn btn-secondary btn-sm">
-                <i class="fas fa-users-cog me-2"></i>Manage Users
+            <a asp-controller="Users" asp-action="Index" asp-area="Platform" class="btn btn-secondary">
+                <i class="fas fa-users-cog me-2" aria-hidden="true"></i>Manage Users
             </a>
-            <a asp-controller="LinkedBoards" asp-action="Index" asp-area="Platform" class="btn btn-info btn-sm">
-                <i class="fas fa-link me-2"></i>Linked Boards
+            <a asp-controller="LinkedBoards" asp-action="Index" asp-area="Platform" class="btn btn-info">
+                <i class="fas fa-link me-2" aria-hidden="true"></i>Linked Boards
             </a>
         </div>
     </div>
-
-    @if (Model.Groups.Any())
-    {
-        @foreach (var item in Model.Groups)
+    <div class="card-body modern-card-body">
+        @if (Model.Groups.Any())
         {
-            <div class="group-card-mobile mb-3">
-                <strong class="parchment-text">@item.Name</strong>
-                <div>
-                    @if (item.BoardType == BoardType.Campaign)
-                    {
-                        <span class="badge bg-info text-dark"><i class="fas fa-book-open me-1"></i>Campaign</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-primary"><i class="fas fa-dice-d20 me-1"></i>One-Shot</span>
-                    }
-                    @if (item.HomePage != BoardPage.Quests)
-                    {
-                        <span class="badge bg-secondary ms-1"><i class="fas fa-house me-1"></i>Home: @BoardPagePolicy.Label(item.HomePage)</span>
-                    }
-                </div>
-                <div>
-                    <small>Members: @item.MemberCount &middot; Created: @Html.LocalTime(item.CreatedAt, "date")</small>
-                </div>
-                <div class="d-flex flex-wrap gap-2 mt-2">
-                    <form asp-controller="GroupPicker" asp-action="SelectGroup" asp-area="" method="post" class="d-inline">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="groupId" value="@item.Id" />
-                        <button type="submit" class="btn btn-sm btn-primary">
-                            <i class="fas fa-door-open me-1"></i>Open Board
-                        </button>
-                    </form>
-                    <a asp-controller="Group" asp-action="Members" asp-area="Platform" asp-route-id="@item.Id" class="btn btn-sm btn-info">
-                        <i class="fas fa-users me-1"></i>Members
-                    </a>
-                    <a asp-controller="Group" asp-action="Edit" asp-area="Platform" asp-route-id="@item.Id" class="btn btn-sm btn-warning">
-                        <i class="fas fa-edit me-1"></i>Edit
-                    </a>
-                    @if (item.MemberCount == 0)
-                    {
-                        <a asp-controller="Group" asp-action="Delete" asp-area="Platform" asp-route-id="@item.Id" class="btn btn-sm btn-danger">
-                            <i class="fas fa-trash me-1"></i>Delete
+            @foreach (var item in Model.Groups)
+            {
+                <div class="row-slip">
+                    <div class="row-slip__head">
+                        <span class="board-slip__name">@item.Name</span>
+                        <span>
+                            <partial name="_BoardTypeBadge" model="item.BoardType" />
+                            @if (item.HomePage != BoardPage.Quests)
+                            {
+                                <span class="badge bg-secondary ms-1"><i class="fas fa-house me-1" aria-hidden="true"></i>Home: @BoardPagePolicy.Label(item.HomePage)</span>
+                            }
+                        </span>
+                    </div>
+                    <p class="slip-line">Members: @item.MemberCount &middot; Created: @Html.LocalTime(item.CreatedAt, "date")</p>
+                    <div class="row-slip__actions">
+                        <form asp-controller="GroupPicker" asp-action="SelectGroup" asp-area="" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="groupId" value="@item.Id" />
+                            <button type="submit" class="btn btn-sm btn-success">
+                                <i class="fas fa-door-open me-2" aria-hidden="true"></i>Open Board
+                            </button>
+                        </form>
+                        <a asp-controller="Group" asp-action="Members" asp-area="Platform" asp-route-id="@item.Id" class="btn btn-sm btn-info">
+                            <i class="fas fa-users me-2" aria-hidden="true"></i>Members
                         </a>
-                    }
+                        <a asp-controller="Group" asp-action="Edit" asp-area="Platform" asp-route-id="@item.Id" class="btn btn-sm btn-warning">
+                            <i class="fas fa-edit me-2" aria-hidden="true"></i>Edit
+                        </a>
+                        @if (item.MemberCount == 0)
+                        {
+                            <a asp-controller="Group" asp-action="Delete" asp-area="Platform" asp-route-id="@item.Id" class="btn btn-sm btn-danger">
+                                <i class="fas fa-trash me-2" aria-hidden="true"></i>Delete
+                            </a>
+                        }
+                    </div>
                 </div>
+            }
+        }
+        else
+        {
+            <div class="empty-state">
+                <i class="fas fa-layer-group empty-state-icon" aria-hidden="true"></i>
+                <h2 class="empty-state-heading">No groups yet.</h2>
+                <p class="empty-state-text">Create the first group to get started.</p>
             </div>
         }
-    }
-    else
-    {
-        <div class="py-5 text-center">
-            <i class="fas fa-layer-group fa-3x text-muted mb-3"></i>
-            <p class="mb-1"><strong>No groups yet.</strong></p>
-            <p class="text-muted">Create the first group to get started.</p>
-        </div>
-    }
+    </div>
 </div>

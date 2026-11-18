@@ -102,6 +102,12 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Views/Admin/ResetPassword.cshtml",
         "QuestBoard.Service/Views/Admin/ResetPassword.Mobile.cshtml",
         "QuestBoard.Service/ViewModels/AdminViewModels/ResetPasswordViewModel.cs",
+        "QuestBoard.Service/Views/Shared/_BoardTypeBadge.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/Group/Index.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/Group/Index.Mobile.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/Group/_BoardDeleteBody.cshtml",
+        "QuestBoard.Service/wwwroot/css/platform-pages.css",
+        "QuestBoard.Service/wwwroot/css/platform-pages.mobile.css",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it
@@ -190,6 +196,10 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Views/Admin/CreateUser.Mobile.cshtml",
         "QuestBoard.Service/Views/Admin/ResetPassword.cshtml",
         "QuestBoard.Service/Views/Admin/ResetPassword.Mobile.cshtml",
+        "QuestBoard.Service/Views/Shared/_BoardTypeBadge.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/Group/Index.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/Group/Index.Mobile.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/Group/_BoardDeleteBody.cshtml",
     ];
 
     // Every other view of the area, still waiting for its slice. A slice moves its views from here to the converted list
@@ -197,15 +207,12 @@ public class AdminPlatformConversionGuardTests
     private static readonly string[] PendingViews =
     [
         "QuestBoard.Service/Views/Admin/EmailStats.cshtml",
-        "QuestBoard.Service/Areas/Platform/Views/Group/_BoardDeleteBody.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Create.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Create.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Delete.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Delete.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Edit.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Edit.Mobile.cshtml",
-        "QuestBoard.Service/Areas/Platform/Views/Group/Index.cshtml",
-        "QuestBoard.Service/Areas/Platform/Views/Group/Index.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Members.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Members.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/LinkedBoards/Index.cshtml",
@@ -228,6 +235,8 @@ public class AdminPlatformConversionGuardTests
         ["QuestBoard.Service/Views/Admin/CreateUser.Mobile.cshtml"] = ["admin-pages.css", "admin-pages.mobile.css"],
         ["QuestBoard.Service/Views/Admin/ResetPassword.cshtml"] = ["admin-pages.css"],
         ["QuestBoard.Service/Views/Admin/ResetPassword.Mobile.cshtml"] = ["admin-pages.css", "admin-pages.mobile.css"],
+        ["QuestBoard.Service/Areas/Platform/Views/Group/Index.cshtml"] = ["platform-pages.css"],
+        ["QuestBoard.Service/Areas/Platform/Views/Group/Index.Mobile.cshtml"] = ["platform-pages.css", "platform-pages.mobile.css"],
     };
 
     // The sheets that follow the layered rules: one pages block, tokens only, no endless motion, no cropped picture. The
@@ -239,6 +248,8 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/wwwroot/css/platform-group-delete.css",
         "QuestBoard.Service/wwwroot/css/platform-group-delete.mobile.css",
         "QuestBoard.Service/wwwroot/css/platform-users-boards.mobile.css",
+        "QuestBoard.Service/wwwroot/css/platform-pages.css",
+        "QuestBoard.Service/wwwroot/css/platform-pages.mobile.css",
     ];
 
     // The unlayered phone sheets of the area that are still in use. A slice deletes its sheet with its last consumer and

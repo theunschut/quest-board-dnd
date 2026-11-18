@@ -37,14 +37,7 @@
 <p>You are about to delete <strong>"@Model.Name"</strong>.</p>
 
 <p>
-    @if (Model.BoardType == BoardType.Campaign)
-    {
-        <span class="badge bg-info text-dark"><i class="fas fa-book-open me-1" aria-hidden="true"></i>Campaign</span>
-    }
-    else
-    {
-        <span class="badge bg-primary"><i class="fas fa-dice-d20 me-1" aria-hidden="true"></i>One-Shot</span>
-    }
+    <partial name="_BoardTypeBadge" model="Model.BoardType" />
     &middot; Created @Html.LocalTime(Model.CreatedAt, "date") &middot; No members
 </p>
 

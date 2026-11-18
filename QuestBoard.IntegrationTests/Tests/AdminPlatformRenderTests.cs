@@ -750,6 +750,87 @@ public class AdminPlatformRenderTests(WebApplicationFactoryBase factory)
         html.Should().NotMatchRegex(@"class=""text-danger mb-3""");
     }
 
+    private const int OneShotBoardId = 71;
+    private const int CampaignBoardId = 72;
+    private const int EmptyBoardId = 73;
+    private const int EmptyCampaignBoardId = 74;
+
+    // Seeds a One-Shot board with one member, a Campaign board with one member, an empty One-Shot board and an empty Campaign board, and signs in
+    // as a platform administrator who belongs to none of them.
+    private async Task<HttpClient> SeedBoardListAsync(string tag)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(
+            factory, "bl_" + tag, "bl_" + tag + "@example.com");
+        await BoardMoveSeed.SeedBoardAsync(factory, OneShotBoardId, "Silverbrook Table", BoardType.OneShot);
+        await BoardMoveSeed.SeedBoardAsync(factory, CampaignBoardId, "Ironvale Chronicle", BoardType.Campaign);
+        await BoardMoveSeed.SeedBoardAsync(factory, EmptyBoardId, "Quiet Hollow", BoardType.OneShot);
+        await BoardMoveSeed.SeedBoardAsync(factory, EmptyCampaignBoardId, "Fallow Reach", BoardType.Campaign);
+        var oneShotMember = await BoardMoveSeed.CreateUserAsync(factory, "bl_a_" + tag, "Brindle Oakenfeather");
+        var campaignMember = await BoardMoveSeed.CreateUserAsync(factory, "bl_b_" + tag, "Corwin Ashdown");
+        await BoardMoveSeed.SeedMembershipAsync(factory, oneShotMember.Id, OneShotBoardId, GroupRole.Player);
+        await BoardMoveSeed.SeedMembershipAsync(factory, campaignMember.Id, CampaignBoardId, GroupRole.Player);
+        return client;
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupIndex_ShowsEachBoardTypeThroughTheSharedBadge(bool mobile)
+    {
+        var client = await SeedBoardListAsync(mobile ? "type_m" : "type_d");
+
+        var html = await GetAsync(client, "/platform/Group", AgentFor(mobile));
+
+        BoardListRow(html, "Silverbrook Table").Should().Contain(
+            "<span class=\"badge bg-primary\"><i class=\"fas fa-dice-d20 me-1\" aria-hidden=\"true\"></i>One-Shot</span>");
+        BoardListRow(html, "Ironvale Chronicle").Should().Contain(
+            "<span class=\"badge bg-info\"><i class=\"fas fa-book-open me-1\" aria-hidden=\"true\"></i>Campaign</span>");
+        BoardListRow(html, "Fallow Reach").Should().Contain("Campaign</span>");
+        BoardListRow(html, "Quiet Hollow").Should().Contain("One-Shot</span>");
+        html.Should().NotContain("text-dark");
+    }
+
+    // A desktop row is a <tr>, a phone row is a row-slip block; the one that names the board and carries its Open Board
+    // button is the board's own row on either layout.
+    private static string BoardListRow(string html, string boardName)
+    {
+        var rows = Regex.Split(html, "<tr[ >]|class=\"row-slip\"");
+        var row = rows.SingleOrDefault(r => r.Contains(boardName) && r.Contains("Open Board"));
+        row.Should().NotBeNull($"the board list should hold a row for '{boardName}'");
+        return row!;
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupDelete_ShowsTheBoardTypeThroughTheSharedBadge(bool mobile)
+    {
+        var client = await SeedBoardListAsync(mobile ? "deltype_m" : "deltype_d");
+
+        var html = await GetAsync(client, $"/platform/Group/Delete/{EmptyCampaignBoardId}", AgentFor(mobile));
+
+        StatusBadges(html).Should().Equal(("bg-info", "fa-book-open", "Campaign"));
+        html.Should().NotContain("text-dark");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupIndex_LinksThePlatformSheets(bool mobile)
+    {
+        var client = await SeedBoardListAsync(mobile ? "sheet_m" : "sheet_d");
+
+        var html = await GetAsync(client, "/platform/Group", AgentFor(mobile));
+
+        html.Should().Contain("/css/platform-pages.css");
+        if (mobile)
+            html.Should().Contain("/css/platform-pages.mobile.css");
+        else
+            html.Should().NotContain("/css/platform-pages.mobile.css");
+        html.Should().NotContain("platform-group.mobile.css");
+    }
+
     // Posts a form to the page's own URL with the antiforgery token the page issued, under the given User-Agent.
     private static async Task<string> PostFormAsync(HttpClient client, string url, string userAgent, Dictionary<string, string> fields)
     {

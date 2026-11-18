@@ -1,0 +1,7 @@
+@using QuestBoard.Domain.Enums
+@using QuestBoard.Service.ViewModels.AdminViewModels
+@model BoardType
+@{
+    var badge = AdminPlatformDisplay.BoardTypeBadge(Model);
+}
+<span class="badge @badge.FillClass"><i class="fas @badge.Icon me-1" aria-hidden="true"></i>@badge.Word</span>

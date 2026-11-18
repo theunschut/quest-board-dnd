@@ -1,0 +1,56 @@
+/*
+ * Platform pages: the sheet for everything on the platform area's pages that has moved onto the shared look. It holds
+ * one pages layer block and nothing but design tokens, so changing a colour is a change to the token file.
+ *
+ * It holds the page title bar with its wrapping action group, the board list's name cell and its left-aligned action
+ * slots, and the empty-state sentence. The phone deltas live in platform-pages.mobile.css.
+ */
+@layer pages {
+  /* A page card's header bar: the title and its actions wrap instead of overflowing. */
+  .page-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+  }
+
+  .page-bar__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--qb-space-sm);
+  }
+
+  .name-cell {
+    font-weight: var(--qb-weight-strong);
+    overflow-wrap: anywhere;
+  }
+
+  /*
+   * A board row's actions sit flush left in fixed slots: Open Board, Members and Edit keep their place whether or not
+   * the row also carries Delete, which only an empty board has and which always comes last.
+   */
+  .board-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: var(--qb-space-sm);
+  }
+
+  .board-actions form {
+    display: flex;
+  }
+
+  /* A button label never breaks across lines; the row wraps between buttons instead. */
+  .board-actions .btn {
+    white-space: nowrap;
+  }
+
+  /*
+   * The empty-state sentence sits straight on the page card's glass, where the muted tone measures 4.25:1 over the
+   * lightest board pixel; here it takes the card's own colour instead.
+   */
+  .modern-card .empty-state-text {
+    color: inherit;
+  }
+}

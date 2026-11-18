@@ -83,11 +83,11 @@ public class BoardPageEndToEndTests(WebApplicationFactoryBase factory)
     private static string QuestsItemId(string userAgent) =>
         userAgent == MobileUserAgent ? "id=\"nav-quests-mobile\"" : "id=\"nav-quests\"";
 
-    // A desktop row is a <tr>, a mobile row is a group-card-mobile block; the one that names the
+    // A desktop row is a <tr>, a mobile row is a row-slip block; the one that names the
     // board and carries its Open Board button is the board's own row on either layout.
     private static string BoardListRow(string html, string boardName)
     {
-        var rows = Regex.Split(html, "<tr[ >]|class=\"group-card-mobile");
+        var rows = Regex.Split(html, "<tr[ >]|class=\"row-slip\"");
         var row = rows.SingleOrDefault(r => r.Contains(boardName) && r.Contains("Open Board"));
         row.Should().NotBeNull($"the board list should hold a row for '{boardName}'");
         return row!;
