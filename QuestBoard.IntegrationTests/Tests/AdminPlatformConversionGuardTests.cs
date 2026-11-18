@@ -95,6 +95,8 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Views/Admin/Users.cshtml",
         "QuestBoard.Service/Views/Admin/Users.Mobile.cshtml",
         "QuestBoard.Service/Views/Shared/_RoleBadge.cshtml",
+        "QuestBoard.Service/Views/Admin/EditUser.cshtml",
+        "QuestBoard.Service/Views/Admin/EditUser.Mobile.cshtml",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it
@@ -177,6 +179,8 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Views/Admin/Users.cshtml",
         "QuestBoard.Service/Views/Admin/Users.Mobile.cshtml",
         "QuestBoard.Service/Views/Shared/_RoleBadge.cshtml",
+        "QuestBoard.Service/Views/Admin/EditUser.cshtml",
+        "QuestBoard.Service/Views/Admin/EditUser.Mobile.cshtml",
     ];
 
     // Every other view of the area, still waiting for its slice. A slice moves its views from here to the converted list
@@ -185,8 +189,6 @@ public class AdminPlatformConversionGuardTests
     [
         "QuestBoard.Service/Views/Admin/CreateUser.cshtml",
         "QuestBoard.Service/Views/Admin/CreateUser.Mobile.cshtml",
-        "QuestBoard.Service/Views/Admin/EditUser.cshtml",
-        "QuestBoard.Service/Views/Admin/EditUser.Mobile.cshtml",
         "QuestBoard.Service/Views/Admin/EmailStats.cshtml",
         "QuestBoard.Service/Views/Admin/ResetPassword.cshtml",
         "QuestBoard.Service/Views/Admin/ResetPassword.Mobile.cshtml",
@@ -215,6 +217,8 @@ public class AdminPlatformConversionGuardTests
         ["QuestBoard.Service/Views/Admin/Quests.Mobile.cshtml"] = ["admin-pages.css", "admin-pages.mobile.css"],
         ["QuestBoard.Service/Views/Admin/Users.cshtml"] = ["admin-pages.css"],
         ["QuestBoard.Service/Views/Admin/Users.Mobile.cshtml"] = ["admin-pages.css", "admin-pages.mobile.css"],
+        ["QuestBoard.Service/Views/Admin/EditUser.cshtml"] = ["admin-pages.css"],
+        ["QuestBoard.Service/Views/Admin/EditUser.Mobile.cshtml"] = ["admin-pages.css", "admin-pages.mobile.css"],
     };
 
     // The sheets that follow the layered rules: one pages block, tokens only, no endless motion, no cropped picture. The

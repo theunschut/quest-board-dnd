@@ -521,4 +521,101 @@ public class AdminPlatformRenderTests(WebApplicationFactoryBase factory)
             ? @"user-slip__name""><i class=""fas fa-user me-2"" aria-hidden=""true""></i></span>"
             : @"user-cell__name""></span>");
     }
+
+    // ---- Admin/EditUser, CreateUser and ResetPassword ----------------------------------------------
+
+    private async Task<(HttpClient Client, UserEntity Target)> SeedFormAsync(string tag, string targetName = "Brindle Oakenfeather")
+    {
+        var client = await SeedBoardAsync(BoardType.OneShot, $"apf_{tag}");
+        var target = await AddMemberAsync($"t_{tag}", targetName, GroupRole.Player);
+        return (client, target);
+    }
+
+    // The card header and its one title, as the converted forms write them.
+    private static string CardHeaderTitle(string title) =>
+        @"modern-card-header[^>]*>\s*<h1[^>]*>(?:\s*<i[^>]*></i>)?\s*" + Regex.Escape(title) + @"\s*</h1>";
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminEditUser_HasOneTitleInTheCardHeader_AndWrapsItsFormInTheFormPage(bool mobile)
+    {
+        var (client, target) = await SeedFormAsync(mobile ? "edit_m" : "edit_d");
+
+        var html = await GetAsync(client, $"/Admin/EditUser?userId={target.Id}", AgentFor(mobile));
+
+        HeadingOneCount(html).Should().Be(1);
+        html.Should().MatchRegex(CardHeaderTitle("Edit User"));
+        html.Should().MatchRegex(@"<form[^>]*class=""form-page""");
+        html.Should().MatchRegex(@"<div class=""form-actions"">\s*<a[^>]*class=""btn btn-secondary""[^>]*>(?:\s*<i[^>]*></i>)?\s*Back to Users\s*</a>\s*<button type=""submit"" class=""btn btn-primary"">(?:\s*<i[^>]*></i>)?\s*Save Changes\s*</button>");
+        html.Should().Contain("/css/admin-pages.css");
+        if (mobile)
+            html.Should().Contain("/css/admin-pages.mobile.css");
+        html.Should().NotContain("admin-form.mobile.css");
+        html.Should().NotContain("admin-form-card-mobile");
+        html.Should().NotContain("style=\"");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminEditUser_ShowsPasswordManagementWithAFilledResetLink_OnBothLayouts(bool mobile)
+    {
+        var (client, target) = await SeedFormAsync(mobile ? "pwm_m" : "pwm_d");
+
+        var html = await GetAsync(client, $"/Admin/EditUser?userId={target.Id}", AgentFor(mobile));
+
+        html.Should().MatchRegex(@"<h2 class=""form-section-title"">(?:\s*<i[^>]*></i>)?\s*Password Management\s*</h2>");
+        WebUtility.HtmlDecode(html).Should().Contain("Reset this user's password (they will need to use the new password to log in).", "the sentence is the same on both layouts");
+        html.Should().MatchRegex($@"<a[^>]*class=""btn btn-danger""[^>]*href=""/Admin/ResetPassword\?userId={target.Id}""|<a[^>]*href=""/Admin/ResetPassword\?userId={target.Id}""[^>]*class=""btn btn-danger""");
+        html.Should().NotContain("btn-outline");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminEditUser_MarksNameRequired_KeepsEmailOptional_AndLeavesBothOutOfAutofill(bool mobile)
+    {
+        var (client, target) = await SeedFormAsync(mobile ? "req_m" : "req_d");
+
+        var html = await GetAsync(client, $"/Admin/EditUser?userId={target.Id}", AgentFor(mobile));
+
+        html.Should().MatchRegex(@"<label[^>]*for=""Name""[^>]*>\s*Name <span class=""text-danger"" aria-hidden=""true"">\*</span><span class=""visually-hidden""> \(required\)</span></label>");
+        html.Should().MatchRegex(@"<label[^>]*for=""Email""[^>]*>\s*Email\s*</label>");
+        html.Should().MatchRegex(@"<input[^>]*id=""Name""[^>]*autocomplete=""off""|<input[^>]*autocomplete=""off""[^>]*id=""Name""");
+        html.Should().MatchRegex(@"<input[^>]*id=""Email""[^>]*autocomplete=""off""|<input[^>]*autocomplete=""off""[^>]*id=""Email""");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminEditUser_WithAnInvalidPost_ShowsTheMessageOnTheFoundationTreatment(bool mobile)
+    {
+        var (client, target) = await SeedFormAsync(mobile ? "inv_m" : "inv_d");
+
+        var html = await PostFormAsync(client, "/Admin/EditUser", AgentFor(mobile), new Dictionary<string, string>
+        {
+            ["Id"] = target.Id.ToString(),
+            ["Name"] = "",
+            ["Email"] = "not-an-address",
+        });
+
+        html.Should().MatchRegex(@"<span[^>]*class=""field-validation-error""[^>]*data-valmsg-for=""Name""|<span[^>]*data-valmsg-for=""Name""[^>]*class=""field-validation-error""");
+        html.Should().NotMatchRegex(@"<span[^>]*class=""text-danger[^""]*""[^>]*data-valmsg-for");
+    }
+
+    // Posts a form to the page's own URL with the antiforgery token the page issued, under the given User-Agent.
+    private static async Task<string> PostFormAsync(HttpClient client, string url, string userAgent, Dictionary<string, string> fields)
+    {
+        var getUrl = url + (fields.TryGetValue("Id", out var id) ? $"?userId={id}" : fields.TryGetValue("UserId", out var uid) ? $"?userId={uid}" : "");
+        var page = await GetAsync(client, getUrl, userAgent);
+        var token = Regex.Match(page, @"name=""__RequestVerificationToken""[^>]*value=""([^""]+)""").Groups[1].Value;
+        token.Should().NotBeEmpty();
+        fields["__RequestVerificationToken"] = token;
+        var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = new FormUrlEncodedContent(fields) };
+        request.Headers.TryAddWithoutValidation("User-Agent", userAgent);
+        var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK, "an invalid post shows the form again");
+        return await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+    }
 }
