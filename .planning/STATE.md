@@ -5,8 +5,8 @@ milestone_name: Rolling Improvements
 current_phase: 100
 current_phase_name: Admin and Platform UI conversion
 status: executing
-stopped_at: Completed 100-11-PLAN.md
-last_updated: "2026-11-18T17:20:49.967Z"
+stopped_at: Completed 100-12-PLAN.md
+last_updated: "2026-11-18T19:02:16.815Z"
 last_activity: 2026-11-18
 last_activity_desc: Phase 100 execution started
 progress:
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 ## Current Position
 
 Phase: 100 (Admin and Platform UI conversion) — EXECUTING
-Plan: 12 of 23
+Plan: 13 of 23
 Status: Ready to execute
 Not complete in this milestone: Phases 78, 79 and 90, and 98 onward.
 Last activity: 2026-11-18 — Phase 100 execution started
@@ -190,6 +190,8 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 100]: [100-05] O-4 toast: limiter before any write; a refusal is a redirect with an Error toast; 429 tests change
 - [Phase 100]: [100-05] O-12 toast: failed Platform Create New User redirects with an Error toast
 - [Phase 100]: [100-05] O-13 dev-setting: EmailStats capture seam is a Development-only ResendBaseUrl setting
+- [Phase 100]: Gate 1 wording: One-Shot (6a yes), Dungeon Master (6b yes), Admin on Admin/Users (6c yes); operator approved all recommendations
+- [Phase 100]: Gate 1 copy changes applied: item 8 Remove sentence, 9 password hint, 19 Reset Password cancel relabelled only, 20 Refresh Email Stats; 16 left-aligned slots, 18 outline yes, header Name
 
 ### Roadmap Evolution
 
@@ -293,8 +295,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-18T17:20:49.925Z
-Stopped at: Completed 100-11-PLAN.md
+Last session: 2026-11-18T19:02:16.773Z
+Stopped at: Completed 100-12-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
