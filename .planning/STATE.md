@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 99
-current_phase_name: Shop and Shop management UI conversion
+current_phase: 100
+current_phase_name: Admin and Platform UI conversion
 status: executing
-stopped_at: Completed 99-24-PLAN.md
-last_updated: "2026-11-17T19:43:24.288Z"
-last_activity: 2026-11-17
-last_activity_desc: "Phase 99: 24/24 plans complete, shop Edit review bypass and cross-keeper Delete fixed (99-24), ready for the v6.4.0 release hand-off"
+stopped_at: Completed 100-01-PLAN.md
+last_updated: "2026-11-18T14:55:10.478Z"
+last_activity: 2026-11-18
+last_activity_desc: Phase 100 execution started
 progress:
   total_phases: 31
   completed_phases: 26
-  total_plans: 294
-  completed_plans: 285
+  total_plans: 317
+  completed_plans: 286
   percent: 84
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
@@ -25,15 +25,15 @@ state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 99 — Shop and Shop management UI conversion
+**Current focus:** Phase 100 — Admin and Platform UI conversion
 
 ## Current Position
 
-Phase: 99 (Shop and Shop management UI conversion) — EXECUTING
-Plan: 24 of 24
-Status: Phase plans complete — Gate 2 approved, the Draft Details access gap closed, the stock, review and availability gaps fixed, and the Edit review bypass and cross-keeper Delete closed; ready for verification and the v6.4.0 release
+Phase: 100 (Admin and Platform UI conversion) — EXECUTING
+Plan: 2 of 23
+Status: Ready to execute
 Not complete in this milestone: Phases 78, 79 and 90, and 98 onward.
-Last activity: 2026-11-17 — Phase 99: all 24 plans complete; 99-24 (operator: "Fix first") made an edit never publish a shop item (one shared review rule, ShopItemReview, for Create and Edit; an edit at Rare or above sends a Published or Archived item back to review; the toast says so) and limited a non-admin Dungeon Master's Delete to their own Draft or Denied item, with Admins and SuperAdmins through the AdminOnly policy and both lists offering Delete only where the server accepts it; T-99-87 (publishing one's own edit of another keeper's item) left for the operator's choice; unit 1519 passed, integration 2742 passed, 16 skipped; v6.4.0 hand-off through the operator's pull request; verification steps not run
+Last activity: 2026-11-18 — Phase 100 execution started
 
 **Phases 96 and 97 complete 2026-11-13.** Shipped as v6.1.0 (PR #170) and v6.2.0 (PR #171); the post-deploy UAT items (96: 7, 97: 5) were confirmed by the operator against production ("i think everything works. so mark as completed").
 
@@ -287,8 +287,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-17T19:43:24.245Z
-Stopped at: Completed 99-24-PLAN.md
+Last session: 2026-11-18T14:55:10.439Z
+Stopped at: Completed 100-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

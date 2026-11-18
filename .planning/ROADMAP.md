@@ -2189,7 +2189,7 @@ Plans:
 **Goal:** Convert the admin pages and the Platform area on top of the foundation's Platform layouts. Convert the admin and Platform pages to the foundation with their approved relayouts and readable badges, tables and mailto links, keeping the three Platform Group twins.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the foundation's Platform layouts, which this phase verifies)
-**Plans:** 23 plans
+**Plans:** 1/23 plans executed
 
 **Scope:**
 
@@ -2247,7 +2247,7 @@ Scope drift recorded at planning (research, re-measured by 100-01): the area is 
 
 **Wave 1**
 
-- [ ] 100-01-PLAN.md — Opening operator checkpoint (SQL Server at 1433 brought up by the operator, ports 8340/8341, p100 fixtures approved, SuperAdmin-as-member yes or no, SQL suites yes or no), Linux scratch setup from the Phase 99 tools with email suppression forced, Platform capture tracer, measured scope and drift, begin-phase
+- [x] 100-01-PLAN.md — Opening operator checkpoint (SQL Server at 1433 brought up by the operator, ports 8340/8341, p100 fixtures approved, SuperAdmin-as-member yes or no, SQL suites yes or no), Linux scratch setup from the Phase 99 tools with email suppression forced, Platform capture tracer, measured scope and drift, begin-phase
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
