@@ -5,15 +5,15 @@ milestone_name: Rolling Improvements
 current_phase: 100
 current_phase_name: Admin and Platform UI conversion
 status: executing
-stopped_at: Completed 100-04-PLAN.md
-last_updated: "2026-11-18T15:38:32.353Z"
+stopped_at: Completed 100-05-PLAN.md
+last_updated: "2026-11-18T16:04:12.480Z"
 last_activity: 2026-11-18
 last_activity_desc: Phase 100 execution started
 progress:
   total_phases: 32
   completed_phases: 26
   total_plans: 317
-  completed_plans: 289
+  completed_plans: 290
   percent: 81
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 ## Current Position
 
 Phase: 100 (Admin and Platform UI conversion) — EXECUTING
-Plan: 5 of 23
+Plan: 6 of 23
 Status: Ready to execute
 Not complete in this milestone: Phases 78, 79 and 90, and 98 onward.
 Last activity: 2026-11-18 — Phase 100 execution started
@@ -185,6 +185,11 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 99]: 99-07: Gate 1: merchant placement (a), the floating button in the sticky dock
 - [Phase 99]: 99-07: Gate 1: legendary chip is amber (--qb-warning on --qb-warning-fg), as the signed-off render draws it; D-09's gold not followed
 - [Phase 99]: 99-07: Gate 1: item 20 server quantity validation is fixed in phase 99 by plan 99-21, not deferred
+- [Phase 100]: [100-05] O-1 accept: reach rule is exactly D-02; ordinary account on another board stays reachable (G-02 residual)
+- [Phase 100]: [100-05] O-3: peer Admin, own name and email, and own password reset are reachable and allowed
+- [Phase 100]: [100-05] O-4 toast: limiter before any write; a refusal is a redirect with an Error toast; 429 tests change
+- [Phase 100]: [100-05] O-12 toast: failed Platform Create New User redirects with an Error toast
+- [Phase 100]: [100-05] O-13 dev-setting: EmailStats capture seam is a Development-only ResendBaseUrl setting
 
 ### Roadmap Evolution
 
@@ -288,8 +293,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-18T15:38:32.311Z
-Stopped at: Completed 100-04-PLAN.md
+Last session: 2026-11-18T16:04:11.623Z
+Stopped at: Completed 100-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

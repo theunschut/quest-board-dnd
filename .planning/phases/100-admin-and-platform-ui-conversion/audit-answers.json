@@ -1,0 +1,194 @@
+{
+  "answeredAt": "2026-11-18T16:03:00Z",
+  "source": "operator",
+  "answerSource": "operator in chat: approve all recommendations",
+  "answerLine": "G-02 residual, G-04 approve, G-05 approve, G-06 approve, G-07 approve, G-08 approve, G-09 approve, G-10 residual, G-11 residual, G-12 residual, G-13 approve, G-14 approve, G-15 approve, G-16 residual, G-17 residual, G-18 approve, G-19 approve, G-23 approve; O-1 accept, O-2 exempt, O-3 peerAdmin reachable, selfEdit reachable, selfReset allowed, O-4 toast, O-5 limit 20 per 60 minutes, O-6 get, O-7 accept, O-8 defer, O-9 generic, O-10 removeSentence gate1, passwordHint gate1, O-11 yes, O-12 toast, O-13 dev-setting, O-14 dm, O-15 yes, O-16 yes; sentences as proposed",
+  "gaps": {
+    "G-01": {
+      "decision": "decided",
+      "rule": "D-02 (decided before the checkpoint, not re-asked)"
+    },
+    "G-02": {
+      "decision": "residual",
+      "words": "Accepted as a residual by the operator ('approve all recommendations'; the brief's recommendation): the elevated-account part is closed by the decided reach rule; an ordinary account that also sits on another board can still be added by email and then edited or reset (O-1 accept)."
+    },
+    "G-03": {
+      "decision": "decided",
+      "rule": "D-03 (decided before the checkpoint, not re-asked)"
+    },
+    "G-04": {
+      "decision": "approve"
+    },
+    "G-05": {
+      "decision": "approve"
+    },
+    "G-06": {
+      "decision": "approve"
+    },
+    "G-07": {
+      "decision": "approve"
+    },
+    "G-08": {
+      "decision": "approve"
+    },
+    "G-09": {
+      "decision": "approve"
+    },
+    "G-10": {
+      "decision": "residual",
+      "words": "Accepted as a residual by the operator ('approve all recommendations'; the brief's recommendation): the Create User / Add Member toast names the real owner of an existing address, accepted as designed."
+    },
+    "G-11": {
+      "decision": "residual",
+      "words": "Accepted as a residual by the operator ('approve all recommendations'; the brief's recommendation): Edit User changes global account fields from a board page; accepted, the decided reach rule already limits it to non-elevated accounts."
+    },
+    "G-12": {
+      "decision": "residual",
+      "words": "Accepted as a residual by the operator ('approve all recommendations'; the brief's recommendation): no notice to the account owner after an admin reset or email change; recorded as deferred to the email phase (same answer as O-8 defer)."
+    },
+    "G-13": {
+      "decision": "approve"
+    },
+    "G-14": {
+      "decision": "approve"
+    },
+    "G-15": {
+      "decision": "approve"
+    },
+    "G-16": {
+      "decision": "residual",
+      "words": "Accepted as a residual by the operator ('approve all recommendations'; the brief's recommendation): two SuperAdmins can disable each other and only SQL recovers; accepted as design."
+    },
+    "G-17": {
+      "decision": "residual",
+      "words": "Accepted as a residual by the operator ('approve all recommendations'; the brief's recommendation): Email Stats Refresh stays a GET (O-6 get); accepted as is."
+    },
+    "G-18": {
+      "decision": "approve"
+    },
+    "G-19": {
+      "decision": "approve"
+    },
+    "G-20": {
+      "decision": "no-gap"
+    },
+    "G-21": {
+      "decision": "no-gap"
+    },
+    "G-22": {
+      "decision": "no-gap"
+    },
+    "G-23": {
+      "decision": "approve"
+    }
+  },
+  "findings": {
+    "X-1": {
+      "decision": "approve"
+    },
+    "X-2": {
+      "decision": "approve"
+    },
+    "X-3": {
+      "decision": "approve"
+    }
+  },
+  "questions": {
+    "O-1": "accept",
+    "O-2": "exempt",
+    "O-3": {
+      "peerAdmin": "reachable",
+      "selfEdit": "reachable",
+      "selfReset": "allowed"
+    },
+    "O-4": "toast",
+    "O-5": {
+      "limit": 20,
+      "windowMinutes": 60
+    },
+    "O-6": "get",
+    "O-7": "accept",
+    "O-8": "defer",
+    "O-9": "generic",
+    "O-10": {
+      "removeSentence": "gate1",
+      "passwordHint": "gate1"
+    },
+    "O-11": "yes",
+    "O-12": "toast",
+    "O-13": "dev-setting"
+  },
+  "extraQuestions": {
+    "O-14": "dm",
+    "O-15": "yes",
+    "O-16": "yes"
+  },
+  "unanswered": {
+    "gate1Item6c": "Not answered here; stays a Gate 1 question"
+  },
+  "wordingEarly": {
+    "adminWord": null
+  },
+  "sentences": {
+    "reasonSelf": {
+      "text": "This is your own account, so you cannot change your role or remove yourself here.",
+      "source": "approved"
+    },
+    "reasonLastAdmin": {
+      "text": "This person is the only one who can manage this board. Give someone else that role first.",
+      "source": "approved"
+    },
+    "reasonReach": {
+      "text": "Only a SuperAdmin can change this account.",
+      "source": "approved"
+    },
+    "toastSelf": {
+      "text": "You cannot change your own role or remove yourself from the board.",
+      "source": "approved"
+    },
+    "toastLastAdmin": {
+      "text": "A board must keep at least one member who can manage it. Give someone else that role first.",
+      "source": "approved"
+    },
+    "toastReach": {
+      "text": "Only a SuperAdmin can change that account.",
+      "source": "approved"
+    },
+    "toastStale": {
+      "text": "That person is not a member of this board any more.",
+      "source": "approved"
+    },
+    "toastRemoved": {
+      "text": "{name} was removed from the group.",
+      "source": "approved"
+    },
+    "toastQuestDeleted": {
+      "text": "Quest deleted.",
+      "source": "approved"
+    },
+    "toastQuestMissing": {
+      "text": "That quest no longer exists on this board.",
+      "source": "approved"
+    },
+    "toastQuestRefused": {
+      "text": "That quest could not be deleted. Nothing was changed.",
+      "source": "approved"
+    },
+    "toastRateLimit": {
+      "text": "Too many emails were sent to this account recently. Try again in an hour.",
+      "source": "approved"
+    },
+    "toastCreateLimit": {
+      "text": "You have created many accounts in a short time. Try again later.",
+      "source": "approved"
+    },
+    "toastCreateMemberFailed": {
+      "text": "The account could not be created. Check the details and try again.",
+      "source": "approved"
+    },
+    "toastPlatformNonMember": {
+      "text": "{name} was not a member of this group.",
+      "source": "approved"
+    }
+  }
+}

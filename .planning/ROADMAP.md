@@ -2189,7 +2189,7 @@ Plans:
 **Goal:** Convert the admin pages and the Platform area on top of the foundation's Platform layouts. Convert the admin and Platform pages to the foundation with their approved relayouts and readable badges, tables and mailto links, keeping the three Platform Group twins.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the foundation's Platform layouts, which this phase verifies)
-**Plans:** 4/23 plans executed
+**Plans:** 5/23 plans executed
 
 **Scope:**
 
@@ -2263,7 +2263,7 @@ Scope drift recorded at planning (research, re-measured by 100-01): the area is 
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 100-05-PLAN.md — Audit checkpoint (operator): approve, adjust or accept as residual each gap, answer O-1 to O-13 (D-02 and D-03 not re-asked), and approve the new refusal, toast and result sentences the server fixes write; audit-answers.json
+- [x] 100-05-PLAN.md — Audit checkpoint (operator): approve, adjust or accept as residual each gap, answer O-1 to O-13 (D-02 and D-03 not re-asked), and approve the new refusal, toast and result sentences the server fixes write; audit-answers.json
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
