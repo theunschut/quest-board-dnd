@@ -110,6 +110,9 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Areas/Platform/Views/Group/_BoardDeleteBody.cshtml",
         "QuestBoard.Service/wwwroot/css/platform-pages.css",
         "QuestBoard.Service/wwwroot/css/platform-pages.mobile.css",
+        "QuestBoard.IntegrationTests/Controllers/BoardPageBoardListTests.cs",
+        "QuestBoard.IntegrationTests/Tests/BoardPageEndToEndTests.cs",
+        "QuestBoard.IntegrationTests/Controllers/LinkedBoardsPlatformIntegrationTests.cs",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it

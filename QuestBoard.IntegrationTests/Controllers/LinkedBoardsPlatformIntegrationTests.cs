@@ -595,7 +595,7 @@ public class LinkedBoardsPlatformIntegrationTests : IClassFixture<WebApplication
         html.Should().Contain("Linked Boards");
         if (userAgent is not null)
         {
-            html.Should().Contain("platform-group-card-mobile", "the mobile layout must be the one rendered");
+            html.Should().Contain("platform-pages.mobile.css", "the mobile layout must be the one rendered");
         }
     }
 
