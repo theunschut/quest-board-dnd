@@ -12,9 +12,9 @@ namespace QuestBoard.IntegrationTests.Controllers;
 /// Which accounts a board Admin may change from a board's Users page. An Admin of one board may reset the password of,
 /// edit and re-send the welcome mail to the Players, Dungeon Masters and fellow Admins of that board, but not an
 /// account that carries more reach than that: a platform administrator, or an Admin of some other board. Each
-/// refusal must read as an Error toast on the Users page and must change nothing. The facts marked as reproducing an
-/// open gap describe that rule and stay skipped until the rule is enforced; the unskipped facts pin what must keep
-/// working once it is.
+/// refusal must read as an Error toast on the Users page and must change nothing. The first group of facts states the
+/// refusals; the second pins what stays allowed: members of the same board, a peer Admin, the Admin's own account, an
+/// ordinary account that also belongs to another board, and everything for a platform administrator.
 /// </summary>
 public class AdminAccountReachTests : IClassFixture<WebApplicationFactoryBase>
 {
@@ -143,7 +143,7 @@ public class AdminAccountReachTests : IClassFixture<WebApplicationFactoryBase>
     private static List<string> ToastKinds(string html) =>
         Regex.Matches(html, "<strong class=\"me-auto\">(\\w+)</strong>").Select(m => m.Groups[1].Value).ToList();
 
-    // ---- Reproduction facts: the rule an Admin of one board must meet -----------------------------
+    // ---- Refusals: the rule an Admin of one board must meet ---------------------------------------
 
     [Fact]
     public async Task ResetPassword_Post_ForAnAdminOfAnotherBoard_IsRefusedWithAnErrorToast_AndThePasswordIsUnchanged()
@@ -160,7 +160,7 @@ public class AdminAccountReachTests : IClassFixture<WebApplicationFactoryBase>
         await AssertRefusedWithErrorToastAsync(adminClient, response);
     }
 
-    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    [Fact]
     public async Task ResetPassword_Post_ForAPlatformAdministrator_IsRefusedWithAnErrorToast_AndThePasswordIsUnchanged()
     {
         await ResetWithSecondBoardAsync();
@@ -176,7 +176,7 @@ public class AdminAccountReachTests : IClassFixture<WebApplicationFactoryBase>
         await AssertRefusedWithErrorToastAsync(adminClient, response);
     }
 
-    [Theory(Skip = "Reproduces an open gap; enabled by its fix")]
+    [Theory]
     [InlineData(true)]
     [InlineData(false)]
     public async Task ResetPassword_Get_ForAnAccountWithMoreReach_RedirectsWithAnErrorToast(bool platformAdministrator)
@@ -194,7 +194,7 @@ public class AdminAccountReachTests : IClassFixture<WebApplicationFactoryBase>
         await AssertRefusedWithErrorToastAsync(adminClient, response);
     }
 
-    [Theory(Skip = "Reproduces an open gap; enabled by its fix")]
+    [Theory]
     [InlineData(true)]
     [InlineData(false)]
     public async Task EditUser_Post_ForAnAccountWithMoreReach_IsRefused_AndNameAndEmailAreUnchanged(bool platformAdministrator)
@@ -212,10 +212,12 @@ public class AdminAccountReachTests : IClassFixture<WebApplicationFactoryBase>
         var after = await ReloadAsync(target.Id);
         after.Name.Should().Be(target.Name, "the account's name belongs to its owner, not to a board Admin");
         after.Email.Should().Be(target.Email, "no address change may be started for an account with more reach");
+        _factory.JobClient.EnqueuedJobs.Count(j => j.Type == typeof(ChangeEmailConfirmationJob)).Should().Be(0,
+            "no confirmation mail may be sent to an address chosen for an account with more reach");
         await AssertRefusedWithErrorToastAsync(adminClient, response);
     }
 
-    [Theory(Skip = "Reproduces an open gap; enabled by its fix")]
+    [Theory]
     [InlineData(true)]
     [InlineData(false)]
     public async Task EditUser_Get_ForAnAccountWithMoreReach_RedirectsWithAnErrorToast(bool platformAdministrator)
@@ -233,7 +235,7 @@ public class AdminAccountReachTests : IClassFixture<WebApplicationFactoryBase>
         await AssertRefusedWithErrorToastAsync(adminClient, response);
     }
 
-    [Theory(Skip = "Reproduces an open gap; enabled by its fix")]
+    [Theory]
     [InlineData(true)]
     [InlineData(false)]
     public async Task SendConfirmationEmail_ForAnAccountWithMoreReach_IsRefused_AndNoMailIsQueued(bool platformAdministrator)
@@ -257,7 +259,7 @@ public class AdminAccountReachTests : IClassFixture<WebApplicationFactoryBase>
 
     // Adding an existing account to the board by its address is what makes it a "member of this board", so the reach
     // rule has to hold for the account added that way as well.
-    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    [Fact]
     public async Task CreateUser_WithAPlatformAdministratorsAddress_ThenResetPassword_IsRefused()
     {
         await ResetWithSecondBoardAsync();
@@ -279,7 +281,7 @@ public class AdminAccountReachTests : IClassFixture<WebApplicationFactoryBase>
         await AssertRefusedWithErrorToastAsync(adminClient, response);
     }
 
-    // ---- Pins: what a board Admin and a platform administrator can still do ----------------------
+    // ---- Allowed: what a board Admin and a platform administrator can still do --------------------
 
     [Theory]
     [InlineData(GroupRole.Player)]
@@ -345,5 +347,92 @@ public class AdminAccountReachTests : IClassFixture<WebApplicationFactoryBase>
 
         response.StatusCode.Should().Be(HttpStatusCode.Redirect);
         (await ReloadAsync(target.Id)).Name.Should().Be("Renamed Platform Administrator");
+    }
+
+    [Fact]
+    public async Task ResetPassword_Post_ForAnOrdinaryAccountThatAlsoBelongsToAnotherBoard_StillSucceeds()
+    {
+        await ResetWithSecondBoardAsync();
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var target = await SeedAccountAsync("sharedplayer", (1, GroupRole.Player), (2, GroupRole.Player));
+
+        var response = await PostResetPasswordAsync(adminClient, target.Id);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        using var scope = _factory.Services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
+        var reloaded = await userManager.FindByIdAsync(target.Id.ToString());
+        (await userManager.CheckPasswordAsync(reloaded!, NewPassword)).Should().BeTrue(
+            "belonging to another board as an ordinary member does not put an account out of reach");
+    }
+
+    [Fact]
+    public async Task ResetPassword_Post_ForAnAdminOfTheSameBoardWhoAlsoAdministersAnotherBoard_IsRefused()
+    {
+        await ResetWithSecondBoardAsync();
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var target = await SeedAccountAsync("sharedadmin", (1, GroupRole.Admin), (2, GroupRole.Admin));
+        var hashBefore = await PasswordHashAsync(target.Id);
+
+        var response = await PostResetPasswordAsync(adminClient, target.Id);
+
+        (await PasswordHashAsync(target.Id)).Should().Be(hashBefore);
+        await AssertRefusedWithErrorToastAsync(adminClient, response);
+    }
+
+    [Fact]
+    public async Task ResetPassword_Post_ForTheSignedInAdminsOwnAccount_StillSucceeds_EvenWhenTheyAdministerAnotherBoard()
+    {
+        await ResetWithSecondBoardAsync();
+        var (adminClient, admin) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.UserGroups.Add(new UserGroupEntity { UserId = admin.Id, GroupId = 2, GroupRole = (int)GroupRole.Admin });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var response = await PostResetPasswordAsync(adminClient, admin.Id);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().Contain("/Admin/Users");
+        var landed = await adminClient.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
+        ToastKinds(WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)))
+            .Should().Contain("Success");
+    }
+
+    [Fact]
+    public async Task EditUser_Post_ForTheSignedInAdminsOwnAccount_StillSavesTheName_EvenWhenTheyAdministerAnotherBoard()
+    {
+        await ResetWithSecondBoardAsync();
+        var (adminClient, admin) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.UserGroups.Add(new UserGroupEntity { UserId = admin.Id, GroupId = 2, GroupRole = (int)GroupRole.Admin });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+        var own = await ReloadAsync(admin.Id);
+
+        var response = await PostEditUserAsync(adminClient, admin.Id, "Own New Name", own.Email!);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        (await ReloadAsync(admin.Id)).Name.Should().Be("Own New Name");
+    }
+
+    [Fact]
+    public async Task ResetPassword_Post_Success_ShowsTheNamedSuccessToastOnTheUsersPage()
+    {
+        await ResetWithSecondBoardAsync();
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var target = await SeedAccountAsync("toasttarget", (1, GroupRole.Player));
+
+        var response = await PostResetPasswordAsync(adminClient, target.Id);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        var landed = await adminClient.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
+        var html = WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        ToastKinds(html).Should().Contain("Success");
+        html.Should().Contain($"Password reset successfully for {target.Name}!");
     }
 }
