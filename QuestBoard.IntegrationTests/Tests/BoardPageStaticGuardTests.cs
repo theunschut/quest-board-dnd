@@ -142,7 +142,7 @@ public class BoardPageStaticGuardTests
         "QuestBoard.Service/wwwroot/js/character-form.js",
 
         // Service: styles
-        "QuestBoard.Service/wwwroot/css/platform-group.mobile.css",
+        "QuestBoard.Service/wwwroot/css/platform-pages.mobile.css",
         "QuestBoard.Service/wwwroot/css/dm-profile.mobile.css",
     ];
 

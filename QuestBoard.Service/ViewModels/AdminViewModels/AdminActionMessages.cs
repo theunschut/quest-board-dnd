@@ -12,6 +12,9 @@ public static class AdminActionMessages
     /// <summary>Shown when an account has been sent its hourly share of emails and a further send is refused.</summary>
     public const string EmailRateLimited = "Too many emails were sent to this account recently. Try again in an hour.";
 
+    /// <summary>The Error toast shown when the Create New User dialog's post is invalid or the account could not be made.</summary>
+    public const string CreateMemberFailed = "The account could not be created. Check the details and try again.";
+
     /// <summary>Shown when one administrator has created accounts faster than the allowed pace.</summary>
     public const string CreateLimited = "You have created many accounts in a short time. Try again later.";
 

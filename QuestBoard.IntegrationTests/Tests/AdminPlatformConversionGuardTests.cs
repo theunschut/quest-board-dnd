@@ -122,6 +122,9 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.IntegrationTests/Controllers/UsersControllerIntegrationTests.cs",
         "QuestBoard.Service/Areas/Platform/Views/Users/Index.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Users/Index.Mobile.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/Group/Members.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/Group/Members.Mobile.cshtml",
+        "QuestBoard.IntegrationTests/Tests/BoardPageStaticGuardTests.cs",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it
@@ -224,6 +227,8 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Areas/Platform/Views/LinkedBoards/Index.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Users/Index.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Users/Index.Mobile.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/Group/Members.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/Group/Members.Mobile.cshtml",
     ];
 
     // Every other view of the area, still waiting for its slice. A slice moves its views from here to the converted list
@@ -231,8 +236,6 @@ public class AdminPlatformConversionGuardTests
     private static readonly string[] PendingViews =
     [
         "QuestBoard.Service/Views/Admin/EmailStats.cshtml",
-        "QuestBoard.Service/Areas/Platform/Views/Group/Members.cshtml",
-        "QuestBoard.Service/Areas/Platform/Views/Group/Members.Mobile.cshtml",
     ];
 
     // For each converted view, the sheets it must link from its Styles section, by file name. A partial links nothing:
@@ -259,6 +262,8 @@ public class AdminPlatformConversionGuardTests
         ["QuestBoard.Service/Areas/Platform/Views/LinkedBoards/Index.Mobile.cshtml"] = ["platform-pages.css", "platform-pages.mobile.css"],
         ["QuestBoard.Service/Areas/Platform/Views/Users/Index.cshtml"] = ["platform-pages.css"],
         ["QuestBoard.Service/Areas/Platform/Views/Users/Index.Mobile.cshtml"] = ["platform-pages.css", "platform-pages.mobile.css", "platform-users-boards.mobile.css"],
+        ["QuestBoard.Service/Areas/Platform/Views/Group/Members.cshtml"] = ["platform-pages.css"],
+        ["QuestBoard.Service/Areas/Platform/Views/Group/Members.Mobile.cshtml"] = ["platform-pages.css", "platform-pages.mobile.css"],
         ["QuestBoard.Service/Areas/Platform/Views/Group/Delete.cshtml"] = ["platform-group-delete.css"],
         ["QuestBoard.Service/Areas/Platform/Views/Group/Delete.Mobile.cshtml"] = ["platform-group-delete.mobile.css"],
     };
@@ -278,10 +283,7 @@ public class AdminPlatformConversionGuardTests
 
     // The unlayered phone sheets of the area that are still in use. A slice deletes its sheet with its last consumer and
     // moves the name to the retired list.
-    private static readonly string[] PendingSheets =
-    [
-        "QuestBoard.Service/wwwroot/css/platform-group.mobile.css",
-    ];
+    private static readonly string[] PendingSheets = [];
 
     // Every script file the area's pages load.
     private static readonly string[] AreaModules =
@@ -297,6 +299,7 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/wwwroot/css/admin-form.mobile.css",
         "QuestBoard.Service/wwwroot/css/platform-linked-boards.mobile.css",
         "QuestBoard.Service/wwwroot/css/platform-users.mobile.css",
+        "QuestBoard.Service/wwwroot/css/platform-group.mobile.css",
     ];
 
     private static readonly string[] LayoutFiles =

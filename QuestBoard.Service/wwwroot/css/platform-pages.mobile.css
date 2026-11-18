@@ -1,7 +1,7 @@
 /*
  * Platform pages, phone layout: only what differs from the desktop sheet. The phone has three text sizes and
  * finger-sized controls, and a list row is a slip rather than a table row. It holds one pages layer block and nothing
- * but design tokens.
+ * but design tokens. It also holds the Members page's finger-sized search, add and Clear search controls.
  */
 @layer pages {
   .mobile-layout .page-bar {
@@ -63,6 +63,40 @@
   }
 
   .mobile-layout .set-delete .btn {
+    min-height: var(--qb-hit-min);
+  }
+
+  .mobile-layout .members-section + .members-section {
+    margin-top: var(--qb-space-lg);
+  }
+
+  /* The search box and its button are finger-sized. */
+  .mobile-layout .members-search .btn,
+  .mobile-layout .members-search .form-control {
+    min-height: var(--qb-hit-min);
+  }
+
+  /* An available user's add form takes the slip's full width: the role select grows, the button keeps its size. */
+  .mobile-layout .add-member-form {
+    display: flex;
+    flex-wrap: wrap;
+    flex: 1 1 100%;
+    gap: var(--qb-space-sm);
+  }
+
+  .mobile-layout .add-member-form .form-select,
+  .mobile-layout .add-member-form .btn {
+    min-height: var(--qb-hit-min);
+  }
+
+  .mobile-layout .add-member-form .form-select {
+    flex: 1 1 auto;
+  }
+
+  /* Clear search is a finger-sized target. */
+  .mobile-layout .clear-search {
+    display: inline-flex;
+    align-items: center;
     min-height: var(--qb-hit-min);
   }
 }

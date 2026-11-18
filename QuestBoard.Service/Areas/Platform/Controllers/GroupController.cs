@@ -398,19 +398,12 @@ public class GroupController(
         var group = await groupService.GetByIdAsync(id);
         if (group == null) return RedirectToAction(nameof(Index));
 
+        // The dialog closes with the post, so a failed create is answered with a toast on the page the dialog sits on
+        // rather than a re-rendered page whose closed dialog would hold the only message.
         if (!ModelState.IsValid)
         {
-            var invalidMembers = await groupService.GetMembersAsync(id, memberSearch);
-            var invalidAvailableUsers = await userService.GetAvailableUsersAsync(id, search);
-            return View(nameof(Members), new GroupMembersViewModel
-            {
-                Group = group,
-                Members = invalidMembers,
-                AvailableUsers = invalidAvailableUsers,
-                SearchQuery = search,
-                MemberSearchQuery = memberSearch,
-                CreateMember = model
-            });
+            TempData["Error"] = AdminActionMessages.CreateMemberFailed;
+            return RedirectToAction(nameof(Members), new { id, search, memberSearch });
         }
 
         var result = await userService.CreateOrAddToGroupAsync(model.Email, model.Name, id, model.GroupRole);
@@ -478,24 +471,8 @@ public class GroupController(
 
             case CreateOrAddToGroupOutcome.Failed:
             default:
-                {
-                    foreach (var error in result.Errors)
-                    {
-                        ModelState.AddModelError(string.Empty, error);
-                    }
-
-                    var failedMembers = await groupService.GetMembersAsync(id, memberSearch);
-                    var failedAvailableUsers = await userService.GetAvailableUsersAsync(id, search);
-                    return View(nameof(Members), new GroupMembersViewModel
-                    {
-                        Group = group,
-                        Members = failedMembers,
-                        AvailableUsers = failedAvailableUsers,
-                        SearchQuery = search,
-                        MemberSearchQuery = memberSearch,
-                        CreateMember = model
-                    });
-                }
+                TempData["Error"] = AdminActionMessages.CreateMemberFailed;
+                return RedirectToAction(nameof(Members), new { id, search, memberSearch });
         }
     }
 

@@ -1003,13 +1003,30 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
             .Should().Contain("Warning");
     }
 
-    // A failed Create New User must be visible: either an Error toast on a redirect, or the same page with the dialog
-    // marked to open itself again. Today the page is re-rendered with the dialog closed and nothing on screen says why.
-    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
-    public async Task CreateMember_WhenItFails_IsVisibleToTheViewer()
+    // The field names the Create New User dialog posts, read from the rendered page so a test posts exactly what a
+    // browser would.
+    private async Task<List<string>> DialogFieldNamesAsync(HttpClient client)
+    {
+        var page = await client.GetAsync("/platform/Group/Members/1", TestContext.Current.CancellationToken);
+        var html = await page.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var start = html.IndexOf("id=\"createMemberModal\"", StringComparison.Ordinal);
+        start.Should().BeGreaterThan(-1, "the page carries the Create New User dialog");
+        var dialog = html[start..html.IndexOf("</form>", start, StringComparison.Ordinal)];
+        return System.Text.RegularExpressions.Regex.Matches(dialog, "<(?:input|select)\\b[^>]*\\bname=\"([^\"]+)\"")
+            .Select(match => match.Groups[1].Value)
+            .Where(name => name != "__RequestVerificationToken")
+            .ToList();
+    }
+
+    // A failed Create New User is answered with an Error toast on the Members page, because the dialog closes with the
+    // post and nothing else on a re-rendered page would say why.
+    [Fact]
+    public async Task CreateMember_WhenItFails_AnswersAnErrorToast_AndCreatesNothing()
     {
         await TestDataHelper.ClearDatabaseAsync(_factory.Services);
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var fields = await DialogFieldNamesAsync(client);
+        fields.Should().BeEquivalentTo(["Email", "Name", "GroupRole"]);
 
         var response = await client.PostAsync("/platform/Group/CreateMember/1",
             new FormUrlEncodedContent(new Dictionary<string, string>
@@ -1019,42 +1036,43 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
                 ["GroupRole"] = ((int)GroupRole.Player).ToString()
             }), TestContext.Current.CancellationToken);
 
-        string visibleOn;
-        if (response.StatusCode is HttpStatusCode.Redirect or HttpStatusCode.Found)
-        {
-            var landed = await client.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
-            visibleOn = WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
-            visibleOn.Should().Contain("<strong class=\"me-auto\">Error</strong>", "a refused create must be shown as an Error toast");
-        }
-        else
-        {
-            visibleOn = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
-            var modalTag = System.Text.RegularExpressions.Regex.Match(visibleOn, "<div[^>]*id=\"createMemberModal\"[^>]*>").Value;
-            modalTag.Should().Contain("data-open-on-load", "a page that re-renders the dialog must mark it to open itself again");
-        }
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        response.Headers.Location!.ToString().Should().Contain("/platform/Group/Members/1");
+        var landed = await client.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
+        var html = WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        html.Should().Contain("<strong class=\"me-auto\">Error</strong>");
+        html.Should().Contain("The account could not be created. Check the details and try again.");
+
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        context.Users.Any(u => u.Name == "Failed Create").Should().BeFalse();
     }
 
-    // The Create New User dialog names its fields with a "CreateMember." prefix, so a form submitted the way the dialog
-    // builds it has to create the account; the other tests post unprefixed names, which is why they never see this.
-    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
-    public async Task CreateMember_PostedWithTheFieldNamesTheDialogUses_CreatesTheAccount()
+    // The dialog's own field names must reach the action: the other tests post names written by hand, so only a post
+    // built from the rendered dialog proves that creating a user from the page works.
+    [Fact]
+    public async Task CreateMember_PostedWithTheFieldNamesTheDialogRenders_CreatesTheAccount()
     {
         await TestDataHelper.ClearDatabaseAsync(_factory.Services);
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
         var email = $"dialogcreate{Guid.NewGuid().ToString("N")[..8]}@test.com";
+        var values = new Dictionary<string, string>
+        {
+            ["Email"] = email,
+            ["Name"] = "Dialog Created",
+            ["GroupRole"] = ((int)GroupRole.Player).ToString()
+        };
+        var fields = await DialogFieldNamesAsync(client);
 
         var response = await client.PostAsync("/platform/Group/CreateMember/1",
-            new FormUrlEncodedContent(new Dictionary<string, string>
-            {
-                ["CreateMember.Email"] = email,
-                ["CreateMember.Name"] = "Dialog Created",
-                ["CreateMember.GroupRole"] = ((int)GroupRole.Player).ToString()
-            }), TestContext.Current.CancellationToken);
+            new FormUrlEncodedContent(fields.Where(values.ContainsKey).ToDictionary(name => name, name => values[name])),
+            TestContext.Current.CancellationToken);
 
         using var scope = _factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
         context.Users.Any(u => u.Email == email).Should().BeTrue(
             "the dialog's own field names must reach the action, or creating a user from the page can never work");
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        fields.Should().BeEquivalentTo(["Email", "Name", "GroupRole"]);
     }
 }

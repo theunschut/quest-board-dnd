@@ -5,7 +5,8 @@
  * It holds the page title bar with its wrapping action group, the board list's name cell and its left-aligned action
  * slots, the right-aligned Actions cell of the account and set tables, the empty-state sentence, and what the board
  * forms add to the shared form look: a titled section, the refusal above the form, and the page switch rows. The
- * linked set cards and the account email link target are here too. The phone deltas live in platform-pages.mobile.css.
+ * linked set cards and the account email link target are here too, and so are the Members page's two stacked sections with
+ * their search forms, inline add forms and Clear search link. The phone deltas live in platform-pages.mobile.css.
  */
 @layer pages {
   /* A page card's header bar: the title and its actions wrap instead of overflowing. */
@@ -170,5 +171,46 @@
   .page-switch .control-reason {
     margin-block-end: var(--qb-space-sm);
     color: inherit;
+  }
+
+  /*
+   * The Members page: two full-width sections one above the other with a hairline between them, each opening with its own
+   * heading and search form.
+   */
+  .members-section + .members-section {
+    margin-top: var(--qb-space-lg);
+    padding-top: var(--qb-space-lg);
+    border-top: 1px solid var(--qb-surface-glass-border);
+  }
+
+  .members-section__title {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--qb-space-md);
+  }
+
+  .members-search {
+    margin-bottom: var(--qb-space-md);
+  }
+
+  /* The role select and Add button of an available user sit together on one line. */
+  .add-member-form {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+  }
+
+  .add-member-form .form-select {
+    inline-size: auto;
+  }
+
+  .email-cell {
+    overflow-wrap: anywhere;
+  }
+
+  /* The link that undoes a search: the padding makes it a target of at least 24px. */
+  .clear-search {
+    display: inline-block;
+    padding-block: var(--qb-space-xs);
   }
 }

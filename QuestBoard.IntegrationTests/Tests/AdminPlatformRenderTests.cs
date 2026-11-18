@@ -1558,4 +1558,170 @@ public class AdminPlatformRenderTests(WebApplicationFactoryBase factory)
         response.StatusCode.Should().Be(HttpStatusCode.OK, "an invalid post shows the form again");
         return await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
     }
+
+    // ---- Platform Group/Members --------------------------------------------------------------------
+
+    private const string RemoveMemberSentence =
+        "Remove this member from the group? Their availability answers for events on this board will be deleted and cannot be recovered.";
+
+    // The signed-in SuperAdmin, three members of board 1 (one of each role) and an account that is on no board.
+    private async Task<HttpClient> SeedMembersAsync(string tag)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(
+            factory, "pm_" + tag, "pm_" + tag + "@example.com", name: "Isolde Marchwood");
+        await AddMemberAsync(tag + "_a", "Maerwen Ashgrove", GroupRole.Admin);
+        await AddMemberAsync(tag + "_d", "Vashti Emberweir", GroupRole.DungeonMaster);
+        await AddMemberAsync(tag + "_p", "Brindle Oakenfeather", GroupRole.Player);
+        await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, "pm_free_" + tag, "pm_free_" + tag + "@example.com", name: "Perrin Gladewhisper");
+        return client;
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Members_HasOneTitle_TwoSectionHeadings_LinksItsSheets_AndLoadsTheConfirmModule(bool mobile)
+    {
+        var client = await SeedMembersAsync(mobile ? "head_m" : "head_d");
+
+        var html = await GetAsync(client, "/platform/Group/Members/1", AgentFor(mobile));
+
+        HeadingOneCount(html).Should().Be(1);
+        html.Should().MatchRegex(@"modern-card-header page-bar[^>]*>\s*<h1[^>]*>\s*<i[^>]*></i>\s*Members &mdash; ");
+        html.Should().MatchRegex(@"<h2 class=""members-section__title"" id=""members-current"">\s*<i[^>]*></i>\s*Current Members\s*</h2>");
+        html.Should().MatchRegex(@"<h2 class=""members-section__title"" id=""members-available"">\s*<i[^>]*></i>\s*Available Users\s*</h2>");
+        html.Should().Contain("/css/platform-pages.css");
+        if (mobile) html.Should().Contain("/css/platform-pages.mobile.css");
+        else html.Should().NotContain("/css/platform-pages.mobile.css");
+        html.Should().NotContain("platform-group.mobile.css");
+        html.Should().NotContain("platform-group-card-mobile");
+        html.Should().NotContain("col-lg-6");
+        html.Should().MatchRegex("<script[^>]*type=\"module\"[^>]*src=\"/js/confirm-submit\\.js");
+        html.Should().NotMatchRegex("\\son(submit|click)\\s*=");
+        html.Should().NotContain("style=\"");
+        html.Should().NotContain("text-danger me-2");
+        Regex.Matches(html, "class=\"row-slip\"").Count.Should().Be(mobile ? 5 : 0, "the phone lists a slip per member and per available user");
+        Regex.Matches(html, "<table\\b").Count.Should().Be(mobile ? 0 : 2);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Members_RemoveMember_IsAPostFormThatAsksWithTodaysSentence(bool mobile)
+    {
+        var client = await SeedMembersAsync(mobile ? "ask_m" : "ask_d");
+
+        var html = await GetAsync(client, "/platform/Group/Members/1", AgentFor(mobile));
+
+        var forms = FormElement.Matches(html).Select(m => m.Value)
+            .Where(form => form.Contains("/RemoveMember/", StringComparison.OrdinalIgnoreCase)).ToList();
+        forms.Should().HaveCount(4, "one Remove Member form per member: the three seeded and the signed-in account");
+        foreach (var form in forms)
+        {
+            form.Should().Contain("method=\"post\"");
+            form.Should().Contain("__RequestVerificationToken");
+            WebUtility.HtmlDecode(Regex.Match(form, "data-confirm-message=\"([^\"]*)\"").Groups[1].Value)
+                .Should().Be(RemoveMemberSentence);
+            form.Should().Contain("fa-user-minus me-2");
+            form.Should().Contain("Remove Member");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Members_RolesUseTheSharedWords_InBadgesAndInTheAddSelect(bool mobile)
+    {
+        var client = await SeedMembersAsync(mobile ? "role_m" : "role_d");
+
+        var html = await GetAsync(client, "/platform/Group/Members/1", AgentFor(mobile));
+
+        var badges = StatusBadges(html).Select(b => b.Word).ToList();
+        badges.Should().Contain(["Admin", "Dungeon Master", "Player"]);
+        html.Should().NotContain("DungeonMaster</");
+        var add = FormElement.Matches(html).Select(m => m.Value).First(f => f.Contains("/AddMember/", StringComparison.OrdinalIgnoreCase));
+        add.Should().Contain("<option value=\"0\">Player</option>");
+        add.Should().Contain("<option value=\"1\">Dungeon Master</option>");
+        add.Should().Contain("<option value=\"2\">Admin</option>");
+        add.Should().MatchRegex("<label for=\"role-\\d+\" class=\"visually-hidden\">Role</label>");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Members_BothSearchInputsHaveAVisuallyHiddenLabel(bool mobile)
+    {
+        var client = await SeedMembersAsync(mobile ? "label_m" : "label_d");
+
+        var html = await GetAsync(client, "/platform/Group/Members/1", AgentFor(mobile));
+
+        html.Should().Contain("<label for=\"memberSearch-input\" class=\"visually-hidden\">Search members</label>");
+        html.Should().Contain("id=\"memberSearch-input\" name=\"memberSearch\"");
+        html.Should().Contain("<label for=\"search-input\" class=\"visually-hidden\">Search users</label>");
+        html.Should().Contain("id=\"search-input\" name=\"search\"");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Members_SearchMisses_KeepTheirLinesAndOfferAClearSearchLink(bool mobile)
+    {
+        var client = await SeedMembersAsync(mobile ? "miss_m" : "miss_d");
+
+        var html = await GetAsync(client, "/platform/Group/Members/1?memberSearch=Zzyzx&search=Qqxq", AgentFor(mobile));
+
+        html.Should().Contain("No members match \"Zzyzx\".");
+        html.Should().Contain("No users match \"Qqxq\".");
+        Regex.Matches(html, "class=\"clear-search\"").Count.Should().Be(2);
+        html.Should().Contain("Clear search");
+        html.Should().NotContain("text-muted fst-italic");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Members_OfABoardWithNoMembers_KeepsItsEmptyStateWords(bool mobile)
+    {
+        var client = await SeedMembersAsync(mobile ? "empty_m" : "empty_d");
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.UserGroups.RemoveRange(context.UserGroups.Where(link => link.GroupId == 1));
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var html = await GetAsync(client, "/platform/Group/Members/1", AgentFor(mobile));
+
+        html.Should().Contain("<p class=\"empty-state-text\">No members in this group yet.</p>");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Members_CreateNewUserDialog_IsNamedOnTheOverlaySurface_WithRequiredMarkersAndCancel(bool mobile)
+    {
+        var client = await SeedMembersAsync(mobile ? "dialog_m" : "dialog_d");
+
+        var html = await GetAsync(client, "/platform/Group/Members/1", AgentFor(mobile));
+
+        var start = html.IndexOf("id=\"createMemberModal\"", StringComparison.Ordinal);
+        start.Should().BeGreaterThan(-1);
+        var dialog = html[start..];
+        html[(html.LastIndexOf("<div", start, StringComparison.Ordinal))..start].Should().Contain("modal fade");
+        dialog.Should().StartWith("id=\"createMemberModal\" tabindex=\"-1\" aria-labelledby=\"createMemberModalTitle\"");
+        dialog.Should().Contain("<h2 class=\"modal-title\" id=\"createMemberModalTitle\">");
+        dialog.Should().Contain("class=\"btn-close\" data-bs-dismiss=\"modal\" aria-label=\"Close\"");
+        dialog.Should().NotContain("bg-dark");
+        dialog.Should().NotContain("text-light");
+        dialog.Should().NotContain("border-secondary");
+        dialog.Should().NotContain("btn-close-white");
+        Regex.Matches(dialog, "<span class=\"visually-hidden\"> \\(required\\)</span>").Count.Should().Be(3);
+        dialog.Should().Contain("name=\"Email\"").And.Contain("name=\"Name\"").And.Contain("name=\"GroupRole\"");
+        dialog.Should().NotContain("CreateMember.");
+        dialog.Should().Contain("<option value=\"1\">Dungeon Master</option>");
+        dialog.Should().Contain(">Cancel</button>");
+        dialog.Should().MatchRegex("class=\"btn btn-primary\">\\s*<i class=\"fas fa-user-plus me-2\" aria-hidden=\"true\"></i>Create User");
+        dialog.Should().NotContain("data-reopen-on-load");
+    }
 }
