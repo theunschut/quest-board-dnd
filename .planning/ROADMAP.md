@@ -2189,7 +2189,7 @@ Plans:
 **Goal:** Convert the admin pages and the Platform area on top of the foundation's Platform layouts. Convert the admin and Platform pages to the foundation with their approved relayouts and readable badges, tables and mailto links, keeping the three Platform Group twins.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the foundation's Platform layouts, which this phase verifies)
-**Plans:** 7/23 plans executed
+**Plans:** 8/23 plans executed
 
 **Scope:**
 
@@ -2275,7 +2275,7 @@ Scope drift recorded at planning (research, re-measured by 100-01): the area is 
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 100-08-PLAN.md — Remove from Group and Delete Quest as POST forms with native confirms and the approved toasts on both layouts (inline fetch scripts gone), quest delete cleaning up reminder logs and an other-board follow-up through the change tracker (O-11, registered in 100-SECURITY.md), rewritten verb tests, SQL-backed fact
+- [x] 100-08-PLAN.md — Remove from Group and Delete Quest as POST forms with native confirms and the approved toasts on both layouts (inline fetch scripts gone), quest delete cleaning up reminder logs and an other-board follow-up through the change tracker (O-11, registered in 100-SECURITY.md), rewritten verb tests, SQL-backed fact
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
