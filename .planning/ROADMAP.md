@@ -2189,7 +2189,7 @@ Plans:
 **Goal:** Convert the admin pages and the Platform area on top of the foundation's Platform layouts. Convert the admin and Platform pages to the foundation with their approved relayouts and readable badges, tables and mailto links, keeping the three Platform Group twins.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the foundation's Platform layouts, which this phase verifies)
-**Plans:** 9/23 plans executed
+**Plans:** 10/23 plans executed
 
 **Scope:**
 
@@ -2283,7 +2283,7 @@ Scope drift recorded at planning (research, re-measured by 100-01): the area is 
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
-- [ ] 100-10-PLAN.md — Removal guard and honest answers: Remove from Group refuses self and last-Admin removal (TryRemoveMemberAsync), stale-page toasts, Platform non-member removal Warning, O-2 as answered, live check
+- [x] 100-10-PLAN.md — Removal guard and honest answers: Remove from Group refuses self and last-Admin removal (TryRemoveMemberAsync), stale-page toasts, Platform non-member removal Warning, O-2 as answered, live check
 
 **Wave 11** *(blocked on Wave 10 completion)*
 
