@@ -341,7 +341,7 @@ public class AdminControllerRateLimitIntegrationTests : IClassFixture<WebApplica
         // Assert
         using var scope = _factory.Services.CreateScope();
         var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
-        var reloaded = await userService.GetByIdAsync(targetUserId);
+        var reloaded = await userService.GetByIdAsync(targetUserId, TestContext.Current.CancellationToken);
         reloaded!.Name.Should().Be("Email Rate 06 Target", "a save that is refused must not write any of its fields");
         refused.StatusCode.Should().Be(HttpStatusCode.Redirect);
     }
