@@ -110,8 +110,7 @@ may do some of these to whom; they do not add actions.
   `~/qb-ui-review/phase-100/`. Reports describe them structurally and never quote a real name,
   email or board. These gate packages are not published to a review branch unless real rows are
   masked first.
-- **D-10: The EmailStats statistics branch is exercised through a test-only stub of
-  `ResendStatsClient`.** Canned figures feed the integration tests and a dev-only capture, so the
+- **D-10: The EmailStats statistics branch is exercised through a test-only stub of `ResendStatsClient`.** Canned figures feed the integration tests and a dev-only capture, so the
   stat tiles' contrast is measured (A-admin-036). No real key is used, and `appsettings.json` is not
   edited.
 - **D-11: Any email the phase triggers goes to the Mailpit sink only** (`qb-mailpit`; starting it is
@@ -129,15 +128,14 @@ may do some of these to whom; they do not add actions.
   LinkedBoards handler strings built in Razor become data attributes.
 
 ### Gate 1, look and copy
-- **D-14: The Gate 1 look check compares against the `quest-form` Direction A render and the live
-  converted Phase 98 and 99 pages.** No Direction A admin render exists. There is one mockup per
+- **D-14: The Gate 1 look check compares against the `quest-form` Direction A render and the live converted Phase 98 and 99 pages.** No Direction A admin render exists. There is one mockup per
   page type, each side by side with its reference:
   - a table list (Admin/Users or Group/Index);
   - a form (EditUser);
   - a confirmation page (Group/Delete);
   - the Members Create New User modal on the opaque modal surface (A-admin-006).
   The glass, scrim, badges, buttons and table cells must match what shipped in v6.3 and v6.4.
-- **D-15: Gate 1 also carries:**
+- **D-15: Gate 1 also carries** the items below:
   - the AFTERs of Q-124, Q-125 and Q-126, desktop and phone;
   - the D-16 wording changes;
   - how the D-02 and D-03 refusals look (disabled buttons with their visible reason).
@@ -146,8 +144,7 @@ may do some of these to whom; they do not add actions.
   type ("One-Shot", "Campaign") and group role, used by both layouts. It is display text only;
   enums are untouched. Each wording change, for example "DungeonMaster" to "Dungeon Master" and
   "Admin" against "Administrator", is a Gate 1 item for the operator's yes.
-- **D-17: The Platform layouts are verified on every page, and anything still failing is fixed
-  here.** This covers A-admin-008 (the 320px bar), A-admin-014 (nav contrast), A-shell-037 and 038,
+- **D-17: The Platform layouts are verified on every page, and anything still failing is fixed here.** This covers A-admin-008 (the 320px bar), A-admin-014 (nav contrast), A-shell-037 and 038,
   the layout part of A-admin-029 (skip link, landmarks, toggler and offcanvas names) and A-admin-030
   (toggler size). Any remaining failure is fixed as a slice in this phase, not sent back to the
   foundation.
