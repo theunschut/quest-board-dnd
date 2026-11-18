@@ -145,7 +145,7 @@ public class AdminAccountReachTests : IClassFixture<WebApplicationFactoryBase>
 
     // ---- Reproduction facts: the rule an Admin of one board must meet -----------------------------
 
-    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    [Fact]
     public async Task ResetPassword_Post_ForAnAdminOfAnotherBoard_IsRefusedWithAnErrorToast_AndThePasswordIsUnchanged()
     {
         await ResetWithSecondBoardAsync();
