@@ -2189,7 +2189,7 @@ Plans:
 **Goal:** Convert the admin pages and the Platform area on top of the foundation's Platform layouts. Convert the admin and Platform pages to the foundation with their approved relayouts and readable badges, tables and mailto links, keeping the three Platform Group twins.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the foundation's Platform layouts, which this phase verifies)
-**Plans:** 14/23 plans executed
+**Plans:** 15/23 plans executed
 
 **Scope:**
 
@@ -2303,7 +2303,7 @@ Scope drift recorded at planning (research, re-measured by 100-01): the area is 
 
 **Wave 15** *(blocked on Wave 14 completion)*
 
-- [ ] 100-15-PLAN.md — CreateUser, EditUser and ResetPassword on both layouts: one page title (Q-124), Password Management on the phone (Q-92), the name in the ResetPassword title (Q-93), new-password inputs, Gate 1 copy items, admin-form.mobile.css retired
+- [x] 100-15-PLAN.md — CreateUser, EditUser and ResetPassword on both layouts: one page title (Q-124), Password Management on the phone (Q-92), the name in the ResetPassword title (Q-93), new-password inputs, Gate 1 copy items, admin-form.mobile.css retired
 
 **Wave 16** *(blocked on Wave 15 completion)*
 
