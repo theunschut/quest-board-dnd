@@ -96,10 +96,19 @@ public interface IUserService : IBaseService<User>
     Task<IdentityResult> ResetPasswordAsync(User user, string token, string newPassword);
 
     /// <summary>
-    /// Resets a target user's password on behalf of an admin, without requiring the old password.
-    /// Fails if the calling ClaimsPrincipal is not in the Admin role.
+    /// Resets a target user's password on behalf of the acting principal, without requiring the old password.
+    /// Fails, before the Identity reset is attempted, when the target is outside the acting principal's reach
+    /// from the given board (see <see cref="GetAccountReachAsync"/>).
     /// </summary>
-    Task<IdentityResult> ResetPasswordAsync(ClaimsPrincipal adminUser, User user, string newPassword);
+    Task<IdentityResult> ResetPasswordAsync(ClaimsPrincipal adminUser, int groupId, User user, string newPassword);
+
+    /// <summary>
+    /// Returns, per target id, whether the acting principal may change that account from the given board's Users page.
+    /// A platform administrator reaches every account without any query. Anyone else does not reach an account that is a
+    /// platform administrator or that holds the Admin role on a board other than the given one; the acting principal's
+    /// own account is always reachable. The reads cost one repository query and one Identity read for any number of ids.
+    /// </summary>
+    Task<IReadOnlyDictionary<int, AccountReach>> GetAccountReachAsync(ClaimsPrincipal actor, int groupId, IReadOnlyCollection<int> targetUserIds, CancellationToken token = default);
 
     /// <summary>
     /// Generates a password-reset token for the given user, used to build the Welcome/SetPassword email link.

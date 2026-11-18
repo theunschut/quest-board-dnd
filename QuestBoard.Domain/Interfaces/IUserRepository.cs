@@ -48,4 +48,10 @@ public interface IUserRepository : IBaseRepository<User>
     /// Creates or updates the user's group-membership row with the specified role. Returns the UserGroup row Id.
     /// </summary>
     Task<int?> SetGroupRoleAsync(int userId, int groupId, GroupRole role);
+
+    /// <summary>
+    /// Returns, among the given user ids, those that hold the Admin group role on any group other than the given one.
+    /// One query for any number of ids; an empty input returns an empty set without querying.
+    /// </summary>
+    Task<IReadOnlySet<int>> GetUserIdsAdministeringOtherGroupsAsync(IReadOnlyCollection<int> userIds, int groupId, CancellationToken token = default);
 }

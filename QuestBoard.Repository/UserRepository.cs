@@ -118,4 +118,21 @@ internal class UserRepository(QuestBoardContext dbContext, IMapper mapper, IActi
         await DbContext.SaveChangesAsync();
         return ug.Id;
     }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlySet<int>> GetUserIdsAdministeringOtherGroupsAsync(IReadOnlyCollection<int> userIds, int groupId, CancellationToken token = default)
+    {
+        if (userIds.Count == 0) return new HashSet<int>();
+
+        var ids = userIds.ToList();
+        var administrators = await DbContext.UserGroups
+            .Where(ug => ids.Contains(ug.UserId)
+                      && ug.GroupId != groupId
+                      && ug.GroupRole == (int)GroupRole.Admin)
+            .Select(ug => ug.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken: token);
+
+        return administrators.ToHashSet();
+    }
 }

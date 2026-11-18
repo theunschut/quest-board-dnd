@@ -319,17 +319,20 @@ public class AdminController(IUserService userService, IQuestService questServic
             var targetRole = await userService.GetGroupRoleByIdAsync(model.UserId, groupId.Value);
             if (targetRole == null) return RedirectToAction(nameof(Users));
 
+            if (!await IsWithinReachAsync(groupId.Value, model.UserId))
+                return this.RedirectWithError(nameof(Users), AdminActionMessages.ReachRefused);
+
             var user = await userService.GetByIdAsync(model.UserId);
             if (user == null)
             {
                 return RedirectToAction(nameof(Users));
             }
 
-            var result = await userService.ResetPasswordAsync(User, user, model.NewPassword);
+            var result = await userService.ResetPasswordAsync(User, groupId.Value, user, model.NewPassword);
 
             if (result.Succeeded)
             {
-                return this.RedirectWithMessage(nameof(Users), "SuccessMessage", $"Password reset successfully for {user.Name}!");
+                return this.RedirectWithSuccess(nameof(Users), AdminActionMessages.PasswordReset(user.Name));
             }
 
             foreach (var error in result.Errors)
@@ -475,6 +478,14 @@ public class AdminController(IUserService userService, IQuestService questServic
             new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) });
 
         return View(viewModel);
+    }
+
+    // Whether the signed-in account may change the given account from the active board. Asked before any read of the
+    // account's form and before any write, so a refused account is never touched.
+    private async Task<bool> IsWithinReachAsync(int groupId, int targetUserId)
+    {
+        var reach = await userService.GetAccountReachAsync(User, groupId, [targetUserId]);
+        return reach[targetUserId] == AccountReach.Reachable;
     }
 
     private async Task<(EmailStatsViewModel stats, bool error)> GetResendStatsAsync(

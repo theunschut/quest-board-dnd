@@ -104,9 +104,38 @@ internal class UserService(IIdentityService identityService, IUserRepository rep
     }
 
     /// <inheritdoc/>
-    public async Task<IdentityResult> ResetPasswordAsync(ClaimsPrincipal adminUser, User user, string newPassword)
+    public async Task<IdentityResult> ResetPasswordAsync(ClaimsPrincipal adminUser, int groupId, User user, string newPassword)
     {
+        var reach = await GetAccountReachAsync(adminUser, groupId, [user.Id]);
+        if (reach[user.Id] != AccountReach.Reachable)
+        {
+            return IdentityResult.Failed(new IdentityError { Description = "This account is outside the reach of the account making the change." });
+        }
+
         return await identityService.AdminResetPasswordAsync(adminUser, user.Id, newPassword);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyDictionary<int, AccountReach>> GetAccountReachAsync(ClaimsPrincipal actor, int groupId, IReadOnlyCollection<int> targetUserIds, CancellationToken token = default)
+    {
+        var ids = targetUserIds.Distinct().ToList();
+        var reach = ids.ToDictionary(id => id, _ => AccountReach.Reachable);
+
+        if (ids.Count == 0 || actor.IsInRole("SuperAdmin"))
+            return reach;
+
+        var otherBoardAdministrators = await repository.GetUserIdsAdministeringOtherGroupsAsync(ids, groupId, token);
+        foreach (var id in ids.Where(otherBoardAdministrators.Contains))
+        {
+            reach[id] = AccountReach.AdministersAnotherBoard;
+        }
+
+        // Changing one's own name, email or password never reaches beyond oneself.
+        var actorId = await identityService.GetUserIdAsync(actor);
+        if (actorId != null && reach.ContainsKey(actorId.Value))
+            reach[actorId.Value] = AccountReach.Reachable;
+
+        return reach;
     }
 
     /// <inheritdoc/>
