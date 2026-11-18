@@ -2189,7 +2189,7 @@ Plans:
 **Goal:** Convert the admin pages and the Platform area on top of the foundation's Platform layouts. Convert the admin and Platform pages to the foundation with their approved relayouts and readable badges, tables and mailto links, keeping the three Platform Group twins.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the foundation's Platform layouts, which this phase verifies)
-**Plans:** 3/23 plans executed
+**Plans:** 4/23 plans executed
 
 **Scope:**
 
@@ -2259,7 +2259,7 @@ Scope drift recorded at planning (research, re-measured by 100-01): the area is 
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 100-04-PLAN.md — Server-rules audit re-verified: reproduction facts for each gap (run red, committed skipped), allowed-path pins, the DeleteQuest board-scope pin, live proofs on p100 fixtures, 100-SECURITY.md draft with the gap table and questions, deferred-items rows, the area guard scaffold
+- [x] 100-04-PLAN.md — Server-rules audit re-verified: reproduction facts for each gap (run red, committed skipped), allowed-path pins, the DeleteQuest board-scope pin, live proofs on p100 fixtures, 100-SECURITY.md draft with the gap table and questions, deferred-items rows, the area guard scaffold
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
