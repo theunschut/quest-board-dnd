@@ -345,4 +345,76 @@ public class AdminControllerRateLimitIntegrationTests : IClassFixture<WebApplica
         reloaded!.Name.Should().Be("Email Rate 06 Target", "a save that is refused must not write any of its fields");
         refused.StatusCode.Should().Be(HttpStatusCode.Redirect);
     }
+
+    // ---- The per-administrator limit on creating accounts ---------------------------------------
+
+    private static Task<HttpResponseMessage> PostCreateUserAsync(HttpClient client, string email, string name) =>
+        client.PostAsync("/Admin/CreateUser", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Email"] = email,
+            ["Name"] = name,
+            ["GroupRole"] = ((int)GroupRole.Player).ToString()
+        }), TestContext.Current.CancellationToken);
+
+    private async Task<int?> AccountIdAsync(string email)
+    {
+        using var scope = _factory.Services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<IIdentityService>().GetIdByEmailAsync(email);
+    }
+
+    // One administrator may create twenty accounts an hour. The twenty-first is answered with the Error toast and
+    // creates nothing; a different administrator has a budget of their own and is not affected.
+    [Fact]
+    public async Task CreateUser_BeyondTwentyAnHourByOneAdministrator_IsRefusedWithAToast_AndOtherAdministratorsAreUnaffected()
+    {
+        // Arrange
+        var uniqueSuffix = Guid.NewGuid().ToString("N")[..8];
+        var (busyAdmin, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(
+            _factory, $"emailrate07_a_{uniqueSuffix}", $"emailrate07_a_{uniqueSuffix}@example.com");
+        var (otherAdmin, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(
+            _factory, $"emailrate07_b_{uniqueSuffix}", $"emailrate07_b_{uniqueSuffix}@example.com");
+
+        // Act — twenty accounts are created, then a twenty-first.
+        for (var i = 1; i <= 20; i++)
+        {
+            (await PostCreateUserAsync(busyAdmin, $"emailrate07_{i}_{uniqueSuffix}@example.com", $"Email Rate 07 User {i}"))
+                .StatusCode.Should().Be(HttpStatusCode.Redirect);
+        }
+
+        var twentyFirstEmail = $"emailrate07_21_{uniqueSuffix}@example.com";
+        var refused = await PostCreateUserAsync(busyAdmin, twentyFirstEmail, "Email Rate 07 User 21");
+        var otherAdminEmail = $"emailrate07_other_{uniqueSuffix}@example.com";
+        var unaffected = await PostCreateUserAsync(otherAdmin, otherAdminEmail, "Email Rate 07 Other");
+
+        // Assert
+        (await AccountIdAsync($"emailrate07_20_{uniqueSuffix}@example.com")).Should().NotBeNull("the twentieth create is still within the budget");
+        (await AccountIdAsync(twentyFirstEmail)).Should().BeNull("a refused create must not leave an account behind");
+        await AssertRefusedWithTheCreateLimitToastAsync(busyAdmin, refused);
+
+        unaffected.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        (await AccountIdAsync(otherAdminEmail)).Should().NotBeNull("another administrator's budget is separate");
+    }
+
+    // A request that fails validation never reaches the limiter, so mistyped forms do not use up the budget.
+    [Fact]
+    public async Task CreateUser_InvalidForm_DoesNotSpendTheCreateBudget()
+    {
+        // Arrange
+        var uniqueSuffix = Guid.NewGuid().ToString("N")[..8];
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(
+            _factory, $"emailrate08_{uniqueSuffix}", $"emailrate08_{uniqueSuffix}@example.com");
+
+        // Act — twenty invalid posts (no email), then a valid one.
+        for (var i = 1; i <= 20; i++)
+        {
+            (await PostCreateUserAsync(client, string.Empty, "Email Rate 08 Invalid")).StatusCode.Should().Be(HttpStatusCode.OK);
+        }
+
+        var validEmail = $"emailrate08_valid_{uniqueSuffix}@example.com";
+        var valid = await PostCreateUserAsync(client, validEmail, "Email Rate 08 Valid");
+
+        // Assert
+        valid.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        (await AccountIdAsync(validEmail)).Should().NotBeNull();
+    }
 }

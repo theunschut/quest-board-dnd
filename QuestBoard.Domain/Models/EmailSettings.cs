@@ -12,6 +12,10 @@ public record EmailSettings
     public string AppUrl { get; init; } = string.Empty;
     public string ResendApiKey { get; init; } = string.Empty;
 
+    // Development-only override of where the Resend statistics client sends its requests, so a local run can point
+    // the Email Stats page at a canned local server. It is ignored in every other environment.
+    public string? ResendBaseUrl { get; init; }
+
     // Defaults to false so production (which never loads appsettings.Development.json)
     // sends real emails without needing this key at all. Local dev overrides it to true
     // via appsettings.Development.json so the full pipeline — Hangfire jobs, rendering,

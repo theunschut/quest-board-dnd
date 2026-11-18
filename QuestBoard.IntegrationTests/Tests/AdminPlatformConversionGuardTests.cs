@@ -61,6 +61,13 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.UnitTests/Services/UserServiceTests.cs",
         "QuestBoard.Domain/Interfaces/IIdentityService.cs",
         "QuestBoard.Repository/IdentityService.cs",
+        "QuestBoard.Service/Program.cs",
+        "QuestBoard.Domain/Models/EmailSettings.cs",
+        "QuestBoard.Service/Services/ResendBaseAddress.cs",
+        "QuestBoard.Service/Services/AdminRateLimitKeys.cs",
+        "QuestBoard.IntegrationTests/Helpers/CannedResendHandler.cs",
+        "QuestBoard.IntegrationTests/Helpers/EmailStatsWebApplicationFactory.cs",
+        "QuestBoard.IntegrationTests/Tests/EmailStatsRenderTests.cs",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it
@@ -114,5 +121,20 @@ public class AdminPlatformConversionGuardTests
         PhaseSourceFiles.Should().OnlyHaveUniqueItems();
         foreach (var path in PhaseSourceFiles)
             File.Exists(ResolveRepoFile(path.Split('/'))).Should().BeTrue($"{path} is listed, so it must exist");
+    }
+
+    // The Resend client's address is decided in one place, by the helper that honours a configured address only on a
+    // Development host. The fixed address is written once, in the registration, and the setting is read nowhere else.
+    [Fact]
+    public void ResendClient_BaseAddressIsDecidedOnlyByTheDevelopmentGatedHelper()
+    {
+        var program = ReadRepoFile("QuestBoard.Service/Program.cs");
+
+        Regex.Matches(program, Regex.Escape("https://api.resend.com/")).Count.Should().Be(1);
+        Regex.Matches(program, @"\.ResendBaseUrl\b").Count.Should().Be(1);
+        program.Should().MatchRegex(@"ResendBaseAddress\.Resolve\([^;]*ResendBaseUrl[^;]*https://api\.resend\.com/");
+
+        var helper = ReadRepoFile("QuestBoard.Service/Services/ResendBaseAddress.cs");
+        helper.Should().Contain("IsDevelopment()", "the configured address is honoured only on a Development host");
     }
 }

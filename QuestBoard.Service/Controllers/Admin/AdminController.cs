@@ -13,13 +13,14 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 
 namespace QuestBoard.Service.Controllers.Admin;
 
 [Authorize(Policy = "AdminOnly")]
-public class AdminController(IUserService userService, IQuestService questService, IGroupService groupService, IIdentityService identityService, IBackgroundJobClient jobClient, IOptions<EmailSettings> emailOptions, IMemoryCache cache, IActiveGroupContext activeGroupContext, ILogger<AdminController> logger, PartitionedRateLimiter<int> emailResendLimiter, ResendStatsClient resendStatsClient, IBoardTypeResolver boardTypeResolver, IBoardClock boardClock) : Controller
+public class AdminController(IUserService userService, IQuestService questService, IGroupService groupService, IIdentityService identityService, IBackgroundJobClient jobClient, IOptions<EmailSettings> emailOptions, IMemoryCache cache, IActiveGroupContext activeGroupContext, ILogger<AdminController> logger, PartitionedRateLimiter<int> emailResendLimiter, [FromKeyedServices(AdminRateLimitKeys.CreateUser)] PartitionedRateLimiter<int> createUserLimiter, ResendStatsClient resendStatsClient, IBoardTypeResolver boardTypeResolver, IBoardClock boardClock) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Users()
@@ -122,6 +123,13 @@ public class AdminController(IUserService userService, IQuestService questServic
 
         var groupId = activeGroupContext.ActiveGroupId;
         if (groupId == null) return RedirectToAction("Index", "GroupPicker");
+
+        // Each administrator has their own hourly budget for creating accounts. It is spent only by a request that
+        // passed validation, and it is asked before any account work so a refused request creates nothing.
+        var actorId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        using var createLease = createUserLimiter.AttemptAcquire(actorId);
+        if (!createLease.IsAcquired)
+            return this.RedirectWithError(nameof(Users), AdminActionMessages.CreateLimited);
 
         var result = await userService.CreateOrAddToGroupAsync(model.Email, model.Name, groupId.Value, model.GroupRole);
 
