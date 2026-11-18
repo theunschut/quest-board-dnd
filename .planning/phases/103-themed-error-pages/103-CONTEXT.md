@@ -162,7 +162,7 @@ any new alerting on errors.
   top-level navigations to registry routes and calls `ICrossBoardLinkResolver`. Its "not found"
   path is deliberately identical to a nonexistent id.
 - `CrossBoardLinkRegistry` and `CrossBoardRouteTarget` (`QuestBoard.Service/Helpers/`) hold the
-  closed route list: 19 entries across 8 lookup kinds.
+  closed route list: 18 entries across 8 lookup kinds (corrected from 19 by research).
 - `CrossBoardLinkResolverService` (`QuestBoard.Domain/Services/`) and `CrossBoardLinkRepository`
   (`QuestBoard.Repository/`) do the membership-pinned lookup. They never consult roles or
   visibility today. D-04 changes this.
@@ -175,7 +175,7 @@ any new alerting on errors.
 - `Program.cs` around line 319: `UseExceptionHandler("/Error")` is inside the non-Development
   branch. A status-code re-execute (`UseStatusCodePagesWithReExecute` or similar) is added once,
   for all environments.
-- 84 `NotFound()`, 33 `BadRequest()`, 21 `Forbid()` and 2 `StatusCode()` returns in the
+- About 80 `NotFound()`, 33 `BadRequest()` (13 bodiless), 21 `Forbid()` and 2 `StatusCode()` (410 and 304 in the calendar feed) returns in the
   controllers produce bodiless errors that the page will now cover.
 - JS fetch callers expect today's bodiless statuses (D-09): `shop-item-modal.js`,
   `shop-item-preview.js`, `markdown-editor.js`, `event-details.js` and `event-series-form.js`.

@@ -58,7 +58,7 @@ The **agreement matrix** is the drift guard for D-05: for each of the 18 routes 
 - [ ] `QuestBoard.UnitTests/Repository/CrossBoardLinkVisibilityTests.cs` and `QuestBoard.UnitTests/Models/ShopItemAvailabilityTests.cs` - predicates on InMemory
 - [ ] `QuestBoard.IntegrationTests/Tests/ErrorPageRenderTests.cs`, `ErrorPageNavigationRuleTests.cs`, `ErrorPageRateLimitTests.cs`, `ErrorPageServerErrorTests.cs`, `ErrorPageFallbackLayoutTests.cs`
 - [ ] `QuestBoard.IntegrationTests/Security/CrossBoardVisibilityMatrixTests.cs`
-- [ ] `QuestBoard.IntegrationTests/Security/CrossBoardHiddenRecordTests.cs` - the leak reproduction facts (committed skipped in 103-03, enabled in 103-07/103-08)
+- [ ] `QuestBoard.IntegrationTests/Security/CrossBoardHiddenRecordTests.cs` - the leak reproduction facts (committed skipped in 103-03, enabled in 103-07 and 103-09)
 - [ ] `QuestBoard.IntegrationTests/Tests/ErrorPagesGuardTests.cs` - converted-view list, sheet links, no inline code, no planning references, twin has no `@media`, scanner self-tests on seeded strings (the phase 98-100 pattern, e.g. `ShopConversionGuardTests`)
 - [ ] Helpers: a parity helper that primes the antiforgery cookie and masks the token; `CapturingLoggerProvider` gains `ISupportExternalScope`; a factory variant with throwing stubs
 - [ ] Update `UiFoundationLayerGuardTests` lists (`Layouts`, `LayeredFiles`, `NoLiteralFiles`): a new layout must either link a legacy sheet or the guard gets an explicit "no legacy sheet" allowance (the picker layout does link `legacy-pages.css`)

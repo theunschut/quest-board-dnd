@@ -2454,7 +2454,7 @@ Plans:
 **Goal:** A failed request (404, 403, 500 and other status codes) shows an error page styled in the existing theme instead of the bare default, with three actions: go back, go to the home page (`/`), and log out and return to the login page. Prompted by the operator: following a link to something on a board other than the active one currently ends on a plain 404 (see the phase 99 deferred cross-board link switch).
 **Requirements**: TBD
 **Depends on:** Phase 102; executes only after Phase 100 has finished in this checkout (103-01 checks it)
-**Plans:** 17 plans
+**Plans:** 18 plans
 
 Plans:
 
@@ -2486,44 +2486,48 @@ Planning record: no requirement IDs are mapped, so CONTEXT decisions D-01..D-19 
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 103-07-PLAN.md — Board-aware resolver through both callers: an access level and page per registry route (still 18), role and page narrowing with the SuperAdmin flag, the leak's board-level facts enabled, pinned facts rewritten
+- [ ] 103-07-PLAN.md — Board-aware resolver through both callers: an access level and page per registry route (still 18), role and page narrowing with the SuperAdmin flag, the leak's board-level facts enabled, the facts that break rewritten in the same commit
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 103-08-PLAN.md — Record-level visibility in the cross-board query (shop status and window shared with Shop/Details, quest ownership and completion, character ownership, hidden contacts), parity facts, every reproduction fact enabled, the phase 99 leak closed live
+- [ ] 103-08-PLAN.md — Resolver pins: every route's access level and page (with a drift guard against the controllers' page attributes), both route parsers, every narrowing rule at unit level, and the board-level refusals proven live on p103 data
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
-- [ ] 103-09-PLAN.md — Agreement matrix over route, role and record state judged by each real page, themed parity pairs per kind, picker pairs, hidden and missing 404 bodies identical live
+- [ ] 103-09-PLAN.md — Record-level visibility in the cross-board query (shop status and window shared with Shop/Details, quest ownership and completion, character ownership, hidden contacts), parity facts, every reproduction fact enabled, the phase 99 leak closed live
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
-- [ ] 103-10-PLAN.md — Gate 1 mockups M1 to M11 on desktop and phone (Directions A and B, every variant and viewer, stress and focus frames, look-check tables, proposals), copy read from the structural build, fixture data only
+- [ ] 103-10-PLAN.md — Agreement matrix over route, role and record state judged by each real page, themed parity pairs per kind, picker pairs, hidden and missing 404 bodies identical live
 
 **Wave 11** *(blocked on Wave 10 completion)*
 
-- [ ] 103-11-PLAN.md — Gate 1 local sheet with items 1 to 14 (1, 2, 3 and 12 have no default), settled answers, deviations and assumptions; Gate 1 (operator; redraw loop)
+- [ ] 103-11-PLAN.md — Gate 1 mockups M1 to M11 on desktop and phone (Directions A and B, every variant and viewer, stress and focus frames, look-check tables, proposals), copy read from the structural build, fixture data only
 
 **Wave 12** *(blocked on Wave 11 completion)*
 
-- [ ] 103-12-PLAN.md — Desktop look as approved: the minimal layout's brand-only chrome, error.css, error-actions.js, the final view for every variant and viewer, the phase scanners with self-tests
+- [ ] 103-12-PLAN.md — Gate 1 local sheet with items 1 to 14 (1, 2, 3 and 12 have no default), settled answers, deviations and assumptions; Gate 1 (operator; redraw loop)
 
 **Wave 13** *(blocked on Wave 12 completion)*
 
-- [ ] 103-13-PLAN.md — Phone twin as approved: _Layout.Error.Mobile, ErrorPage.Mobile, error.mobile.css (no media query), phone order, content equivalence with the desktop view, 44px targets
+- [ ] 103-13-PLAN.md — Desktop look as approved: the minimal layout's brand-only chrome, error.css, error-actions.js, the final view for every variant and viewer, the phase scanners with self-tests
 
 **Wave 14** *(blocked on Wave 13 completion)*
 
-- [ ] 103-14-PLAN.md — AccessDenied folded into the shared page as its 403 variant (URL and cookie path unchanged, today's words, status per the operator, scripts keep today's status), the old view deleted, account guards rewritten to the same intent
+- [ ] 103-14-PLAN.md — Phone twin as approved: _Layout.Error.Mobile, ErrorPage.Mobile, error.mobile.css (no media query), phone order, content equivalence with the desktop view, 44px targets
 
 **Wave 15** *(blocked on Wave 14 completion)*
 
-- [ ] 103-15-PLAN.md — Closing guards: zero census, the phase file list free of planning references, no reproduction fact skipped, no test deleted, untouched shared files, seams, no writes and no new logging
+- [ ] 103-15-PLAN.md — AccessDenied folded into the shared page as its 403 variant (URL and cookie path unchanged, today's words, status per the operator, scripts keep today's status), the old view deleted, account guards rewritten to the same intent
 
 **Wave 16** *(blocked on Wave 15 completion)*
 
-- [ ] 103-16-PLAN.md — Closing sweep: final AFTER against BEFORE under both User-Agents, the accessibility bar, every action clicked through, script callers unchanged, the leak closed live, deferred items, phase 99's leak row resolved
+- [ ] 103-16-PLAN.md — Closing guards: zero census, the phase file list free of planning references, no reproduction fact skipped, no test deleted, untouched shared files, seams, no writes and no new logging
 
 **Wave 17** *(blocked on Wave 16 completion)*
 
-- [ ] 103-17-PLAN.md — Gate 2 local sheet with every pair, exception, text change and deviation, Gate 2 (operator, gap-closure loop), minor release hand-off (provisionally v6.6.0; the operator opens the PR; no PR, tag or push by any plan)
+- [ ] 103-17-PLAN.md — Closing sweep: final AFTER against BEFORE under both User-Agents, the accessibility bar, every action clicked through, script callers unchanged, the leak closed live, deferred items, phase 99's leak row resolved
+
+**Wave 18** *(blocked on Wave 17 completion)*
+
+- [ ] 103-18-PLAN.md — Gate 2 local sheet with every pair, exception, text change and deviation, Gate 2 (operator, gap-closure loop), minor release hand-off (provisionally v6.6.0; the operator opens the PR; no PR, tag or push by any plan)
