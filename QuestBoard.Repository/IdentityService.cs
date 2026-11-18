@@ -176,4 +176,14 @@ internal class IdentityService(UserManager<UserEntity> userManager, SignInManage
         var entity = await userManager.FindByIdAsync(userId.ToString());
         return entity != null && await userManager.IsInRoleAsync(entity, "SuperAdmin");
     }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlySet<int>> GetSuperAdminIdsAsync(IReadOnlyCollection<int> userIds, CancellationToken token = default)
+    {
+        if (userIds.Count == 0) return new HashSet<int>();
+
+        var superAdmins = await userManager.GetUsersInRoleAsync("SuperAdmin");
+        var wanted = userIds.ToHashSet();
+        return superAdmins.Select(u => u.Id).Where(wanted.Contains).ToHashSet();
+    }
 }

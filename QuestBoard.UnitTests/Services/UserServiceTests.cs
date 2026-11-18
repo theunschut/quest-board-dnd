@@ -362,4 +362,101 @@ public class UserServiceTests
         result.Succeeded.Should().BeTrue();
         await _identityService.Received(1).AdminResetPasswordAsync(actor, 21, "NewPassword123!");
     }
+
+    [Fact]
+    public async Task GetAccountReachAsync_ForASuperAdminTarget_ReturnsSuperAdminAccount_EvenWithAPlayerMembershipOnly()
+    {
+        var actor = MakeNonSuperAdminPrincipal();
+        _identityService.GetUserIdAsync(actor).Returns(1);
+        _repository.GetUserIdsAdministeringOtherGroupsAsync(Arg.Any<IReadOnlyCollection<int>>(), 7, Arg.Any<CancellationToken>())
+            .Returns(Ids());
+        _identityService.GetSuperAdminIdsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>())
+            .Returns(Ids(20));
+
+        var result = await _sut.GetAccountReachAsync(actor, 7, [20, 21], TestContext.Current.CancellationToken);
+
+        result[20].Should().Be(AccountReach.SuperAdminAccount, "the Identity role decides, whatever membership rows the account has");
+        result[21].Should().Be(AccountReach.Reachable);
+    }
+
+    [Fact]
+    public async Task GetAccountReachAsync_ForATargetThatIsBothSuperAdminAndAnotherBoardsAdmin_ReturnsSuperAdminAccount()
+    {
+        var actor = MakeNonSuperAdminPrincipal();
+        _identityService.GetUserIdAsync(actor).Returns(1);
+        _repository.GetUserIdsAdministeringOtherGroupsAsync(Arg.Any<IReadOnlyCollection<int>>(), 7, Arg.Any<CancellationToken>())
+            .Returns(Ids(20));
+        _identityService.GetSuperAdminIdsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>())
+            .Returns(Ids(20));
+
+        var result = await _sut.GetAccountReachAsync(actor, 7, [20], TestContext.Current.CancellationToken);
+
+        result[20].Should().Be(AccountReach.SuperAdminAccount);
+    }
+
+    [Fact]
+    public async Task GetAccountReachAsync_ReadsSuperAdminIdsOnceForAnyNumberOfTargets()
+    {
+        var actor = MakeNonSuperAdminPrincipal();
+        _identityService.GetUserIdAsync(actor).Returns(1);
+        _repository.GetUserIdsAdministeringOtherGroupsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Ids());
+        _identityService.GetSuperAdminIdsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>())
+            .Returns(Ids());
+
+        await _sut.GetAccountReachAsync(actor, 7, [20, 21, 22, 23], TestContext.Current.CancellationToken);
+
+        await _identityService.Received(1).GetSuperAdminIdsAsync(
+            Arg.Is<IReadOnlyCollection<int>>(ids => ids.Count == 4), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetAccountReachAsync_ForASuperAdminActor_DoesNotReadTheIdentityRoles()
+    {
+        await _sut.GetAccountReachAsync(MakeSuperAdminPrincipal(), 7, [20], TestContext.Current.CancellationToken);
+
+        await _identityService.DidNotReceive().GetSuperAdminIdsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ResetPasswordAsync_ForASuperAdminTarget_FailsAndNeverCallsTheIdentityReset()
+    {
+        var actor = MakeNonSuperAdminPrincipal();
+        _identityService.GetUserIdAsync(actor).Returns(1);
+        _repository.GetUserIdsAdministeringOtherGroupsAsync(Arg.Any<IReadOnlyCollection<int>>(), 7, Arg.Any<CancellationToken>())
+            .Returns(Ids());
+        _identityService.GetSuperAdminIdsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>())
+            .Returns(Ids(20));
+
+        var result = await _sut.ResetPasswordAsync(actor, 7, new User { Id = 20, Name = "Platform" }, "NewPassword123!");
+
+        result.Succeeded.Should().BeFalse();
+        await _identityService.DidNotReceive().AdminResetPasswordAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<int>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task ResetPasswordAsync_ForASuperAdminActor_ResetsAnAdminOfAnotherBoard()
+    {
+        var actor = MakeSuperAdminPrincipal();
+        _identityService.AdminResetPasswordAsync(actor, 20, "NewPassword123!").Returns(IdentityResult.Success);
+
+        var result = await _sut.ResetPasswordAsync(actor, 7, new User { Id = 20, Name = "Elsewhere" }, "NewPassword123!");
+
+        result.Succeeded.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetAccountReachAsync_ForAnOrdinaryMemberOfAnotherBoard_IsReachable()
+    {
+        var actor = MakeNonSuperAdminPrincipal();
+        _identityService.GetUserIdAsync(actor).Returns(1);
+        _repository.GetUserIdsAdministeringOtherGroupsAsync(Arg.Any<IReadOnlyCollection<int>>(), 7, Arg.Any<CancellationToken>())
+            .Returns(Ids());
+        _identityService.GetSuperAdminIdsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>())
+            .Returns(Ids());
+
+        var result = await _sut.GetAccountReachAsync(actor, 7, [20], TestContext.Current.CancellationToken);
+
+        result[20].Should().Be(AccountReach.Reachable, "only an Admin of another board or a platform administrator is out of reach");
+    }
 }

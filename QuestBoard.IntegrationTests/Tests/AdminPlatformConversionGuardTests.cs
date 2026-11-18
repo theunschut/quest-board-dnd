@@ -59,6 +59,8 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Controllers/Admin/AdminController.cs",
         "QuestBoard.Service/ViewModels/AdminViewModels/AdminActionMessages.cs",
         "QuestBoard.UnitTests/Services/UserServiceTests.cs",
+        "QuestBoard.Domain/Interfaces/IIdentityService.cs",
+        "QuestBoard.Repository/IdentityService.cs",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it

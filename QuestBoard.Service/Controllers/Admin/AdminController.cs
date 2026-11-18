@@ -203,6 +203,9 @@ public class AdminController(IUserService userService, IQuestService questServic
         var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
         if (targetRole == null) return RedirectToAction(nameof(Users));
 
+        if (!await IsWithinReachAsync(groupId.Value, userId))
+            return this.RedirectWithError(nameof(Users), AdminActionMessages.ReachRefused);
+
         var user = await userService.GetByIdAsync(userId);
         if (user == null)
         {
@@ -231,6 +234,9 @@ public class AdminController(IUserService userService, IQuestService questServic
             // Guard against a crafted POST for a user outside the active group
             var targetRole = await userService.GetGroupRoleByIdAsync(model.Id, groupId.Value);
             if (targetRole == null) return RedirectToAction(nameof(Users));
+
+            if (!await IsWithinReachAsync(groupId.Value, model.Id))
+                return this.RedirectWithError(nameof(Users), AdminActionMessages.ReachRefused);
 
             var user = await userService.GetByIdAsync(model.Id);
             if (user == null)
@@ -291,6 +297,9 @@ public class AdminController(IUserService userService, IQuestService questServic
         // Guard against a crafted request for a user outside the active group
         var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
         if (targetRole == null) return RedirectToAction(nameof(Users));
+
+        if (!await IsWithinReachAsync(groupId.Value, userId))
+            return this.RedirectWithError(nameof(Users), AdminActionMessages.ReachRefused);
 
         var user = await userService.GetByIdAsync(userId);
         if (user == null)
@@ -383,6 +392,9 @@ public class AdminController(IUserService userService, IQuestService questServic
         // Guard against a crafted POST for a user outside the active group
         var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
         if (targetRole == null) return RedirectToAction(nameof(Users));
+
+        if (!await IsWithinReachAsync(groupId.Value, userId))
+            return this.RedirectWithError(nameof(Users), AdminActionMessages.ReachRefused);
 
         var user = await userService.GetByIdAsync(userId);
         if (user == null)

@@ -130,6 +130,13 @@ internal class UserService(IIdentityService identityService, IUserRepository rep
             reach[id] = AccountReach.AdministersAnotherBoard;
         }
 
+        // Platform administrator is the Identity role only, never a membership row, and outranks the other refusal.
+        var superAdmins = await identityService.GetSuperAdminIdsAsync(ids, token);
+        foreach (var id in ids.Where(superAdmins.Contains))
+        {
+            reach[id] = AccountReach.SuperAdminAccount;
+        }
+
         // Changing one's own name, email or password never reaches beyond oneself.
         var actorId = await identityService.GetUserIdAsync(actor);
         if (actorId != null && reach.ContainsKey(actorId.Value))
