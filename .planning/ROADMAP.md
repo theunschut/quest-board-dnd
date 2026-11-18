@@ -2189,7 +2189,7 @@ Plans:
 **Goal:** Convert the admin pages and the Platform area on top of the foundation's Platform layouts. Convert the admin and Platform pages to the foundation with their approved relayouts and readable badges, tables and mailto links, keeping the three Platform Group twins.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the foundation's Platform layouts, which this phase verifies)
-**Plans:** 1/23 plans executed
+**Plans:** 2/23 plans executed
 
 **Scope:**
 
@@ -2251,7 +2251,7 @@ Scope drift recorded at planning (research, re-measured by 100-01): the area is 
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 100-02-PLAN.md — p100 fixtures through the app's forms as the reused SuperAdmin (five P100 boards, six p100 accounts, two linked sets, quests in every reachable status, empty-state reachability), nothing existing changed
+- [x] 100-02-PLAN.md — p100 fixtures through the app's forms as the reused SuperAdmin (five P100 boards, six p100 accounts, two linked sets, quests in every reachable status, empty-state reachability), nothing existing changed
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
