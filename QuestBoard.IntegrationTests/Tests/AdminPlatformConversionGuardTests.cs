@@ -716,6 +716,35 @@ public class AdminPlatformConversionGuardTests
         ConvertedViews.Intersect(PendingViews).Should().BeEmpty("a view is converted or pending, never both");
     }
 
+    // The finished state: nothing waits for conversion, every view the area owns is in the converted list, the six old
+    // phone sheets are gone and each is named in the retired list, and no unlayered sheet of the area remains.
+    [Fact]
+    public void PhaseScope_IsFullyConverted()
+    {
+        PendingViews.Should().BeEmpty("every view of the area is converted");
+        PendingSheets.Should().BeEmpty("no unlayered sheet of the area is still in use");
+
+        var views = AreaViewsOnDisk();
+        views.Should().HaveCountGreaterThanOrEqualTo(29, "the area's 26 views and its three shared status partials are all scanned");
+        ScopeBreaks(views, ConvertedViews).Should().BeEmpty("every area view is in the converted list and no entry is foreign");
+
+        string[] oldPhoneSheets =
+        [
+            "admin-form.mobile.css", "admin-quests.mobile.css", "admin-users.mobile.css",
+            "platform-group.mobile.css", "platform-linked-boards.mobile.css", "platform-users.mobile.css",
+        ];
+        foreach (var sheet in oldPhoneSheets)
+        {
+            var path = "QuestBoard.Service/wwwroot/css/" + sheet;
+            RetiredFiles.Should().Contain(path, $"{sheet} is one of the six retired phone sheets");
+            File.Exists(ResolveRepoFile(path.Split('/'))).Should().BeFalse($"{path} must stay deleted");
+        }
+
+        foreach (var sheet in FilesIn("QuestBoard.Service/wwwroot/css", "admin-*.css")
+                     .Concat(FilesIn("QuestBoard.Service/wwwroot/css", "platform-*.css")))
+            AreaSheets.Should().Contain(sheet, "every sheet of the area is layered and held to the sheet rules");
+    }
+
     [Fact]
     public void PhaseSourceFiles_ListEveryConvertedViewAndAdminSheet()
     {
