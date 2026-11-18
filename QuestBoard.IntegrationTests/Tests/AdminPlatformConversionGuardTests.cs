@@ -725,4 +725,20 @@ public class AdminPlatformConversionGuardTests
         files.Where(file => !PhaseSourceFiles.Contains(file)).Should().BeEmpty(
             "a converted view or admin sheet left out of the list would escape the planning-reference scan");
     }
+
+    // The Email Stats tiles are siblings in one grid: the sheet holds the grid and the tile rules, and the view holds no
+    // Bootstrap status colour utility. A file name in an alert's code element keeps the alert's light text.
+    [Fact]
+    public void EmailStatsSheetRules_HoldTheTileGridAndTheAlertCodeColour()
+    {
+        var sheet = ReadRepoFile("QuestBoard.Service/wwwroot/css/admin-pages.css");
+
+        sheet.Should().Contain("repeat(auto-fit, minmax(140px, 1fr))");
+        sheet.Should().MatchRegex(@"\.stat-tile\s*\{[^}]*background-color:\s*var\(--qb-surface-overlay\)");
+        sheet.Should().MatchRegex(@"\.alert code\s*\{\s*color:\s*inherit;");
+
+        var view = ReadRepoFile("QuestBoard.Service/Views/Admin/EmailStats.cshtml");
+        view.Should().NotMatchRegex(@"text-(primary|success|warning|danger|info)\b");
+        view.Should().NotContain("modern-card text-center");
+    }
 }

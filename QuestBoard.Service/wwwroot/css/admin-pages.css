@@ -100,6 +100,11 @@
     margin-bottom: var(--qb-space-sm);
   }
 
+  /* A file name set in code inside an alert takes the alert's own light text; Bootstrap's pink is 3.63:1 on the dark panel. */
+  .alert code {
+    color: inherit;
+  }
+
   /* Email Stats: four sibling tiles in an auto-fit grid, each an opaque block with no blur, shadow or lift. */
   .stat-tiles {
     display: grid;
