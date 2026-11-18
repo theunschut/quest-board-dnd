@@ -2189,7 +2189,7 @@ Plans:
 **Goal:** Convert the admin pages and the Platform area on top of the foundation's Platform layouts. Convert the admin and Platform pages to the foundation with their approved relayouts and readable badges, tables and mailto links, keeping the three Platform Group twins.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the foundation's Platform layouts, which this phase verifies)
-**Plans:** 8/23 plans executed
+**Plans:** 9/23 plans executed
 
 **Scope:**
 
@@ -2279,7 +2279,7 @@ Scope drift recorded at planning (research, re-measured by 100-01): the area is 
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
-- [ ] 100-09-PLAN.md — Role-change guard: self and last-Admin refusals on the four role buttons judged on the resulting role in the Domain (count query, ChangeMemberRoleAsync), approved toasts, O-7, live check
+- [x] 100-09-PLAN.md — Role-change guard: self and last-Admin refusals on the four role buttons judged on the resulting role in the Domain (count query, ChangeMemberRoleAsync), approved toasts, O-7, live check
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
