@@ -12,6 +12,7 @@ using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.BoardDeletion;
 using QuestBoard.Service.Extensions;
 using QuestBoard.Service.Jobs;
+using QuestBoard.Service.ViewModels.AdminViewModels;
 using QuestBoard.Service.ViewModels.PlatformViewModels;
 using System.Security.Claims;
 using System.Text;
@@ -502,6 +503,16 @@ public class GroupController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveMember(int id, int userId, string? search, string? memberSearch)
     {
+        // A crafted or stale request can name someone who is not on this board; nothing is removed then, so the page
+        // must not claim a removal. The unguarded removal stays for members: a board can only be deleted once it has
+        // no members, so this page must be able to remove the last Admin too.
+        if (await userService.GetGroupRoleByIdAsync(userId, id) == null)
+        {
+            var person = await userService.GetByIdAsync(userId);
+            TempData["Warning"] = AdminActionMessages.NotAMemberOfGroup(person?.Name ?? "That person");
+            return RedirectToAction(nameof(Members), new { id, search, memberSearch });
+        }
+
         await groupService.RemoveMemberAsync(id, userId);
         TempData["Success"] = "Member removed from the group.";
         return RedirectToAction(nameof(Members), new { id, search, memberSearch });

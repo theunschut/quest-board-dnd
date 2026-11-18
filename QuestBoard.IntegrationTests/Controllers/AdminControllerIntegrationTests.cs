@@ -320,7 +320,7 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
     [InlineData("/Admin/DemoteFromAdmin")]
     [InlineData("/Admin/PromoteToDM")]
     [InlineData("/Admin/DemoteToPlayer")]
-    public async Task RoleChangeActions_WhenTargetUserOutOfGroup_ShouldNotChangeMembership(string endpoint)
+    public async Task RoleChangeActions_WhenTargetUserOutOfGroup_AnswerTheStaleToast_AndChangeNothing(string endpoint)
     {
         // Arrange
         await TestDataHelper.ClearDatabaseAsync(_factory.Services);
@@ -352,9 +352,10 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
         // Act — crafted POST for a user who is only a member of group 2, against group 1's admin
         var response = await adminClient.PostAsync(endpoint, formContent, TestContext.Current.CancellationToken);
 
-        // Assert — the request is rejected (redirected without applying the change) and the
+        // Assert — the request is rejected with the stale-page Error toast (never silently) and the
         // target's only UserGroups row is untouched: still GroupId 2, still Player.
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        var toasts = await UsersPageToastsAsync(adminClient, response);
+        toasts.Should().ContainSingle().Which.Should().Contain("Error").And.Contain("That person is not a member of this board any more.");
 
         using var assertScope = _factory.Services.CreateScope();
         var assertContext = assertScope.ServiceProvider.GetRequiredService<QuestBoardContext>();

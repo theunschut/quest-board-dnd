@@ -8,9 +8,9 @@ namespace QuestBoard.IntegrationTests.Controllers;
 /// <summary>
 /// What the four role actions and Remove from Group may do to the person using them and to the board's last Admin. An
 /// Admin may not demote or remove themselves, and nobody may leave a board without an Admin from the Users page; each
-/// refusal reads as an Error toast and changes nothing. A role action for someone who is not on the board answers an
-/// Error toast instead of silence. The facts marked as reproducing an open gap describe those rules and stay skipped
-/// until they are enforced; the unskipped facts pin the role changes that must keep working once they are.
+/// refusal reads as an Error toast and changes nothing. A role action or removal for someone who is not on the board
+/// answers an Error toast instead of silence. The remaining facts pin the role changes and removals that must keep
+/// working.
 /// </summary>
 public class AdminRoleGuardTests : IClassFixture<WebApplicationFactoryBase>
 {
@@ -132,7 +132,7 @@ public class AdminRoleGuardTests : IClassFixture<WebApplicationFactoryBase>
         await AssertRefusedWithErrorToastAsync(superAdminClient, response);
     }
 
-    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    [Fact]
     public async Task DeleteUser_OnTheOnlyAdminOfTheBoard_IsRefused_AndTheMembershipStays()
     {
         await TestDataHelper.ClearDatabaseAsync(_factory.Services);
@@ -146,7 +146,7 @@ public class AdminRoleGuardTests : IClassFixture<WebApplicationFactoryBase>
     }
 
     // A page that was open while the person left the board still posts their id; the answer must say so.
-    [Theory(Skip = "Reproduces an open gap; enabled by its fix")]
+    [Theory]
     [InlineData("PromoteToAdmin")]
     [InlineData("DemoteFromAdmin")]
     [InlineData("PromoteToDM")]
@@ -163,6 +163,79 @@ public class AdminRoleGuardTests : IClassFixture<WebApplicationFactoryBase>
 
         (await MembershipCountAsync()).Should().Be(membersBefore);
         await AssertRefusedWithErrorToastAsync(adminClient, response);
+    }
+
+    [Fact]
+    public async Task DeleteUser_ForSomeoneWhoIsNotOnTheBoard_AnswersTheStaleToast_AndRemovesNobody()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var outsider = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "guard_outsider", "guard_outsider@example.com", "Test123!", "Guard outsider");
+        var membersBefore = await MembershipCountAsync();
+
+        var response = await PostDeleteUserAsync(adminClient, outsider.Id);
+
+        (await MembershipCountAsync()).Should().Be(membersBefore);
+        await AssertRefusedWithErrorToastAsync(adminClient, response);
+    }
+
+    // The refusal sentences are the ones the person reads, so they are pinned by text and not only by the toast kind.
+    [Fact]
+    public async Task DeleteUser_OnTheActorThemselves_AnswersTheSelfSentence()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (adminClient, actor) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        await SeedMemberAsync("peeradmin", GroupRole.Admin);
+
+        var response = await PostDeleteUserAsync(adminClient, actor.Id);
+        var landed = await adminClient.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
+        var html = WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+
+        html.Should().Contain("You cannot change your own role or remove yourself from the board.");
+    }
+
+    [Fact]
+    public async Task DeleteUser_OnTheOnlyAdmin_AnswersTheKeepAManagerSentence()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (superAdminClient, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var onlyAdmin = await SeedMemberAsync("onlyadmin", GroupRole.Admin);
+
+        var response = await PostDeleteUserAsync(superAdminClient, onlyAdmin.Id);
+        var landed = await superAdminClient.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
+        var html = WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+
+        html.Should().Contain("A board must keep at least one member who can manage it. Give someone else that role first.");
+    }
+
+    [Fact]
+    public async Task DeleteUser_ForAnAdminWhoIsNotTheLastOne_StillRemovesThem()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var peer = await SeedMemberAsync("peeradmin", GroupRole.Admin);
+
+        var response = await PostDeleteUserAsync(adminClient, peer.Id);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        (await RoleOnBoardAsync(peer.Id)).Should().BeNull("another Admin remains, so removing this one is allowed");
+    }
+
+    // The stale-page toast names the board and not a role, and the posted role actions answer it too.
+    [Fact]
+    public async Task RoleAction_ForSomeoneWhoIsNotOnTheBoard_AnswersTheStaleSentence()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var outsider = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "guard_outsider", "guard_outsider@example.com", "Test123!", "Guard outsider");
+
+        var response = await PostRoleActionAsync(adminClient, "PromoteToAdmin", outsider.Id);
+        var landed = await adminClient.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
+        var html = WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+
+        html.Should().Contain("That person is not a member of this board any more.");
     }
 
     // ---- Pins: role changes that must keep working -------------------------------------------------

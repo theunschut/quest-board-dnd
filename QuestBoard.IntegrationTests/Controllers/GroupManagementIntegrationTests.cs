@@ -980,9 +980,10 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
         context.UserGroups.Count(ug => ug.GroupId == 1 && ug.GroupRole == (int)GroupRole.Admin).Should().Be(0);
     }
 
-    // Removing someone who is not a member removes nothing, so the page must not say a member was removed.
-    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
-    public async Task RemoveMember_ForSomeoneWhoIsNotAMember_DoesNotAnswerSuccess()
+    // Removing someone who is not a member removes nothing, so the page answers a Warning that says so and never the
+    // success toast.
+    [Fact]
+    public async Task RemoveMember_ForSomeoneWhoIsNotAMember_AnswersAWarning_AndNoSuccess()
     {
         await TestDataHelper.ClearDatabaseAsync(_factory.Services);
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
@@ -997,6 +998,9 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
         var landed = await client.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
         var html = WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         html.Contains("Member removed from the group.").Should().BeFalse("nobody was removed, so no page may say a member was");
+        html.Should().Contain("Not A Member was not a member of this group.");
+        System.Text.RegularExpressions.Regex.Matches(html, "<strong class=\"me-auto\">(\\w+)</strong>").Select(m => m.Groups[1].Value)
+            .Should().Contain("Warning");
     }
 
     // A failed Create New User must be visible: either an Error toast on a redirect, or the same page with the dialog

@@ -82,6 +82,7 @@ public class AdminController(IUserService userService, IQuestService questServic
         var outcome = await userService.ChangeMemberRoleAsync(groupId.Value, actorId, userId, newRole);
         return outcome switch
         {
+            MemberChangeOutcome.NotAMember => this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale),
             MemberChangeOutcome.Self => this.RedirectWithError(nameof(Users), AdminActionMessages.SelfRefused),
             MemberChangeOutcome.LastAdmin => this.RedirectWithError(nameof(Users), AdminActionMessages.LastAdminRefused),
             _ => RedirectToAction(nameof(Users))

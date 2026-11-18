@@ -24,6 +24,9 @@ public static class AdminActionMessages
     /// <summary>Shown when the person to remove is no longer a member of the board.</summary>
     public const string MemberStale = "That person is not a member of this board any more.";
 
+    /// <summary>Shown on the platform board page when the person to remove was not a member of the board.</summary>
+    public static string NotAMemberOfGroup(string name) => $"{name} was not a member of this group.";
+
     /// <summary>Shown when an administrator tries to change their own role or remove themselves from the board.</summary>
     public const string SelfRefused = "You cannot change your own role or remove yourself from the board.";
 
