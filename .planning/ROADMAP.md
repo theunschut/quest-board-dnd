@@ -2189,7 +2189,7 @@ Plans:
 **Goal:** Convert the admin pages and the Platform area on top of the foundation's Platform layouts. Convert the admin and Platform pages to the foundation with their approved relayouts and readable badges, tables and mailto links, keeping the three Platform Group twins.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the foundation's Platform layouts, which this phase verifies)
-**Plans:** 6/23 plans executed
+**Plans:** 7/23 plans executed
 
 **Scope:**
 
@@ -2271,7 +2271,7 @@ Scope drift recorded at planning (research, re-measured by 100-01): the area is 
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 100-07-PLAN.md — Email limiters taken after the checks and before any write, refusal contract per O-4, CreateUser limit per O-5; EmailStats statistics branch rendered through the real client with a canned handler, capture seam per O-13
+- [x] 100-07-PLAN.md — Email limiters taken after the checks and before any write, refusal contract per O-4, CreateUser limit per O-5; EmailStats statistics branch rendered through the real client with a canned handler, capture seam per O-13
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
