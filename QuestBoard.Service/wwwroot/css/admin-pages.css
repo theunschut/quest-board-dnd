@@ -3,7 +3,7 @@
  * pages layer block and nothing but design tokens, so changing a colour is a change to the token file.
  *
  * It holds the page title bar, the table cells that carry a name and an address, the right-aligned Actions cell with the
- * reason lines of refused controls, the quest description excerpt, and the form section title. The phone deltas live in
+ * reason lines of refused controls, the quest description excerpt, the form section title, and the Email Stats tiles. The phone deltas live in
  * admin-pages.mobile.css.
  */
 @layer pages {
@@ -98,5 +98,53 @@
     display: flex;
     align-items: center;
     margin-bottom: var(--qb-space-sm);
+  }
+
+  /* Email Stats: four sibling tiles in an auto-fit grid, each an opaque block with no blur, shadow or lift. */
+  .stat-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--qb-space-md);
+    margin-bottom: var(--qb-space-lg);
+  }
+
+  .stat-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--qb-space-xs);
+    padding: var(--qb-space-md);
+    border: 1px solid var(--qb-surface-glass-border);
+    border-radius: var(--qb-radius-md);
+    background-color: var(--qb-surface-overlay);
+    text-align: center;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .stat-tile__icon {
+    font-size: var(--qb-text-lg);
+  }
+
+  .stat-tile__figure {
+    font-size: var(--qb-text-xl);
+    font-weight: var(--qb-weight-strong);
+    line-height: var(--qb-leading-heading);
+  }
+
+  .stat-tile__label {
+    font-size: var(--qb-text-sm);
+    color: var(--qb-fg-muted);
+  }
+
+  .stat-tile--neutral { color: var(--qb-neutral-text); }
+  .stat-tile--success { color: var(--qb-success-text); }
+  .stat-tile--warning { color: var(--qb-warning-text); }
+  .stat-tile--danger { color: var(--qb-danger-text); }
+
+  /* The line sits straight on the card's glass, where the muted tone falls under 4.5:1; it keeps the card's own colour. */
+  .stat-asof {
+    margin: 0;
+    font-size: var(--qb-text-sm);
   }
 }

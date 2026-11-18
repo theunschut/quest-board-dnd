@@ -49,9 +49,17 @@ public class EmailStatsRenderTests :
     // The number shown in the tile that carries the given label, read from the markup rather than from any style.
     private static int TileFigure(string html, string label)
     {
-        var match = Regex.Match(html, @"<div class=""fs-1[^""]*"">\s*(\d+)\s*</div>\s*<div class=""small text-muted"">\s*" + Regex.Escape(label) + @"\s*</div>");
+        var match = Regex.Match(html, @"<span class=""stat-tile__figure"">\s*(\d+)\s*</span>\s*<span class=""stat-tile__label"">\s*" + Regex.Escape(label) + @"\s*</span>");
         match.Success.Should().BeTrue($"the page must show a tile labelled '{label}'");
         return int.Parse(match.Groups[1].Value);
+    }
+
+    // The page's card body, so a test can tell what sits inside it.
+    private static string CardBody(string html)
+    {
+        var start = html.IndexOf("modern-card-body", StringComparison.Ordinal);
+        start.Should().BeGreaterThan(0, "the page is one card with a body");
+        return html[start..];
     }
 
     private async Task<HttpClient> SuperAdminAsync(string key)
@@ -87,6 +95,82 @@ public class EmailStatsRenderTests :
     }
 
     [Fact]
+    public async Task EmailStats_WithCannedRecords_ShowsOneTitleAndFourSiblingTilesInTheCardBody()
+    {
+        // Arrange
+        _factory.Handler.RespondWithRecords("sent", "delivered", "bounced", "failed");
+        var client = await SuperAdminAsync("tiles");
+
+        // Act
+        var html = await GetPageAsync(client, "/Admin/EmailStats?force=true");
+
+        // Assert — one h1 holding the words, in the card header.
+        Regex.Matches(html, "<h1[ >]").Count.Should().Be(1);
+        html.Should().MatchRegex(@"<div class=""card-header modern-card-header"">\s*<h1 class=""mb-0"">\s*<i class=""fas fa-envelope-open-text me-2"" aria-hidden=""true""></i>Email Stats\s*</h1>");
+
+        // Four tiles as siblings in one grid, each a figure then its label, none a card of its own.
+        var body = CardBody(html);
+        Regex.Matches(body, @"<div class=""stat-tile stat-tile--(neutral|success|warning|danger)"">").Count.Should().Be(4);
+        body.Should().Contain(@"<div class=""stat-tiles"">");
+        body.Should().NotContain("text-primary").And.NotContain("text-success").And.NotContain("text-warning").And.NotContain("text-danger");
+        Regex.Matches(body, "modern-card").Count.Should().Be(1, "only the page card itself is a card; the tiles are plain blocks");
+        html.Should().NotContain("fs-1").And.NotContain("fw-bold");
+        foreach (var label in new[] { "In Transit", "Delivered", "Bounced", "Failed" })
+            TileFigure(html, label).Should().Be(1);
+
+        // Each tile's status colour comes from its own class: the four kinds appear once each, in order.
+        Regex.Matches(body, @"stat-tile stat-tile--(\w+)")
+            .Select(m => m.Groups[1].Value)
+            .Should().Equal("neutral", "success", "warning", "danger");
+    }
+
+    [Fact]
+    public async Task EmailStats_WithAZeroCount_ShowsZeroInItsTileAndKeepsTheGrid()
+    {
+        // Arrange — nothing bounced and nothing failed.
+        _factory.Handler.RespondWithRecords("sent", "delivered", "delivered");
+        var client = await SuperAdminAsync("zero");
+
+        // Act
+        var html = await GetPageAsync(client, "/Admin/EmailStats?force=true");
+
+        // Assert
+        TileFigure(html, "Bounced").Should().Be(0);
+        TileFigure(html, "Failed").Should().Be(0);
+        Regex.Matches(html, @"<div class=""stat-tile stat-tile--").Count.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task EmailStats_Refresh_IsOneLinkToTheForcedReadLabelledRefreshEmailStats()
+    {
+        // Arrange
+        _factory.Handler.RespondWithRecords("delivered");
+        var client = await SuperAdminAsync("refresh");
+
+        // Act
+        var html = await GetPageAsync(client, "/Admin/EmailStats?force=true");
+
+        // Assert — a link, not a form: the forced read is a plain GET.
+        html.Should().MatchRegex(@"<a href=""/Admin/EmailStats\?force=true"" class=""btn btn-primary"">\s*<i class=""fas fa-sync-alt me-2"" aria-hidden=""true""></i>Refresh Email Stats\s*</a>");
+        Regex.Matches(html, "btn-primary").Count.Should().Be(1, "Refresh is the page's one commit action");
+        CardBody(html).Should().NotContain("<form");
+    }
+
+    [Fact]
+    public async Task EmailStats_AsOfLine_IsARealInstantRenderedThroughTheLocalTimeHelper()
+    {
+        // Arrange
+        _factory.Handler.RespondWithRecords("delivered");
+        var client = await SuperAdminAsync("asof");
+
+        // Act
+        var html = await GetPageAsync(client, "/Admin/EmailStats?force=true");
+
+        // Assert
+        html.Should().MatchRegex(@"<p class=""stat-asof"">\s*<i class=""fas fa-clock me-1"" aria-hidden=""true""></i>\s*Stats as of\s*<time class=""local-time""[^>]* datetime=""[^""]+Z""[^>]*>[^<]+</time>\s*— cached for 5 minutes");
+    }
+
+    [Fact]
     public async Task EmailStats_UsesTheStubKeyAndNeverLeavesTheCannedHandler()
     {
         // Arrange
@@ -114,6 +198,7 @@ public class EmailStatsRenderTests :
 
         // Assert
         html.Should().Contain("Could not fetch email stats");
+        html.Should().MatchRegex(@"<div class=""alert alert-danger"" role=""alert"">");
         html.Should().NotContain("Stats as of");
         html.Should().NotContain("In Transit");
     }
@@ -130,6 +215,8 @@ public class EmailStatsRenderTests :
 
         // Assert
         html.Should().Contain("ResendApiKey not configured");
+        html.Should().MatchRegex(@"<div class=""alert alert-warning"" role=""alert"">");
+        html.Should().Contain("Refresh Email Stats", "the refresh link stays on the page when there is nothing to show");
         html.Should().NotContain("In Transit");
     }
 

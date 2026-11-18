@@ -125,6 +125,7 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Areas/Platform/Views/Group/Members.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Members.Mobile.cshtml",
         "QuestBoard.IntegrationTests/Tests/BoardPageStaticGuardTests.cs",
+        "QuestBoard.Service/Views/Admin/EmailStats.cshtml",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it
@@ -229,13 +230,13 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Areas/Platform/Views/Users/Index.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Members.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Members.Mobile.cshtml",
+        "QuestBoard.Service/Views/Admin/EmailStats.cshtml",
     ];
 
     // Every other view of the area, still waiting for its slice. A slice moves its views from here to the converted list
     // in the commit that converts them.
     private static readonly string[] PendingViews =
     [
-        "QuestBoard.Service/Views/Admin/EmailStats.cshtml",
     ];
 
     // For each converted view, the sheets it must link from its Styles section, by file name. A partial links nothing:
@@ -244,6 +245,7 @@ public class AdminPlatformConversionGuardTests
     {
         ["QuestBoard.Service/Views/Admin/Quests.cshtml"] = ["admin-pages.css"],
         ["QuestBoard.Service/Views/Admin/Quests.Mobile.cshtml"] = ["admin-pages.css", "admin-pages.mobile.css"],
+        ["QuestBoard.Service/Views/Admin/EmailStats.cshtml"] = ["admin-pages.css"],
         ["QuestBoard.Service/Views/Admin/Users.cshtml"] = ["admin-pages.css"],
         ["QuestBoard.Service/Views/Admin/Users.Mobile.cshtml"] = ["admin-pages.css", "admin-pages.mobile.css"],
         ["QuestBoard.Service/Views/Admin/EditUser.cshtml"] = ["admin-pages.css"],
