@@ -689,7 +689,8 @@ public class AdminPlatformRenderTests(WebApplicationFactoryBase factory)
             input.Should().NotContain("onpaste").And.NotContain("autocomplete=\"off\"");
             html.Should().MatchRegex(@"<label[^>]*for=""" + field + @"""[^>]*>[^<]+<span class=""text-danger"" aria-hidden=""true"">\*</span><span class=""visually-hidden""> \(required\)</span></label>");
         }
-        html.Should().MatchRegex(@"<div class=""form-actions"">\s*<a[^>]*class=""btn btn-secondary""[^>]*>(?:\s*<i[^>]*></i>)?\s*Back to Users\s*</a>\s*<button type=""submit"" class=""btn btn-primary"">(?:\s*<i[^>]*></i>)?\s*Reset Password\s*</button>");
+        html.Should().MatchRegex(@"<div class=""form-actions( form-actions--stack)?"">\s*<a[^>]*class=""btn btn-secondary""[^>]*>(?:\s*<i[^>]*></i>)?\s*Back to Users\s*</a>\s*<button type=""submit"" class=""btn btn-primary"">(?:\s*<i[^>]*></i>)?\s*Reset Password\s*</button>");
+        html.Contains("form-actions--stack").Should().Be(mobile, "only the phone stacks the long commit label under its exit");
         html.Should().NotContain("admin-form.mobile.css");
         html.Should().NotContain("admin-form-card-mobile");
         html.Should().Contain("<div class=\"alert alert-warning\">");
