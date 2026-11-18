@@ -70,4 +70,12 @@
   .quest-excerpt--none {
     color: var(--qb-ink-muted);
   }
+
+  /*
+   * The empty-state sentence sits straight on the page card's glass, where the muted tone measures 4.25:1 over the
+   * lightest board pixel; here it takes the card's own colour instead.
+   */
+  .modern-card .empty-state-text {
+    color: inherit;
+  }
 }
