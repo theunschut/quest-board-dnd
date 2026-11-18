@@ -91,12 +91,12 @@ public class AdminRoleGuardTests : IClassFixture<WebApplicationFactoryBase>
     public async Task DemoteFromAdmin_OnTheActorThemselves_IsRefused_AndTheirRoleIsUnchanged() =>
         await AssertSelfDemotionRefusedAsync("DemoteFromAdmin");
 
-    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    [Fact]
     public async Task DemoteToPlayer_OnTheActorThemselves_IsRefused_AndTheirRoleIsUnchanged() =>
         await AssertSelfDemotionRefusedAsync("DemoteToPlayer");
 
     // PromoteToDM on an Admin is the crafted case: its name says "up" but it demotes.
-    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    [Fact]
     public async Task PromoteToDM_OnTheActorThemselves_IsRefused_AndTheirRoleIsUnchanged() =>
         await AssertSelfDemotionRefusedAsync("PromoteToDM");
 
@@ -116,7 +116,7 @@ public class AdminRoleGuardTests : IClassFixture<WebApplicationFactoryBase>
 
     // The actor is a platform administrator who is only a Player here, so the target is the sole Admin of the board and
     // nothing is aimed at the actor. PromoteToDM on an Admin is the crafted case: its name says "up" but it demotes.
-    [Theory(Skip = "Reproduces an open gap; enabled by its fix")]
+    [Theory]
     [InlineData("DemoteFromAdmin")]
     [InlineData("DemoteToPlayer")]
     [InlineData("PromoteToDM")]
@@ -178,8 +178,37 @@ public class AdminRoleGuardTests : IClassFixture<WebApplicationFactoryBase>
         var response = await PostRoleActionAsync(adminClient, "DemoteFromAdmin", peer.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.Redirect);
-        (await RoleOnBoardAsync(peer.Id)).Should().NotBe(GroupRole.Admin);
+        (await RoleOnBoardAsync(peer.Id)).Should().Be(GroupRole.DungeonMaster, "the button is labelled Demote to DM");
         (await RoleOnBoardAsync(actor.Id)).Should().Be(GroupRole.Admin);
+    }
+
+    [Fact]
+    public async Task DemoteToPlayer_ByAnotherAdmin_StillDemotesAnAdminWhoIsNotTheLastOne()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (adminClient, actor) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var peer = await SeedMemberAsync("peeradmin", GroupRole.Admin);
+
+        var response = await PostRoleActionAsync(adminClient, "DemoteToPlayer", peer.Id);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        (await RoleOnBoardAsync(peer.Id)).Should().Be(GroupRole.Player);
+        (await RoleOnBoardAsync(actor.Id)).Should().Be(GroupRole.Admin);
+    }
+
+    // The target is a Dungeon Master, not the last Admin, so a platform administrator acting from outside the board
+    // is never mistaken for the person being changed.
+    [Fact]
+    public async Task DemoteToPlayer_BySuperAdmin_StillDemotesADungeonMaster()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (superAdminClient, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var dungeonMaster = await SeedMemberAsync("dm", GroupRole.DungeonMaster);
+
+        var response = await PostRoleActionAsync(superAdminClient, "DemoteToPlayer", dungeonMaster.Id);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        (await RoleOnBoardAsync(dungeonMaster.Id)).Should().Be(GroupRole.Player);
     }
 
     [Fact]
