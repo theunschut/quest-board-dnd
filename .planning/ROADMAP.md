@@ -2448,3 +2448,14 @@ Unsequenced ideas parked outside the phase sequence. Promote with `/gsd-review-b
 Plans:
 
 - [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 103: Themed Error Pages
+
+**Goal:** A failed request (404, 403, 500 and other status codes) shows an error page styled in the existing theme instead of the bare default, with three actions: go back, go to the home page (`/`), and log out and return to the login page. Prompted by the operator: following a link to something on a board other than the active one currently ends on a plain 404 (see the phase 99 deferred cross-board link switch).
+**Requirements**: TBD
+**Depends on:** Phase 102
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 103 to break down)
