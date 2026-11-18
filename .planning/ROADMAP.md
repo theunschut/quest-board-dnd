@@ -2189,7 +2189,7 @@ Plans:
 **Goal:** Convert the admin pages and the Platform area on top of the foundation's Platform layouts. Convert the admin and Platform pages to the foundation with their approved relayouts and readable badges, tables and mailto links, keeping the three Platform Group twins.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the foundation's Platform layouts, which this phase verifies)
-**Plans:** 17/23 plans executed
+**Plans:** 18/23 plans executed
 
 **Scope:**
 
@@ -2315,7 +2315,7 @@ Scope drift recorded at planning (research, re-measured by 100-01): the area is 
 
 **Wave 18** *(blocked on Wave 17 completion)*
 
-- [ ] 100-18-PLAN.md — Platform Users and LinkedBoards on both layouts: attribute confirmations instead of Razor-built handler strings, the refused own Disable, 44px email links, set cards, platform-users and platform-linked-boards phone sheets retired
+- [x] 100-18-PLAN.md — Platform Users and LinkedBoards on both layouts: attribute confirmations instead of Razor-built handler strings, the refused own Disable, 44px email links, set cards, platform-users and platform-linked-boards phone sheets retired
 
 **Wave 19** *(blocked on Wave 18 completion)*
 
