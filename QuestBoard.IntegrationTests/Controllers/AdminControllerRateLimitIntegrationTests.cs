@@ -2,6 +2,7 @@ using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.IntegrationTests.Helpers;
 using System.Net;
+using QuestBoard.Service.Jobs;
 
 namespace QuestBoard.IntegrationTests.Controllers;
 
@@ -221,5 +222,97 @@ public class AdminControllerRateLimitIntegrationTests : IClassFixture<WebApplica
 
         // Assert — none of the 4 distinct CreateUser POSTs were rate-limited (exempted).
         responses.Should().NotContain(r => r.StatusCode == HttpStatusCode.TooManyRequests);
+    }
+
+    // The resend budget belongs to the person receiving the mail. A resend that is refused because the person is not on
+    // the Admin's board must not spend any of it, or an Admin of one board could lock the person's own board Admin out
+    // for an hour. The person is on board 2 only; an Admin of board 1 asks three times, then the Admin of board 2 asks.
+    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    public async Task SendConfirmationEmail_ResendsRefusedAsOutOfBoard_DoNotSpendTheTargetsBudget()
+    {
+        // Arrange
+        await TestDataHelper.SeedCampaignGroupAsync(_factory.Services, 2);
+        var uniqueSuffix = Guid.NewGuid().ToString("N")[..8];
+        var targetEmail = $"emailrate05_{uniqueSuffix}@example.com";
+        int targetUserId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+            var identityService = scope.ServiceProvider.GetRequiredService<IIdentityService>();
+            (await userService.CreateAsync(targetEmail, "Email Rate 05 Target")).Succeeded.Should().BeTrue();
+            targetUserId = (await identityService.GetIdByEmailAsync(targetEmail))!.Value;
+            await userService.SetGroupRoleAsync(targetUserId, 2, GroupRole.Player);
+        }
+
+        var (otherBoardAdminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(
+            _factory, $"emailrate05_a_{uniqueSuffix}", $"emailrate05_a_{uniqueSuffix}@example.com");
+        var (ownBoardAdminClient, ownBoardAdmin) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(
+            _factory, $"emailrate05_b_{uniqueSuffix}", $"emailrate05_b_{uniqueSuffix}@example.com");
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.UserGroups.Add(new UserGroupEntity { UserId = ownBoardAdmin.Id, GroupId = 2, GroupRole = (int)GroupRole.Admin });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        // Act — three resends from an Admin of board 1 (the person is not on it), then the person's own board Admin.
+        for (var i = 1; i <= 3; i++)
+        {
+            await PostSendConfirmationEmailAsync(otherBoardAdminClient, targetUserId);
+        }
+
+        HttpResponseMessage ownBoardResponse;
+        _factory.TestGroupContext.ActiveGroupId = 2;
+        try
+        {
+            ownBoardResponse = await PostSendConfirmationEmailAsync(ownBoardAdminClient, targetUserId);
+        }
+        finally
+        {
+            _factory.TestGroupContext.ActiveGroupId = 1;
+        }
+
+        // Assert
+        ownBoardResponse.StatusCode.Should().NotBe(HttpStatusCode.TooManyRequests,
+            "requests refused as out of board must not have used the person's hourly budget");
+        _factory.JobClient.EnqueuedJobs
+            .Count(j => j.Type == typeof(WelcomeEmailJob) && j.Args.Count > 0 && (j.Args[0] as string) == targetEmail)
+            .Should().Be(1, "the person's own board Admin must be able to send the welcome mail");
+    }
+
+    // A refused email change must change nothing: the name and key flag were being saved before the hourly limit was
+    // consulted, so a refusal still left half of the edit behind.
+    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    public async Task EditUser_RefusedEmailChange_LeavesTheNameUnchanged()
+    {
+        // Arrange
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var uniqueSuffix = Guid.NewGuid().ToString("N")[..8];
+        var targetUserId = await CreateUnconfirmedTargetUserAsync(
+            $"emailrate06_{uniqueSuffix}@example.com", "Email Rate 06 Target");
+
+        async Task<HttpResponseMessage> PostEditAsync(string name, string newEmail) =>
+            await adminClient.PostAsync("/Admin/EditUser", new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Id"] = targetUserId.ToString(),
+                ["Name"] = name,
+                ["Email"] = newEmail,
+                ["HasKey"] = "false"
+            }), TestContext.Current.CancellationToken);
+
+        for (var i = 1; i <= 3; i++)
+        {
+            await PostEditAsync("Email Rate 06 Target", $"emailrate06_changed{i}_{uniqueSuffix}@example.com");
+        }
+
+        // Act — the fourth email-changing save in the hour is over the limit and is refused.
+        var refused = await PostEditAsync("Changed By A Refused Save", $"emailrate06_changed4_{uniqueSuffix}@example.com");
+
+        // Assert
+        using var scope = _factory.Services.CreateScope();
+        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+        var reloaded = await userService.GetByIdAsync(targetUserId);
+        reloaded!.Name.Should().Be("Email Rate 06 Target", "a save that is refused must not write any of its fields");
+        refused.StatusCode.Should().NotBe(HttpStatusCode.OK);
     }
 }

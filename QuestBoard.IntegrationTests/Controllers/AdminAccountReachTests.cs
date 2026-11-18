@@ -31,11 +31,25 @@ public class AdminAccountReachTests : IClassFixture<WebApplicationFactoryBase>
     // ---- Seeding helpers --------------------------------------------------------------------------
 
     // Clears the database and seeds a second board, so an account can administer a board other than the active one.
-    private async Task ResetWithSecondBoardAsync()
+    // Clearing restarts the id sequence, and the hourly mail budget is kept per account id by the running app, so a
+    // test that sends mail passes a distinct id offset: its accounts then get ids no other test's accounts have.
+    private async Task ResetWithSecondBoardAsync(int idOffset = 0)
     {
         await TestDataHelper.ClearDatabaseAsync(_factory.Services);
         await TestDataHelper.SeedCampaignGroupAsync(_factory.Services, 2);
         _factory.JobClient.Clear();
+
+        if (idOffset > 0)
+        {
+            using var scope = _factory.Services.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            for (var i = 0; i < idOffset; i++)
+            {
+                context.Users.Add(new UserEntity { UserName = $"idfiller_{i}", Email = $"idfiller_{i}@example.com", Name = "Id filler" });
+            }
+
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
     }
 
     private async Task<UserEntity> SeedAccountAsync(string tag, params (int GroupId, GroupRole Role)[] memberships)
@@ -144,5 +158,192 @@ public class AdminAccountReachTests : IClassFixture<WebApplicationFactoryBase>
         var passwordChanged = await PasswordHashAsync(target.Id) != hashBefore;
         passwordChanged.Should().BeFalse("the account of another board's Admin must not be taken over");
         await AssertRefusedWithErrorToastAsync(adminClient, response);
+    }
+
+    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    public async Task ResetPassword_Post_ForAPlatformAdministrator_IsRefusedWithAnErrorToast_AndThePasswordIsUnchanged()
+    {
+        await ResetWithSecondBoardAsync();
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var target = await SeedAccountAsync("platformadmin", (1, GroupRole.Player));
+        await MakePlatformAdministratorAsync(target);
+        var hashBefore = await PasswordHashAsync(target.Id);
+
+        var response = await PostResetPasswordAsync(adminClient, target.Id);
+
+        var passwordChanged = await PasswordHashAsync(target.Id) != hashBefore;
+        passwordChanged.Should().BeFalse("a platform administrator's account must not be taken over by a board Admin");
+        await AssertRefusedWithErrorToastAsync(adminClient, response);
+    }
+
+    [Theory(Skip = "Reproduces an open gap; enabled by its fix")]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ResetPassword_Get_ForAnAccountWithMoreReach_RedirectsWithAnErrorToast(bool platformAdministrator)
+    {
+        await ResetWithSecondBoardAsync();
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var target = platformAdministrator
+            ? await SeedAccountAsync("getplatform", (1, GroupRole.Player))
+            : await SeedAccountAsync("getotheradmin", (1, GroupRole.Player), (2, GroupRole.Admin));
+        if (platformAdministrator)
+            await MakePlatformAdministratorAsync(target);
+
+        var response = await adminClient.GetAsync($"/Admin/ResetPassword?userId={target.Id}", TestContext.Current.CancellationToken);
+
+        await AssertRefusedWithErrorToastAsync(adminClient, response);
+    }
+
+    [Theory(Skip = "Reproduces an open gap; enabled by its fix")]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task EditUser_Post_ForAnAccountWithMoreReach_IsRefused_AndNameAndEmailAreUnchanged(bool platformAdministrator)
+    {
+        await ResetWithSecondBoardAsync(platformAdministrator ? 10 : 20);
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var target = platformAdministrator
+            ? await SeedAccountAsync("editplatform", (1, GroupRole.Player))
+            : await SeedAccountAsync("editotheradmin", (1, GroupRole.Player), (2, GroupRole.Admin));
+        if (platformAdministrator)
+            await MakePlatformAdministratorAsync(target);
+
+        var response = await PostEditUserAsync(adminClient, target.Id, "Renamed By Board Admin", $"moved_{target.Email}");
+
+        var after = await ReloadAsync(target.Id);
+        after.Name.Should().Be(target.Name, "the account's name belongs to its owner, not to a board Admin");
+        after.Email.Should().Be(target.Email, "no address change may be started for an account with more reach");
+        await AssertRefusedWithErrorToastAsync(adminClient, response);
+    }
+
+    [Theory(Skip = "Reproduces an open gap; enabled by its fix")]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task EditUser_Get_ForAnAccountWithMoreReach_RedirectsWithAnErrorToast(bool platformAdministrator)
+    {
+        await ResetWithSecondBoardAsync();
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var target = platformAdministrator
+            ? await SeedAccountAsync("geteditplatform", (1, GroupRole.Player))
+            : await SeedAccountAsync("geteditotheradmin", (1, GroupRole.Player), (2, GroupRole.Admin));
+        if (platformAdministrator)
+            await MakePlatformAdministratorAsync(target);
+
+        var response = await adminClient.GetAsync($"/Admin/EditUser?userId={target.Id}", TestContext.Current.CancellationToken);
+
+        await AssertRefusedWithErrorToastAsync(adminClient, response);
+    }
+
+    [Theory(Skip = "Reproduces an open gap; enabled by its fix")]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task SendConfirmationEmail_ForAnAccountWithMoreReach_IsRefused_AndNoMailIsQueued(bool platformAdministrator)
+    {
+        await ResetWithSecondBoardAsync(platformAdministrator ? 30 : 40);
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var targetId = platformAdministrator
+            ? await SeedUnconfirmedAccountAsync("resendplatform", (1, GroupRole.Player))
+            : await SeedUnconfirmedAccountAsync("resendotheradmin", (1, GroupRole.Player), (2, GroupRole.Admin));
+        if (platformAdministrator)
+            await MakePlatformAdministratorAsync(await ReloadAsync(targetId));
+
+        var response = await adminClient.PostAsync("/Admin/SendConfirmationEmail",
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["userId"] = targetId.ToString() }),
+            TestContext.Current.CancellationToken);
+
+        _factory.JobClient.EnqueuedJobs.Count(j => j.Type == typeof(WelcomeEmailJob)).Should().Be(0,
+            "a welcome mail must not be sent for an account the board Admin has no reach over");
+        await AssertRefusedWithErrorToastAsync(adminClient, response);
+    }
+
+    // Adding an existing account to the board by its address is what makes it a "member of this board", so the reach
+    // rule has to hold for the account added that way as well.
+    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    public async Task CreateUser_WithAPlatformAdministratorsAddress_ThenResetPassword_IsRefused()
+    {
+        await ResetWithSecondBoardAsync();
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var platformAdministrator = await SeedAccountAsync("chainplatform");
+        await MakePlatformAdministratorAsync(platformAdministrator);
+        var hashBefore = await PasswordHashAsync(platformAdministrator.Id);
+
+        await adminClient.PostAsync("/Admin/CreateUser", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Email"] = platformAdministrator.Email!,
+            ["Name"] = "Added By Address",
+            ["GroupRole"] = ((int)GroupRole.Player).ToString()
+        }), TestContext.Current.CancellationToken);
+        var response = await PostResetPasswordAsync(adminClient, platformAdministrator.Id);
+
+        var passwordChanged = await PasswordHashAsync(platformAdministrator.Id) != hashBefore;
+        passwordChanged.Should().BeFalse("adding the account by its address must not open it to a password reset");
+        await AssertRefusedWithErrorToastAsync(adminClient, response);
+    }
+
+    // ---- Pins: what a board Admin and a platform administrator can still do ----------------------
+
+    [Theory]
+    [InlineData(GroupRole.Player)]
+    [InlineData(GroupRole.DungeonMaster)]
+    [InlineData(GroupRole.Admin)]
+    public async Task ResetPassword_Post_ForAMemberOfTheSameBoard_StillSucceeds(GroupRole role)
+    {
+        await ResetWithSecondBoardAsync();
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var target = await SeedAccountAsync($"samereset{(int)role}", (1, role));
+
+        var response = await PostResetPasswordAsync(adminClient, target.Id);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().Contain("/Admin/Users");
+        using var scope = _factory.Services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
+        var reloaded = await userManager.FindByIdAsync(target.Id.ToString());
+        (await userManager.CheckPasswordAsync(reloaded!, NewPassword)).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(GroupRole.Player)]
+    [InlineData(GroupRole.DungeonMaster)]
+    [InlineData(GroupRole.Admin)]
+    public async Task EditUser_Post_ForAMemberOfTheSameBoard_StillSavesTheName(GroupRole role)
+    {
+        await ResetWithSecondBoardAsync();
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var target = await SeedAccountAsync($"sameedit{(int)role}", (1, role));
+
+        var response = await PostEditUserAsync(adminClient, target.Id, "Renamed Member", target.Email!);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        (await ReloadAsync(target.Id)).Name.Should().Be("Renamed Member");
+    }
+
+    [Fact]
+    public async Task ResetPassword_Post_BySuperAdmin_StillSucceedsForAnAdminOfAnotherBoard()
+    {
+        await ResetWithSecondBoardAsync();
+        var (superAdminClient, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var target = await SeedAccountAsync("superreset", (1, GroupRole.Player), (2, GroupRole.Admin));
+
+        var response = await PostResetPasswordAsync(superAdminClient, target.Id);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        using var scope = _factory.Services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<UserEntity>>();
+        var reloaded = await userManager.FindByIdAsync(target.Id.ToString());
+        (await userManager.CheckPasswordAsync(reloaded!, NewPassword)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task EditUser_Post_BySuperAdmin_StillSavesTheNameOfAnotherPlatformAdministrator()
+    {
+        await ResetWithSecondBoardAsync();
+        var (superAdminClient, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var target = await SeedAccountAsync("superedit", (1, GroupRole.Player));
+        await MakePlatformAdministratorAsync(target);
+
+        var response = await PostEditUserAsync(superAdminClient, target.Id, "Renamed Platform Administrator", target.Email!);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        (await ReloadAsync(target.Id)).Name.Should().Be("Renamed Platform Administrator");
     }
 }

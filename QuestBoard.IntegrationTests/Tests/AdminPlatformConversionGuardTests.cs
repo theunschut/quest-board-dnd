@@ -46,6 +46,10 @@ public class AdminPlatformConversionGuardTests
     private static readonly string[] PhaseSourceFiles =
     [
         "QuestBoard.IntegrationTests/Controllers/AdminAccountReachTests.cs",
+        "QuestBoard.IntegrationTests/Controllers/AdminRoleGuardTests.cs",
+        "QuestBoard.IntegrationTests/Controllers/AdminQuestDeleteTests.cs",
+        "QuestBoard.IntegrationTests/Controllers/AdminControllerRateLimitIntegrationTests.cs",
+        "QuestBoard.IntegrationTests/Controllers/GroupManagementIntegrationTests.cs",
         "QuestBoard.IntegrationTests/Tests/AdminPlatformConversionGuardTests.cs",
     ];
 

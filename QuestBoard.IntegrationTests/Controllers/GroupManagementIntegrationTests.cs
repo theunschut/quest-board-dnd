@@ -958,4 +958,75 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
         _factory.JobClient.EnqueuedJobs.Count(j => j.Type == typeof(GroupMembershipAddedEmailJob)).Should().Be(0);
         _factory.JobClient.EnqueuedJobs.Count(j => j.Type == typeof(WelcomeEmailJob)).Should().Be(0);
     }
+
+    // The Members page may empty a board, because a board can only be deleted once it has no members; that includes
+    // removing the last Admin.
+    [Fact]
+    public async Task RemoveMember_StillRemovesTheLastAdminOfABoard()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var (_, onlyAdmin) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "lastadminremove", "lastadminremove@test.com", roles: ["Admin"]);
+
+        var response = await client.PostAsync("/platform/Group/RemoveMember/1",
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["userId"] = onlyAdmin.Id.ToString() }),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        context.UserGroups.Any(ug => ug.UserId == onlyAdmin.Id && ug.GroupId == 1).Should().BeFalse();
+        context.UserGroups.Count(ug => ug.GroupId == 1 && ug.GroupRole == (int)GroupRole.Admin).Should().Be(0);
+    }
+
+    // Removing someone who is not a member removes nothing, so the page must not say a member was removed.
+    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    public async Task RemoveMember_ForSomeoneWhoIsNotAMember_DoesNotAnswerSuccess()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var outsider = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "notamember", "notamember@test.com", "Test123!", "Not A Member");
+
+        var response = await client.PostAsync("/platform/Group/RemoveMember/1",
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["userId"] = outsider.Id.ToString() }),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        var landed = await client.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
+        var html = WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        html.Contains("Member removed from the group.").Should().BeFalse("nobody was removed, so no page may say a member was");
+    }
+
+    // A failed Create New User must be visible: either an Error toast on a redirect, or the same page with the dialog
+    // marked to open itself again. Today the page is re-rendered with the dialog closed and nothing on screen says why.
+    [Fact(Skip = "Reproduces an open gap; enabled by its fix")]
+    public async Task CreateMember_WhenItFails_IsVisibleToTheViewer()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        var response = await client.PostAsync("/platform/Group/CreateMember/1",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Email"] = "not-an-address",
+                ["Name"] = "Failed Create",
+                ["GroupRole"] = ((int)GroupRole.Player).ToString()
+            }), TestContext.Current.CancellationToken);
+
+        string visibleOn;
+        if (response.StatusCode is HttpStatusCode.Redirect or HttpStatusCode.Found)
+        {
+            var landed = await client.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
+            visibleOn = WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+            visibleOn.Should().Contain("<strong class=\"me-auto\">Error</strong>", "a refused create must be shown as an Error toast");
+        }
+        else
+        {
+            visibleOn = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+            var modalTag = System.Text.RegularExpressions.Regex.Match(visibleOn, "<div[^>]*id=\"createMemberModal\"[^>]*>").Value;
+            modalTag.Should().Contain("data-open-on-load", "a page that re-renders the dialog must mark it to open itself again");
+        }
+    }
 }
