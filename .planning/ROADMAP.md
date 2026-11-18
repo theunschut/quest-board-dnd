@@ -2189,7 +2189,7 @@ Plans:
 **Goal:** Convert the admin pages and the Platform area on top of the foundation's Platform layouts. Convert the admin and Platform pages to the foundation with their approved relayouts and readable badges, tables and mailto links, keeping the three Platform Group twins.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the foundation's Platform layouts, which this phase verifies)
-**Plans:** 20/23 plans executed
+**Plans:** 21/23 plans executed
 
 **Scope:**
 
@@ -2327,7 +2327,7 @@ Scope drift recorded at planning (research, re-measured by 100-01): the area is 
 
 **Wave 21** *(blocked on Wave 20 completion)*
 
-- [ ] 100-21-PLAN.md — Cleanup and guards: zero census with the A-admin-038 and A-admin-043 results, every view converted, six phone sheets gone, no skipped reproduction fact, no test deleted, no planning reference, untouched paths, and the added writes checked against the list registered in 100-SECURITY.md
+- [x] 100-21-PLAN.md — Cleanup and guards: zero census with the A-admin-038 and A-admin-043 results, every view converted, six phone sheets gone, no skipped reproduction fact, no test deleted, no planning reference, untouched paths, and the added writes checked against the list registered in 100-SECURITY.md
 
 **Wave 22** *(blocked on Wave 21 completion)*
 
