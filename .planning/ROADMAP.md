@@ -2189,7 +2189,7 @@ Plans:
 **Goal:** Convert the admin pages and the Platform area on top of the foundation's Platform layouts. Convert the admin and Platform pages to the foundation with their approved relayouts and readable badges, tables and mailto links, keeping the three Platform Group twins.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the foundation's Platform layouts, which this phase verifies)
-**Plans:** 13/23 plans executed
+**Plans:** 14/23 plans executed
 
 **Scope:**
 
@@ -2299,7 +2299,7 @@ Scope drift recorded at planning (research, re-measured by 100-01): the area is 
 
 **Wave 14** *(blocked on Wave 13 completion)*
 
-- [ ] 100-14-PLAN.md — Admin/Users on both layouts: Q-126 desktop table, phone slips with the resend form (Q-85), role badge partial, the D-02 and D-03 refusals as disabled controls with visible reasons from server flags, the Remove from Group sentence per Gate 1 item 8, admin-users.mobile.css retired
+- [x] 100-14-PLAN.md — Admin/Users on both layouts: Q-126 desktop table, phone slips with the resend form (Q-85), role badge partial, the D-02 and D-03 refusals as disabled controls with visible reasons from server flags, the Remove from Group sentence per Gate 1 item 8, admin-users.mobile.css retired
 
 **Wave 15** *(blocked on Wave 14 completion)*
 
