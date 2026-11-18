@@ -39,7 +39,7 @@ created: "2026-11-18"
 | D-05 | Picker skip applies the same predicate | integration | `... ~CrossBoardPickerSkip` | exists, extend |
 | D-05 | Registry carries an access level per route; 18 routes | unit | `dotnet test QuestBoard.UnitTests --filter "FullyQualifiedName~CrossBoardLinkRegistry"` | exists, extend |
 | D-05 | Predicate shapes against InMemory (shop, contact, quest log, owners, page availability, SuperAdmin) | unit | `... ~CrossBoardLinkVisibility` | no, Wave 0 |
-| D-04 | Shop member-visibility Domain rule and its EF twin agree | unit | `... ~ShopItemVisibility` | no, Wave 0 |
+| D-04 | Shop member-visibility Domain rule and its EF twin agree | unit | `... ~ShopItemAvailabilityTests` | no, Wave 0 |
 | Seams | `IgnoreQueryFilters` stays in the five listed files; resolver/repository added to the ambient-clock guard | unit | `... ~CrossBoardIgnoreQueryFiltersSeam` and `~AmbientClockSeam` | exist, extend |
 | D-15 | Back button: same-site Referer renders a local relative `href`; off-site Referer renders none and the button is hidden; no inline script | integration | `... ~ErrorPageRender` | no, Wave 0 |
 | D-18 | Phone UA gets the twin and the phone layout; twin has no `@media`; targets 44px; guard scanners (inline code, planning refs, literals, layer, token pairs) cover the new sheets and layouts | integration (static) | `... ~ErrorPagesGuard` and `~UiFoundationLayerGuard` | no / exists, extend lists |
@@ -55,9 +55,10 @@ The **agreement matrix** is the drift guard for D-05: for each of the 18 routes 
 
 ### Wave 0 Gaps
 - [ ] `QuestBoard.UnitTests/Helpers/BrowserNavigationTests.cs` - rule truth table, same-site Referer helper
-- [ ] `QuestBoard.UnitTests/Services/CrossBoardLinkVisibilityTests.cs` and `ShopItemVisibilityTests.cs` - predicates on InMemory
+- [ ] `QuestBoard.UnitTests/Repository/CrossBoardLinkVisibilityTests.cs` and `QuestBoard.UnitTests/Models/ShopItemAvailabilityTests.cs` - predicates on InMemory
 - [ ] `QuestBoard.IntegrationTests/Tests/ErrorPageRenderTests.cs`, `ErrorPageNavigationRuleTests.cs`, `ErrorPageRateLimitTests.cs`, `ErrorPageServerErrorTests.cs`, `ErrorPageFallbackLayoutTests.cs`
 - [ ] `QuestBoard.IntegrationTests/Security/CrossBoardVisibilityMatrixTests.cs`
+- [ ] `QuestBoard.IntegrationTests/Security/CrossBoardHiddenRecordTests.cs` - the leak reproduction facts (committed skipped in 103-03, enabled in 103-07/103-08)
 - [ ] `QuestBoard.IntegrationTests/Tests/ErrorPagesGuardTests.cs` - converted-view list, sheet links, no inline code, no planning references, twin has no `@media`, scanner self-tests on seeded strings (the phase 98-100 pattern, e.g. `ShopConversionGuardTests`)
 - [ ] Helpers: a parity helper that primes the antiforgery cookie and masks the token; `CapturingLoggerProvider` gains `ISupportExternalScope`; a factory variant with throwing stubs
 - [ ] Update `UiFoundationLayerGuardTests` lists (`Layouts`, `LayeredFiles`, `NoLiteralFiles`): a new layout must either link a legacy sheet or the guard gets an explicit "no legacy sheet" allowance (the picker layout does link `legacy-pages.css`)

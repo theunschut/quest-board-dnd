@@ -36,8 +36,8 @@ any new alerting on errors.
   never depends on the requested id, the record, or whether the record exists anywhere. Nothing on
   the page reveals anything about another board's records. That includes the page itself: the
   same body for a missing id and for an id on a board the viewer cannot see.
-- **D-03: A "Switch board" button to the board picker (`/groups/pick`) appears on the 404 page
-  only for an authenticated viewer who belongs to two or more boards.** It depends on the viewer's
+- **D-03: The 404 page shows a "Switch board" button for viewers with two or more boards.** A button to the board picker (`/groups/pick`) appears on the 404 page
+  only for an authenticated viewer who belongs to two or more boards. It depends on the viewer's
   own memberships, never on the record. It is a secondary action next to the three required
   buttons. It is the manual way out when the switch did not fire.
 - **D-04: The phase 99 Draft/scheduled deep-link leak is fixed in this phase.** The resolver
@@ -79,7 +79,7 @@ any new alerting on errors.
 - **D-11: Development keeps the developer exception page for unhandled exceptions.** Production
   and Testing use the themed 500, so integration tests can assert it. Status-code pages (404 and
   the rest) are themed in every environment, Development included.
-- **D-12: The 500 page shows "Reference: <TraceIdentifier>".** That is the same id the exception
+- **D-12: The 500 page shows a reference.** It reads "Reference: <TraceIdentifier>". That is the same id the exception
   handler logs, so the operator can find it in the CT 102 logs. Nothing else from the exception
   reaches the page: no message, type or path.
 - **D-13: No new logging or alerting.** The built-in exception handler logging, which carries the
@@ -97,7 +97,7 @@ any new alerting on errors.
   viewer gets "Log in" instead. It goes to the login page with a `returnUrl` only when that URL
   is local. Button order and roles follow `.claude/ui-guidelines.md`: filled buttons with icons,
   `btn-secondary` for back, and the commit-style fill reserved as the guidelines say.
-- **D-18: There is a `.Mobile.cshtml` twin with its own `*.mobile.css`**, as in the converted
+- **D-18: There is a phone twin with its own phone sheet.** It is a `.Mobile.cshtml` twin with its own `*.mobile.css`, as in the converted
   areas: no `@media` in the twin, and 44px targets.
 - **D-19: A Gate 1 look check comes before the build.** It covers mockups of the 404 (with and
   without the Switch board button), 500 (with the reference), 403 and anonymous variants, on
