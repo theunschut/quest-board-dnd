@@ -17,4 +17,19 @@ public static class AdminActionMessages
 
     /// <summary>Shown after a password was reset for the named account.</summary>
     public static string PasswordReset(string name) => $"Password reset successfully for {name}!";
+
+    /// <summary>Shown after a member was removed from the board; the account itself and its other boards are untouched.</summary>
+    public static string MemberRemoved(string name) => $"{name} was removed from the group.";
+
+    /// <summary>Shown when the person to remove is no longer a member of the board.</summary>
+    public const string MemberStale = "That person is not a member of this board any more.";
+
+    /// <summary>Shown after a quest was deleted from the board.</summary>
+    public const string QuestDeleted = "Quest deleted.";
+
+    /// <summary>Shown when the quest to delete is gone, or belongs to another board.</summary>
+    public const string QuestMissing = "That quest no longer exists on this board.";
+
+    /// <summary>Shown when the database refused the delete and left the quest as it was.</summary>
+    public const string QuestRefused = "That quest could not be deleted. Nothing was changed.";
 }

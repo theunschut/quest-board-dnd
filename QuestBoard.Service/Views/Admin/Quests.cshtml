@@ -2,12 +2,10 @@
 @using QuestBoard.Domain.Extensions
 @using QuestBoard.Domain.Interfaces
 @using QuestBoard.Domain.Models.QuestBoard
-@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @inject QuestBoard.Domain.Interfaces.IMarkdownService MarkdownService
 @model IEnumerable<Quest>
 
 @{
-    var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
     var boardType = (BoardType)ViewBag.BoardType;
     var boardToday = (DateOnly)ViewBag.BoardToday;
 }
@@ -118,10 +116,13 @@
                         </a>
                         
                         @* Delete Quest button *@
-                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteQuest(@quest.Id)">
-                            <i class="fas fa-trash"></i>
-                            Delete
-                        </button>
+                        <form asp-action="DeleteQuest" asp-route-id="@quest.Id" method="post" class="d-inline"
+                              data-confirm-message="Are you sure you want to delete this quest? This action cannot be undone.">
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <i class="fas fa-trash"></i>
+                                Delete
+                            </button>
+                        </form>
                     </td>
                 </tr>
             }
@@ -139,21 +140,6 @@
     </div>
 </div>
 
-<script>
-    function deleteQuest(id) {
-        if (confirm("Are you sure you want to delete this quest? This action cannot be undone.")) {
-            fetch(`/Admin/DeleteQuest/${id}`, {
-                method: "DELETE",
-                headers: {
-                    'RequestVerificationToken': '@tokens.RequestToken'
-                }
-            }).then(res => {
-                if (res.ok) {
-                    location.reload();
-                } else {
-                    alert("Delete failed.");
-                }
-            });
-        }
-    }
-</script>
+@section Scripts {
+    <script type="module" src="~/js/confirm-submit.js" asp-append-version="true"></script>
+}

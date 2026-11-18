@@ -10,6 +10,7 @@ using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -452,19 +453,28 @@ public class AdminController(IUserService userService, IQuestService questServic
         return View(sortedQuests);
     }
 
-    [HttpDelete]
+    [HttpPost]
     [ValidateAntiForgeryToken]
     [BoardPage(BoardPage.Quests)]
     public async Task<IActionResult> DeleteQuest(int id)
     {
+        // The board scope is applied by the quest query itself, so an id of another board reads as missing.
         var quest = await questService.GetByIdAsync(id);
         if (quest == null)
         {
-            return NotFound();
+            return this.RedirectWithError(nameof(Quests), AdminActionMessages.QuestMissing);
         }
 
-        await questService.RemoveAsync(quest);
-        return Ok();
+        try
+        {
+            await questService.RemoveAsync(quest);
+        }
+        catch (DbUpdateException)
+        {
+            return this.RedirectWithError(nameof(Quests), AdminActionMessages.QuestRefused);
+        }
+
+        return this.RedirectWithSuccess(nameof(Quests), AdminActionMessages.QuestDeleted);
     }
 
     // Requires SuperAdmin in addition to the class-level AdminOnly policy — an Admin who is
