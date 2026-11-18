@@ -1,48 +1,48 @@
+@using QuestBoard.Service.ViewModels.AdminViewModels
 @model GroupCreateViewModel
 @{
     ViewData["Title"] = "Create Group";
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/platform-pages.css" asp-append-version="true" />
+}
+
 <div class="row justify-content-center">
-    <div class="col-md-6">
+    <div class="col-md-10 col-lg-8 col-xl-6">
         <div class="card modern-card">
             <div class="card-header modern-card-header">
-                <h2 class="mb-0">
-                    <i class="fas fa-plus-circle text-danger me-2"></i>
-                    Create Group
-                </h2>
+                <h1 class="mb-0">
+                    <i class="fas fa-plus-circle me-2" aria-hidden="true"></i>@ViewData["Title"]
+                </h1>
             </div>
             <div class="card-body modern-card-body">
-                <form asp-action="Create" method="post">
-                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                <form asp-action="Create" method="post" class="form-page">
+                    <div asp-validation-summary="ModelOnly" class="mb-3"></div>
 
                     <div class="mb-3">
-                        <label asp-for="Name" class="form-label">Group Name</label>
-                        <input asp-for="Name" class="form-control" />
-                        <span asp-validation-for="Name" class="text-danger"></span>
+                        <label asp-for="Name" class="form-label">@Html.DisplayNameFor(m => m.Name) <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span></label>
+                        <input asp-for="Name" class="form-control" autocomplete="off" aria-describedby="Name-error" />
+                        <span asp-validation-for="Name" id="Name-error"></span>
                     </div>
 
                     <div class="mb-3">
-                        <label asp-for="BoardType" class="form-label">Board Type</label>
-                        <select asp-for="BoardType" class="form-select">
+                        <label asp-for="BoardType" class="form-label">@Html.DisplayNameFor(m => m.BoardType) <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span></label>
+                        <select asp-for="BoardType" asp-items="AdminPlatformDisplay.BoardTypeOptions()" class="form-select" aria-describedby="BoardType-help BoardType-error">
                             <option value="">-- Select Board Type --</option>
-                            @foreach (var item in Html.GetEnumSelectList<BoardType>())
-                            {
-                                <option value="@item.Value">@item.Text</option>
-                            }
                         </select>
-                        <span asp-validation-for="BoardType" class="text-danger"></span>
-                        <small class="form-text text-muted">This cannot be changed after creation.</small>
+                        <div class="form-text" id="BoardType-help">This cannot be changed after creation.</div>
+                        <span asp-validation-for="BoardType" id="BoardType-error"></span>
                     </div>
 
                     <hr>
 
-                    <div class="d-flex justify-content-between">
+                    <div class="form-actions">
                         <a asp-action="Index" asp-area="Platform" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left me-2"></i>Back to Groups
+                            <i class="fas fa-arrow-left me-2" aria-hidden="true"></i>Back to Groups
                         </a>
-                        <button type="submit" class="btn btn-success">
-                            <i class="fas fa-save me-2"></i>Create Group
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2" aria-hidden="true"></i>Create Group
                         </button>
                     </div>
                 </form>

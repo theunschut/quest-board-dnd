@@ -108,6 +108,8 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Areas/Platform/Views/Group/Delete.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Delete.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/_BoardDeleteBody.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/Group/Create.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/Group/Create.Mobile.cshtml",
         "QuestBoard.Service/wwwroot/css/platform-pages.css",
         "QuestBoard.Service/wwwroot/css/platform-pages.mobile.css",
         "QuestBoard.IntegrationTests/Controllers/BoardPageBoardListTests.cs",
@@ -207,6 +209,8 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Areas/Platform/Views/Group/Delete.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Delete.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/_BoardDeleteBody.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/Group/Create.cshtml",
+        "QuestBoard.Service/Areas/Platform/Views/Group/Create.Mobile.cshtml",
     ];
 
     // Every other view of the area, still waiting for its slice. A slice moves its views from here to the converted list
@@ -214,8 +218,6 @@ public class AdminPlatformConversionGuardTests
     private static readonly string[] PendingViews =
     [
         "QuestBoard.Service/Views/Admin/EmailStats.cshtml",
-        "QuestBoard.Service/Areas/Platform/Views/Group/Create.cshtml",
-        "QuestBoard.Service/Areas/Platform/Views/Group/Create.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Edit.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Edit.Mobile.cshtml",
         "QuestBoard.Service/Areas/Platform/Views/Group/Members.cshtml",
@@ -242,6 +244,8 @@ public class AdminPlatformConversionGuardTests
         ["QuestBoard.Service/Views/Admin/ResetPassword.Mobile.cshtml"] = ["admin-pages.css", "admin-pages.mobile.css"],
         ["QuestBoard.Service/Areas/Platform/Views/Group/Index.cshtml"] = ["platform-pages.css"],
         ["QuestBoard.Service/Areas/Platform/Views/Group/Index.Mobile.cshtml"] = ["platform-pages.css", "platform-pages.mobile.css"],
+        ["QuestBoard.Service/Areas/Platform/Views/Group/Create.cshtml"] = ["platform-pages.css"],
+        ["QuestBoard.Service/Areas/Platform/Views/Group/Create.Mobile.cshtml"] = ["platform-pages.css", "platform-pages.mobile.css"],
         ["QuestBoard.Service/Areas/Platform/Views/Group/Delete.cshtml"] = ["platform-group-delete.css"],
         ["QuestBoard.Service/Areas/Platform/Views/Group/Delete.Mobile.cshtml"] = ["platform-group-delete.mobile.css"],
     };

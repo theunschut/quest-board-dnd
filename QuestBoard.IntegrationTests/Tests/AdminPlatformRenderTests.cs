@@ -941,6 +941,132 @@ public class AdminPlatformRenderTests(WebApplicationFactoryBase factory)
         html.Should().NotContain("platform-group.mobile.css");
     }
 
+    // ---- Platform Group/Create and Group/Edit ------------------------------------------------------
+
+    private async Task<HttpClient> SeedGroupFormAsync(string tag)
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(
+            factory, "gf_" + tag, "gf_" + tag + "@example.com");
+        return client;
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupCreate_HasOneTitleInTheCardHeader_AndTheFormContract(bool mobile)
+    {
+        var client = await SeedGroupFormAsync(mobile ? "create_m" : "create_d");
+
+        var html = await GetAsync(client, "/platform/Group/Create", AgentFor(mobile));
+
+        HeadingOneCount(html).Should().Be(1);
+        html.Should().MatchRegex(CardHeaderTitle("Create Group"));
+        html.Should().MatchRegex(@"<form[^>]*class=""form-page""");
+        html.Should().MatchRegex(@"<div class=""form-actions( form-actions--stack)?"">\s*<a[^>]*class=""btn btn-secondary""[^>]*>(?:\s*<i[^>]*></i>)?\s*Back to Groups\s*</a>\s*<button type=""submit"" class=""btn btn-primary"">(?:\s*<i[^>]*></i>)?\s*Create Group\s*</button>");
+        html.Contains("form-actions--stack").Should().Be(mobile, "only the phone stacks the commit label under its exit");
+        html.Should().NotContain("btn-success");
+        html.Should().NotMatchRegex(@"<h[2-6]\b");
+        html.Should().Contain("/css/platform-pages.css");
+        if (mobile)
+            html.Should().Contain("/css/platform-pages.mobile.css");
+        else
+            html.Should().NotContain("/css/platform-pages.mobile.css");
+        html.Should().NotContain("platform-group.mobile.css");
+        html.Should().NotContain("platform-group-card-mobile");
+        html.Should().NotContain("style=\"");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupCreate_MarksBothFieldsRequired_AndWritesTheHelpAsAFormText(bool mobile)
+    {
+        var client = await SeedGroupFormAsync(mobile ? "req_m" : "req_d");
+
+        var html = await GetAsync(client, "/platform/Group/Create", AgentFor(mobile));
+
+        foreach (var (field, word) in new[] { ("Name", "Group Name"), ("BoardType", "Board Type") })
+        {
+            html.Should().MatchRegex(@"<label[^>]*for=""" + field + @"""[^>]*>" + word + @" <span class=""text-danger"" aria-hidden=""true"">\*</span><span class=""visually-hidden""> \(required\)</span></label>");
+        }
+        html.Should().MatchRegex(@"<div class=""form-text"" id=""BoardType-help"">\s*This cannot be changed after creation\.\s*</div>");
+        html.Should().NotContain("text-muted");
+        html.Should().NotContain("<small");
+        html.Should().MatchRegex(@"<select[^>]*aria-describedby=""BoardType-help[ \w-]*""[^>]*id=""BoardType""");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupCreate_BuildsTheBoardTypeSelectFromTheSharedMapping_KeepingTheValuesAndThePlaceholder(bool mobile)
+    {
+        var client = await SeedGroupFormAsync(mobile ? "type_m" : "type_d");
+
+        var html = await GetAsync(client, "/platform/Group/Create", AgentFor(mobile));
+
+        var select = Regex.Match(html, @"<select[^>]*id=""BoardType""[^>]*>.*?</select>", RegexOptions.Singleline).Value;
+        select.Should().NotBeEmpty();
+        var options = Regex.Matches(select, @"<option[^>]*value=""(?<value>[^""]*)""[^>]*>(?<text>[^<]+)</option>")
+            .Select(m => (m.Groups["value"].Value, m.Groups["text"].Value.Trim()))
+            .ToList();
+        options.Should().Equal(
+            new[] { ("", "-- Select Board Type --") }
+                .Concat(AdminPlatformDisplay.BoardTypeOptions().Select(o => (o.Value, o.Text))));
+        options.Select(o => o.Item2).Should().Contain(["One-Shot", "Campaign"]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupCreate_WithAnEmptyPost_ShowsTheMessagesOnTheFoundationTreatment(bool mobile)
+    {
+        var client = await SeedGroupFormAsync(mobile ? "bad_m" : "bad_d");
+
+        var html = await PostFormAsync(client, "/platform/Group/Create", AgentFor(mobile), new Dictionary<string, string>
+        {
+            ["Name"] = "",
+            ["BoardType"] = "",
+        });
+
+        html.Should().MatchRegex(@"<span[^>]*data-valmsg-for=""Name""[^>]*>[^<]*Group name is required");
+        html.Should().MatchRegex(@"<span[^>]*data-valmsg-for=""BoardType""[^>]*>[^<]*Board type is required");
+        html.Should().NotMatchRegex(@"<span[^>]*class=""text-danger[^""]*""[^>]*data-valmsg-for");
+        HeadingOneCount(html).Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformGroupCreate_ARenderedFormPostsAndCreatesTheBoard(bool mobile)
+    {
+        var client = await SeedGroupFormAsync(mobile ? "post_m" : "post_d");
+        var page = await GetAsync(client, "/platform/Group/Create", AgentFor(mobile));
+        var token = Regex.Match(page, @"name=""__RequestVerificationToken""[^>]*value=""([^""]+)""").Groups[1].Value;
+        token.Should().NotBeEmpty();
+        var campaignValue = AdminPlatformDisplay.BoardTypeOptions().Single(o => o.Text == "Campaign").Value;
+        page.Should().MatchRegex(@"<option value=""" + campaignValue + @""">Campaign</option>");
+        var name = "Renderedpost " + (mobile ? "Mobile" : "Desktop");
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/platform/Group/Create")
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Name"] = name,
+                ["BoardType"] = campaignValue,
+                ["__RequestVerificationToken"] = token,
+            })
+        };
+        request.Headers.TryAddWithoutValidation("User-Agent", AgentFor(mobile));
+        var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        response.Headers.Location!.ToString().ToLowerInvariant().Should().EndWith("/platform");
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        context.Groups.Single(g => g.Name == name).BoardType.Should().Be((int)BoardType.Campaign);
+    }
+
     // Posts a form to the page's own URL with the antiforgery token the page issued, under the given User-Agent.
     private static async Task<string> PostFormAsync(HttpClient client, string url, string userAgent, Dictionary<string, string> fields)
     {
