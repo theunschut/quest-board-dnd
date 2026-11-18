@@ -78,6 +78,18 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.UnitTests/Services/GroupServiceTests.cs",
         "QuestBoard.Service/Areas/Platform/Controllers/GroupController.cs",
         "QuestBoard.IntegrationTests/Controllers/AdminControllerIntegrationTests.cs",
+        "QuestBoard.Service/ViewModels/AdminViewModels/AdminPlatformDisplay.cs",
+        "QuestBoard.Service/ViewModels/AdminViewModels/QuestStatusBadgeModel.cs",
+        "QuestBoard.Service/Views/Shared/_QuestStatusBadge.cshtml",
+        "QuestBoard.Service/wwwroot/css/components.css",
+        "QuestBoard.Service/wwwroot/css/admin-pages.css",
+        "QuestBoard.Service/wwwroot/css/admin-pages.mobile.css",
+        "QuestBoard.Service/Views/Admin/Quests.cshtml",
+        "QuestBoard.Service/Views/Admin/Quests.Mobile.cshtml",
+        "QuestBoard.IntegrationTests/Tests/AdminPlatformRenderTests.cs",
+        "QuestBoard.IntegrationTests/Tests/UiFoundationLayerGuardTests.cs",
+        "QuestBoard.IntegrationTests/Mobile/MobileViewsTests.cs",
+        "QuestBoard.IntegrationTests/Controllers/QuestStatusBoardClockTests.cs",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it

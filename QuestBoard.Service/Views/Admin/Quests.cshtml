@@ -1,7 +1,6 @@
 @using QuestBoard.Domain.Enums
-@using QuestBoard.Domain.Extensions
-@using QuestBoard.Domain.Interfaces
 @using QuestBoard.Domain.Models.QuestBoard
+@using QuestBoard.Service.ViewModels.AdminViewModels
 @inject QuestBoard.Domain.Interfaces.IMarkdownService MarkdownService
 @model IEnumerable<Quest>
 
@@ -10,12 +9,15 @@
     var boardToday = (DateOnly)ViewBag.BoardToday;
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/admin-pages.css" asp-append-version="true" />
+}
+
 <div class="card modern-card">
-    <div class="card-header modern-card-header">
-        <h2 class="mb-0">
-            <i class="fas fa-scroll text-danger me-2"></i>
-            Quest Management
-        </h2>
+    <div class="card-header modern-card-header page-bar">
+        <h1 class="mb-0">
+            <i class="fas fa-scroll me-2" aria-hidden="true"></i>Quest Management
+        </h1>
     </div>
     <div class="card-body modern-card-body">
         @if (Model.Any())
@@ -28,113 +30,63 @@
                             <th scope="col">Description</th>
                             <th scope="col">Dungeon Master</th>
                             <th scope="col">Status</th>
-                            <th scope="col">Actions</th>
+                            <th scope="col" class="th-actions">Actions</th>
                         </tr>
                     </thead>
-        <tbody>
-            @foreach (var quest in Model)
-            {
-                <tr>
-                    <td>
-                        <i class="fas fa-dragon text-muted me-2"></i>
-                        @quest.Title
-                    </td>
-                    <td>
-                        @{
+                    <tbody>
+                        @foreach (var quest in Model)
+                        {
                             var plainQuestDescription = MarkdownService.ExtractPlainText(quest.Description);
+                            <tr>
+                                <td class="name-cell">
+                                    <i class="fas fa-dragon me-2" aria-hidden="true"></i>@quest.Title
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(plainQuestDescription))
+                                    {
+                                        <span class="quest-excerpt" title="@plainQuestDescription">@plainQuestDescription</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="quest-excerpt quest-excerpt--none">No description provided</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="user-cell">
+                                        <i class="fas fa-user-tie me-2" aria-hidden="true"></i><span class="user-cell__name">@(quest.DungeonMaster?.Name ?? "Unknown")</span>
+                                        @if (!string.IsNullOrEmpty(quest.DungeonMaster?.Email))
+                                        {
+                                            <a href="mailto:@quest.DungeonMaster.Email" class="email-link user-cell__email">@quest.DungeonMaster.Email</a>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    <partial name="_QuestStatusBadge" model="new QuestStatusBadgeModel(quest, boardType, boardToday)" />
+                                </td>
+                                <td class="actions-cell">
+                                    <div class="row-actions">
+                                        <a asp-controller="Quest" asp-action="Edit" asp-route-id="@quest.Id" class="btn btn-sm btn-warning">
+                                            <i class="fas fa-edit me-2" aria-hidden="true"></i>Edit
+                                        </a>
+                                        <form asp-action="DeleteQuest" asp-route-id="@quest.Id" method="post"
+                                              data-confirm-message="Are you sure you want to delete this quest? This action cannot be undone.">
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="fas fa-trash me-2" aria-hidden="true"></i>Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
                         }
-                        @if (!string.IsNullOrEmpty(plainQuestDescription))
-                        {
-                            <span class="text-truncate d-inline-block" style="max-width: 300px;" title="@plainQuestDescription">
-                                @plainQuestDescription
-                            </span>
-                        }
-                        else
-                        {
-                            <span class="text-muted fst-italic">No description provided</span>
-                        }
-                    </td>
-                    <td>
-                        <i class="fas fa-user-tie text-muted me-2"></i>
-                        @(quest.DungeonMaster?.Name ?? "Unknown")
-                        @if (!string.IsNullOrEmpty(quest.DungeonMaster?.Email))
-                        {
-                            <br/>
-                            <a href="mailto:@quest.DungeonMaster.Email" class="email-link small">@quest.DungeonMaster.Email</a>
-                        }
-                    </td>
-                    <td>
-                        @{
-                            string statusBadge;
-                            string statusIcon;
-                            string statusText;
-
-                            if (boardType == BoardType.Campaign)
-                            {
-                                if (quest.IsClosed)
-                                {
-                                    statusBadge = "bg-dark";
-                                    statusIcon = "fas fa-flag-checkered";
-                                    statusText = "Closed";
-                                }
-                                else
-                                {
-                                    statusBadge = "bg-success";
-                                    statusIcon = "fas fa-clock";
-                                    statusText = "Open";
-                                }
-                            }
-                            else if (quest.HasBeenPlayed(boardToday))
-                            {
-                                statusBadge = "bg-dark";
-                                statusIcon = "fas fa-flag-checkered";
-                                statusText = "Done";
-                            }
-                            else if (quest.IsFinalized)
-                            {
-                                statusBadge = "bg-primary";
-                                statusIcon = "fas fa-check-circle";
-                                statusText = "Finalized";
-                            }
-                            else
-                            {
-                                statusBadge = "bg-success";
-                                statusIcon = "fas fa-clock";
-                                statusText = "Open";
-                            }
-                        }
-                        <span class="badge @statusBadge">
-                            <i class="@statusIcon me-1"></i>
-                            @statusText
-                        </span>
-                    </td>
-                    <td class="text-end">
-                        @* Edit Quest button *@
-                        <a asp-controller="Quest" asp-action="Edit" asp-route-id="@quest.Id" class="btn btn-sm btn-info me-2">
-                            <i class="fas fa-edit me-1"></i>
-                            Edit
-                        </a>
-                        
-                        @* Delete Quest button *@
-                        <form asp-action="DeleteQuest" asp-route-id="@quest.Id" method="post" class="d-inline"
-                              data-confirm-message="Are you sure you want to delete this quest? This action cannot be undone.">
-                            <button type="submit" class="btn btn-danger btn-sm">
-                                <i class="fas fa-trash"></i>
-                                Delete
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-            }
-                </tbody>
-            </table>
-        </div>
+                    </tbody>
+                </table>
+            </div>
         }
         else
         {
-            <div class="text-center py-5">
-                <i class="fas fa-scroll fa-3x text-muted mb-3"></i>
-                <p class="text-muted">No quests found.</p>
+            <div class="empty-state">
+                <i class="fas fa-scroll empty-state-icon" aria-hidden="true"></i>
+                <h2 class="empty-state-heading">No quests found.</h2>
             </div>
         }
     </div>

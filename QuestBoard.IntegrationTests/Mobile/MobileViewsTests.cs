@@ -1477,9 +1477,8 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Admin/Quests renders admin-quests-card-mobile glass card and links
-    /// admin-quests.mobile.css. Requires Admin role authentication.
-    /// Starts RED — Admin/Quests.Mobile.cshtml does not exist yet; goes GREEN when Plan 02 lands.
+    /// Mobile UA on /Admin/Quests renders each quest as a phone list slip and links the phone
+    /// admin page sheet. Requires Admin role authentication.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_AdminQuests_ReturnsSuccessAndMobileLayout()
@@ -1495,8 +1494,8 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("admin-quests-card-mobile");
-        html.Should().Contain("admin-quests.mobile.css");
+        html.Should().Contain("row-slip");
+        html.Should().Contain("admin-pages.mobile.css");
     }
 
     // -----------------------------------------------------------------------

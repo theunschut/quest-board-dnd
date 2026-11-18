@@ -117,7 +117,7 @@ public class QuestStatusBoardClockTests(WebApplicationFactoryBase factory) : ICl
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        html.Should().Contain("admin-quests-card-mobile", because: "the mobile layout must be the one rendered");
+        html.Should().Contain("row-slip", because: "the mobile layout must be the one rendered");
         StatusBadgeTexts(html).Should().Contain("Done");
     }
 

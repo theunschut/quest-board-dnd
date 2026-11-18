@@ -1,0 +1,7 @@
+@using QuestBoard.Domain.Extensions
+@using QuestBoard.Service.ViewModels.AdminViewModels
+@model QuestStatusBadgeModel
+@{
+    var status = AdminPlatformDisplay.QuestStatus(Model.BoardType, Model.Quest.IsClosed, Model.Quest.IsFinalized, Model.Quest.HasBeenPlayed(Model.BoardToday));
+}
+<span class="badge @status.FillClass"><i class="fas @status.Icon me-1" aria-hidden="true"></i>@status.Word</span>
