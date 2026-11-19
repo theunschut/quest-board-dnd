@@ -7,12 +7,12 @@ namespace QuestBoard.IntegrationTests.Security;
 /// <summary>
 /// A deep link into a record the viewer is not allowed to see must look exactly like a link to an
 /// id that does not exist: the same status, the same headers and body, no move of the active board
-/// and no "Switched board" notice on the next page. Today the cross-board resolver answers only
-/// which board owns an id, so it repoints the session and queues the notice before the page's own
-/// visibility rule refuses the record -- which tells a member that a hidden record exists, and on
-/// which of their boards. The reproduction facts below pin that behaviour as a failing contract and
-/// are skipped until the resolver applies each page's own visibility rule. The pins at the end are
-/// green now and must stay green: a record the viewer may see keeps switching the board and opening.
+/// and no "Switched board" notice on the next page. Otherwise a member could learn that a hidden
+/// record exists, and on which of their boards. The resolver already withholds the switch where the
+/// board does not offer the page or the viewer's role there could not open it; those facts run. The
+/// facts that turn on the record itself (a draft shop item, an unrevealed contact, an unfinished
+/// quest) stay skipped until the resolver applies each page's own visibility rule. The pins keep
+/// what must keep working: a record the viewer may see switches the board and opens.
 ///
 /// Every navigation carries the headers of a real top-level browser navigation, including
 /// Accept: text/html, so the facts stay valid once error responses become rendered pages.
@@ -100,6 +100,16 @@ public class CrossBoardHiddenRecordTests(CrossBoardWebApplicationFactory factory
         return item.Id;
     }
 
+    // The profile rules look at who shares a board with the viewer, so the owner becomes a member of the target board
+    // only (the default board is shared with nobody the facts name), which gives the profile link exactly one board
+    // it can mean.
+    private async Task AddOwnerToTargetBoardAsync(Scenario scenario)
+    {
+        await using var ctx = factory.Database.CreateContext();
+        ctx.UserGroups.Add(new UserGroupEntity { UserId = scenario.OwnerId, GroupId = scenario.TargetBoardId, GroupRole = (int)GroupRole.DungeonMaster });
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
     private async Task AssertLooksLikeANonexistentIdAsync(Scenario scenario, string hiddenUrl, string nonexistentUrl)
     {
         var control = await SignInAgainAsync(scenario);
@@ -177,7 +187,7 @@ public class CrossBoardHiddenRecordTests(CrossBoardWebApplicationFactory factory
         await AssertLooksLikeANonexistentIdAsync(scenario, $"/Quest/Edit/{quest.Id}", $"/Quest/Edit/{int.MaxValue}");
     }
 
-    [Fact(Skip = "Fails until the cross-board resolver applies the target board's own page settings: a page the board has switched off is not offered there.")]
+    [Fact]
     public async Task HiddenRecord_ContactOnABoardThatDoesNotOfferTheContactsPage_LooksLikeANonexistentId()
     {
         var contactsOff = BoardPageSet.Empty.With(BoardPage.Contacts).Mask;
@@ -186,6 +196,31 @@ public class CrossBoardHiddenRecordTests(CrossBoardWebApplicationFactory factory
             factory.Services, scenario.OwnerId, name: $"HiddenPageContact{scenario.Suffix}", isRevealed: true, groupId: scenario.TargetBoardId);
 
         await AssertLooksLikeANonexistentIdAsync(scenario, $"/Contacts/Details/{contact.Id}", $"/Contacts/Details/{int.MaxValue}");
+    }
+
+    [Fact]
+    public async Task HiddenRecord_ProfileEditOfAnotherMember_ForAViewerWhoIsOnlyAPlayerOnTheTargetBoard_LooksLikeANonexistentId()
+    {
+        var scenario = await SeedAsync(Guid.NewGuid().ToString("N")[..8], GroupRole.DungeonMaster, GroupRole.Player);
+        await AddOwnerToTargetBoardAsync(scenario);
+
+        await AssertLooksLikeANonexistentIdAsync(
+            scenario, $"/DungeonMaster/EditProfile/{scenario.OwnerId}", $"/DungeonMaster/EditProfile/{int.MaxValue}");
+    }
+
+    [Fact]
+    public async Task VisibleRecord_ProfileEditOfAnotherMember_ForAnAdminOfTheTargetBoard_SwitchesTheBoardAndOpens()
+    {
+        var scenario = await SeedAsync(Guid.NewGuid().ToString("N")[..8], GroupRole.DungeonMaster, GroupRole.Admin);
+        await AddOwnerToTargetBoardAsync(scenario);
+
+        var response = await scenario.Client.SendAsync(NavigationGet($"/DungeonMaster/EditProfile/{scenario.OwnerId}"), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var followUp = await scenario.Client.SendAsync(NavigationGet("/quests"), TestContext.Current.CancellationToken);
+        var followUpBody = await followUp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        followUpBody.Should().NotContain(ActiveBoardName, because: "the board stays switched after the page opened");
     }
 
     // ---- Pins: a record the viewer may see keeps switching the board and opening. Green today, must stay green. ----

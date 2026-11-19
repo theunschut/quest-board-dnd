@@ -65,6 +65,18 @@ public class ErrorPagesGuardTests
         "QuestBoard.IntegrationTests/Tests/ErrorPageServerErrorTests.cs",
         "QuestBoard.IntegrationTests/Tests/ErrorPageRateLimitTests.cs",
         "QuestBoard.IntegrationTests/Tests/ErrorPageFallbackLayoutTests.cs",
+        "QuestBoard.Domain/Enums/CrossBoardAccess.cs",
+        "QuestBoard.Domain/Models/CrossBoardViewerBoard.cs",
+        "QuestBoard.Domain/Interfaces/ICrossBoardLinkResolver.cs",
+        "QuestBoard.Domain/Interfaces/ICrossBoardLinkRepository.cs",
+        "QuestBoard.Domain/Services/CrossBoardLinkResolverService.cs",
+        "QuestBoard.Repository/CrossBoardLinkRepository.cs",
+        "QuestBoard.Service/Helpers/CrossBoardLinkRegistry.cs",
+        "QuestBoard.Service/Helpers/CrossBoardRouteTarget.cs",
+        "QuestBoard.Service/Middleware/CrossBoardDeepLinkMiddleware.cs",
+        "QuestBoard.Service/Controllers/GroupPickerController.cs",
+        "QuestBoard.IntegrationTests/Security/CrossBoardAuthorizationBoundaryTests.cs",
+        "QuestBoard.IntegrationTests/Middleware/CrossBoardRouteCoverageTests.cs",
         "docs/server-setup.md",
     ];
 
