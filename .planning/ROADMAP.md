@@ -2454,7 +2454,7 @@ Plans:
 **Goal:** A failed request (404, 403, 500 and other status codes) shows an error page styled in the existing theme instead of the bare default, with three actions: go back, go to the home page (`/`), and log out and return to the login page. Prompted by the operator: following a link to something on a board other than the active one currently ends on a plain 404 (see the phase 99 deferred cross-board link switch).
 **Requirements**: TBD
 **Depends on:** Phase 102; executes only after Phase 100 has finished in this checkout (103-01 checks it)
-**Plans:** 5/18 plans executed
+**Plans:** 6/18 plans executed
 
 Plans:
 
@@ -2482,7 +2482,7 @@ Planning record: no requirement IDs are mapped, so CONTEXT decisions D-01..D-19 
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 103-06-PLAN.md — Exception handler fixed with a fresh scope, the themed 500 with its Reference and nothing from the exception, the Reference in the log scope per the operator's choice, the themed 429, the page rendering when its helpers throw
+- [x] 103-06-PLAN.md — Exception handler fixed with a fresh scope, the themed 500 with its Reference and nothing from the exception, the Reference in the log scope per the operator's choice, the themed 429, the page rendering when its helpers throw
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
