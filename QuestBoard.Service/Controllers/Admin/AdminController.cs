@@ -202,7 +202,7 @@ public class AdminController(IUserService userService, IQuestService questServic
         if (groupId == null) return RedirectToAction(nameof(Users));
         // Guard against a crafted request for a user outside the active group
         var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
-        if (targetRole == null) return RedirectToAction(nameof(Users));
+        if (targetRole == null) return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
 
         if (!await IsWithinReachAsync(groupId.Value, userId))
             return this.RedirectWithError(nameof(Users), AdminActionMessages.ReachRefused);
@@ -210,7 +210,7 @@ public class AdminController(IUserService userService, IQuestService questServic
         var user = await userService.GetByIdAsync(userId);
         if (user == null)
         {
-            return RedirectToAction(nameof(Users));
+            return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
         }
 
         var model = new EditUserViewModel
@@ -234,7 +234,7 @@ public class AdminController(IUserService userService, IQuestService questServic
             if (groupId == null) return RedirectToAction(nameof(Users));
             // Guard against a crafted POST for a user outside the active group
             var targetRole = await userService.GetGroupRoleByIdAsync(model.Id, groupId.Value);
-            if (targetRole == null) return RedirectToAction(nameof(Users));
+            if (targetRole == null) return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
 
             if (!await IsWithinReachAsync(groupId.Value, model.Id))
                 return this.RedirectWithError(nameof(Users), AdminActionMessages.ReachRefused);
@@ -242,7 +242,7 @@ public class AdminController(IUserService userService, IQuestService questServic
             var user = await userService.GetByIdAsync(model.Id);
             if (user == null)
             {
-                return RedirectToAction(nameof(Users));
+                return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
             }
 
             var emailChanged = !string.Equals(user.Email, model.Email, StringComparison.OrdinalIgnoreCase);
@@ -295,7 +295,7 @@ public class AdminController(IUserService userService, IQuestService questServic
         if (groupId == null) return RedirectToAction(nameof(Users));
         // Guard against a crafted request for a user outside the active group
         var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
-        if (targetRole == null) return RedirectToAction(nameof(Users));
+        if (targetRole == null) return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
 
         if (!await IsWithinReachAsync(groupId.Value, userId))
             return this.RedirectWithError(nameof(Users), AdminActionMessages.ReachRefused);
@@ -303,7 +303,7 @@ public class AdminController(IUserService userService, IQuestService questServic
         var user = await userService.GetByIdAsync(userId);
         if (user == null)
         {
-            return RedirectToAction(nameof(Users));
+            return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
         }
 
         var model = new ResetPasswordViewModel
@@ -325,7 +325,7 @@ public class AdminController(IUserService userService, IQuestService questServic
             if (groupId == null) return RedirectToAction(nameof(Users));
             // Guard against a crafted POST for a user outside the active group
             var targetRole = await userService.GetGroupRoleByIdAsync(model.UserId, groupId.Value);
-            if (targetRole == null) return RedirectToAction(nameof(Users));
+            if (targetRole == null) return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
 
             if (!await IsWithinReachAsync(groupId.Value, model.UserId))
                 return this.RedirectWithError(nameof(Users), AdminActionMessages.ReachRefused);
@@ -333,7 +333,7 @@ public class AdminController(IUserService userService, IQuestService questServic
             var user = await userService.GetByIdAsync(model.UserId);
             if (user == null)
             {
-                return RedirectToAction(nameof(Users));
+                return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
             }
 
             var result = await userService.ResetPasswordAsync(User, groupId.Value, user, model.NewPassword);
@@ -386,7 +386,7 @@ public class AdminController(IUserService userService, IQuestService questServic
         if (groupId == null) return RedirectToAction(nameof(Users));
         // Guard against a crafted POST for a user outside the active group
         var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
-        if (targetRole == null) return RedirectToAction(nameof(Users));
+        if (targetRole == null) return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
 
         if (!await IsWithinReachAsync(groupId.Value, userId))
             return this.RedirectWithError(nameof(Users), AdminActionMessages.ReachRefused);
@@ -394,7 +394,7 @@ public class AdminController(IUserService userService, IQuestService questServic
         var user = await userService.GetByIdAsync(userId);
         if (user == null)
         {
-            return RedirectToAction(nameof(Users));
+            return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
         }
 
         if (user.EmailConfirmed)

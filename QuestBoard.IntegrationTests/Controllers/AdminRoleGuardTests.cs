@@ -8,9 +8,9 @@ namespace QuestBoard.IntegrationTests.Controllers;
 /// <summary>
 /// What the four role actions and Remove from Group may do to the person using them and to the board's last Admin. An
 /// Admin may not demote or remove themselves, and nobody may leave a board without an Admin from the Users page; each
-/// refusal reads as an Error toast and changes nothing. A role action or removal for someone who is not on the board
-/// answers an Error toast instead of silence. The remaining facts pin the role changes and removals that must keep
-/// working.
+/// refusal reads as an Error toast and changes nothing. A role action, a removal, an edit, a password reset or a welcome
+/// email resend for someone who is not on the board answers an Error toast instead of silence. The remaining facts pin
+/// the role changes and removals that must keep working.
 /// </summary>
 public class AdminRoleGuardTests : IClassFixture<WebApplicationFactoryBase>
 {
@@ -236,6 +236,104 @@ public class AdminRoleGuardTests : IClassFixture<WebApplicationFactoryBase>
         var html = WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         html.Should().Contain("That person is not a member of this board any more.");
+    }
+
+    // ---- Stale page: the account actions on a row whose person has left the board -------------------
+
+    // The Edit, Reset Password and Resend Welcome Email buttons of a Users page that was open while the person left the
+    // board, or while their account was deleted, still carry the old id. Each answers the same stale-page Error toast as
+    // the role actions and changes nothing, whether the id belongs to someone on another board only or to nobody.
+    private static Task<HttpResponseMessage> SendAccountActionAsync(HttpClient client, string action, int userId) =>
+        action switch
+        {
+            "EditUser:GET" => client.GetAsync($"/Admin/EditUser?userId={userId}", TestContext.Current.CancellationToken),
+            "EditUser:POST" => client.PostAsync("/Admin/EditUser", new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Id"] = userId.ToString(),
+                ["Name"] = "Renamed From A Stale Page",
+                ["Email"] = "renamed_from_stale_page@example.com",
+                ["HasKey"] = "true"
+            }), TestContext.Current.CancellationToken),
+            "ResetPassword:GET" => client.GetAsync($"/Admin/ResetPassword?userId={userId}", TestContext.Current.CancellationToken),
+            "ResetPassword:POST" => client.PostAsync("/Admin/ResetPassword", new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["UserId"] = userId.ToString(),
+                ["NewPassword"] = "StalePage123!",
+                ["ConfirmPassword"] = "StalePage123!"
+            }), TestContext.Current.CancellationToken),
+            "SendConfirmationEmail" => client.PostAsync("/Admin/SendConfirmationEmail",
+                new FormUrlEncodedContent(new Dictionary<string, string> { ["userId"] = userId.ToString() }),
+                TestContext.Current.CancellationToken),
+            _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
+        };
+
+    private async Task<(string Name, string? Email, bool HasKey, string? PasswordHash)> AccountStateAsync(int userId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var user = context.Users.IgnoreQueryFilters().Single(u => u.Id == userId);
+        return (user.Name, user.Email, user.HasKey, user.PasswordHash);
+    }
+
+    // The answer is a redirect to the Users page whose single landing shows an Error toast carrying the stale sentence.
+    private static async Task AssertStaleToastAsync(HttpClient client, HttpResponseMessage response)
+    {
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect, "a stale page is answered, not shown");
+        response.Headers.Location!.OriginalString.Should().Contain("/Admin/Users");
+
+        var landed = await client.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
+        landed.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Regex.Matches(html, "<strong class=\"me-auto\">(\\w+)</strong>").Select(m => m.Groups[1].Value)
+            .Should().Contain("Error", "the stale page must be told as an Error toast");
+        html.Should().Contain("That person is not a member of this board any more.");
+    }
+
+    [Theory]
+    [InlineData("EditUser:GET")]
+    [InlineData("EditUser:POST")]
+    [InlineData("ResetPassword:GET")]
+    [InlineData("ResetPassword:POST")]
+    [InlineData("SendConfirmationEmail")]
+    public async Task AccountAction_ForSomeoneWhoIsNotOnTheBoard_AnswersTheStaleToast_AndChangesNothing(string action)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        await TestDataHelper.SeedCampaignGroupAsync(_factory.Services, 2);
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var outsider = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "guard_outsider", "guard_outsider@example.com", "Test123!", "Guard outsider");
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            context.UserGroups.Add(new UserGroupEntity { UserId = outsider.Id, GroupId = 2, GroupRole = (int)GroupRole.Player });
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+        var membersBefore = await MembershipCountAsync();
+        var accountBefore = await AccountStateAsync(outsider.Id);
+
+        var response = await SendAccountActionAsync(adminClient, action, outsider.Id);
+
+        (await MembershipCountAsync()).Should().Be(membersBefore);
+        (await AccountStateAsync(outsider.Id)).Should().Be(accountBefore, "a stale page must not change the account");
+        await AssertStaleToastAsync(adminClient, response);
+    }
+
+    [Theory]
+    [InlineData("EditUser:GET")]
+    [InlineData("EditUser:POST")]
+    [InlineData("ResetPassword:GET")]
+    [InlineData("ResetPassword:POST")]
+    [InlineData("SendConfirmationEmail")]
+    public async Task AccountAction_ForAnAccountThatNoLongerExists_AnswersTheStaleSentence(string action)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
+        var membersBefore = await MembershipCountAsync();
+
+        var response = await SendAccountActionAsync(adminClient, action, 987654);
+
+        (await MembershipCountAsync()).Should().Be(membersBefore);
+        await AssertStaleToastAsync(adminClient, response);
     }
 
     // ---- Pins: role changes that must keep working -------------------------------------------------
