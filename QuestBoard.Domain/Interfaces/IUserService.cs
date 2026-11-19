@@ -134,7 +134,8 @@ public interface IUserService : IBaseService<User>
     /// Changes a member's role on the board unless the change is refused. The answer is judged on the role the person
     /// would end up with, never on which button asked: NotAMember when the person is not on the board, Self when the
     /// acting user is the person being changed and the role would differ, and LastAdmin when the person is the board's
-    /// only Admin and would no longer be one. Nothing is written for any answer but Changed.
+    /// only Admin and would no longer be one. Nothing is written for any answer but Changed. The change only updates an
+    /// existing membership and never creates one, so a person removed while the change was in flight answers NotAMember.
     /// </summary>
     Task<MemberChangeOutcome> ChangeMemberRoleAsync(int groupId, int actingUserId, int targetUserId, GroupRole newRole, CancellationToken token = default);
 

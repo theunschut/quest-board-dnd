@@ -186,8 +186,10 @@ internal class UserService(IIdentityService identityService, IUserRepository rep
                 return MemberChangeOutcome.LastAdmin;
         }
 
-        await repository.SetGroupRoleAsync(targetUserId, groupId, newRole);
-        return MemberChangeOutcome.Changed;
+        // Update only: if the person was removed from the board after the read above, the change must not re-add them.
+        return await repository.UpdateGroupRoleAsync(targetUserId, groupId, newRole, token)
+            ? MemberChangeOutcome.Changed
+            : MemberChangeOutcome.NotAMember;
     }
 
     /// <inheritdoc/>

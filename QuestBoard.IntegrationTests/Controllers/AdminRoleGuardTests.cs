@@ -336,6 +336,47 @@ public class AdminRoleGuardTests : IClassFixture<WebApplicationFactoryBase>
         await AssertStaleToastAsync(adminClient, response);
     }
 
+    // ---- Race: a role change and a removal on the same row ------------------------------------------
+
+    // One Admin's role change reads the membership, another Admin's removal deletes it, then the role change writes.
+    // The write only updates an existing row, so it reports that nothing was changed and the person stays removed
+    // instead of being put back on the board with the new role.
+    [Fact]
+    public async Task RoleChange_ThatLosesARaceWithARemoval_DoesNotPutThePersonBackOnTheBoard()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var member = await SeedMemberAsync("raced", GroupRole.DungeonMaster);
+
+        using var roleChangeScope = _factory.Services.CreateScope();
+        var repository = roleChangeScope.ServiceProvider.GetRequiredService<QuestBoard.Domain.Interfaces.IUserRepository>();
+        (await repository.GetGroupRoleAsync(member.Id, 1)).Should().Be(GroupRole.DungeonMaster);
+
+        using (var removalScope = _factory.Services.CreateScope())
+        {
+            var groupService = removalScope.ServiceProvider.GetRequiredService<QuestBoard.Domain.Interfaces.IGroupService>();
+            await groupService.RemoveMemberAsync(1, member.Id, TestContext.Current.CancellationToken);
+        }
+
+        var updated = await repository.UpdateGroupRoleAsync(member.Id, 1, GroupRole.Admin, TestContext.Current.CancellationToken);
+
+        updated.Should().BeFalse("the membership the change read is gone");
+        (await RoleOnBoardAsync(member.Id)).Should().BeNull("a role change must never re-create a removed membership");
+    }
+
+    [Fact]
+    public async Task UpdateGroupRole_ForAnExistingMember_StillChangesTheRole()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var member = await SeedMemberAsync("updated", GroupRole.Player);
+
+        using var scope = _factory.Services.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<QuestBoard.Domain.Interfaces.IUserRepository>();
+        var updated = await repository.UpdateGroupRoleAsync(member.Id, 1, GroupRole.DungeonMaster, TestContext.Current.CancellationToken);
+
+        updated.Should().BeTrue();
+        (await RoleOnBoardAsync(member.Id)).Should().Be(GroupRole.DungeonMaster);
+    }
+
     // ---- Pins: role changes that must keep working -------------------------------------------------
 
     // Another Admin is on the board, so demoting this one leaves an Admin behind.

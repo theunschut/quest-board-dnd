@@ -124,11 +124,16 @@ public class UserServiceTests
     private void GivenBoard(int groupId, int targetId, GroupRole? targetRole, int admins)
     {
         _repository.GetGroupRoleAsync(targetId, groupId).Returns(targetRole);
+        _repository.UpdateGroupRoleAsync(targetId, groupId, Arg.Any<GroupRole>(), Arg.Any<CancellationToken>())
+            .Returns(targetRole != null);
         _groupService.CountMembersWithRoleAsync(groupId, GroupRole.Admin, Arg.Any<CancellationToken>()).Returns(admins);
     }
 
-    private async Task AssertNothingWrittenAsync() =>
+    private async Task AssertNothingWrittenAsync()
+    {
+        await _repository.DidNotReceive().UpdateGroupRoleAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<GroupRole>(), Arg.Any<CancellationToken>());
         await _repository.DidNotReceive().SetGroupRoleAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<GroupRole>());
+    }
 
     [Theory]
     [InlineData(GroupRole.Admin, GroupRole.DungeonMaster)]
@@ -167,7 +172,7 @@ public class UserServiceTests
         var result = await _sut.ChangeMemberRoleAsync(1, actingUserId: 99, targetUserId: 7, GroupRole.DungeonMaster, TestContext.Current.CancellationToken);
 
         result.Should().Be(MemberChangeOutcome.Changed);
-        await _repository.Received(1).SetGroupRoleAsync(7, 1, GroupRole.DungeonMaster);
+        await _repository.Received(1).UpdateGroupRoleAsync(7, 1, GroupRole.DungeonMaster, Arg.Any<CancellationToken>());
     }
 
     [Theory]
@@ -182,7 +187,7 @@ public class UserServiceTests
         var result = await _sut.ChangeMemberRoleAsync(1, actingUserId: 99, targetUserId: 7, requested, TestContext.Current.CancellationToken);
 
         result.Should().Be(MemberChangeOutcome.Changed);
-        await _repository.Received(1).SetGroupRoleAsync(7, 1, requested);
+        await _repository.Received(1).UpdateGroupRoleAsync(7, 1, requested, Arg.Any<CancellationToken>());
         await _groupService.DidNotReceive().CountMembersWithRoleAsync(Arg.Any<int>(), Arg.Any<GroupRole>(), Arg.Any<CancellationToken>());
     }
 
@@ -205,6 +210,20 @@ public class UserServiceTests
 
         result.Should().Be(MemberChangeOutcome.NotAMember);
         await AssertNothingWrittenAsync();
+    }
+
+    // The person was on the board when the role was read but was removed before the change was saved. The update finds
+    // no row, so the answer is NotAMember and the membership is never created again.
+    [Fact]
+    public async Task ChangeMemberRoleAsync_WhenTheMembershipIsRemovedBeforeTheWrite_ReturnsNotAMemberAndNeverReAdds()
+    {
+        GivenBoard(1, 7, GroupRole.DungeonMaster, admins: 2);
+        _repository.UpdateGroupRoleAsync(7, 1, GroupRole.Admin, Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _sut.ChangeMemberRoleAsync(1, actingUserId: 99, targetUserId: 7, GroupRole.Admin, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.NotAMember);
+        await _repository.DidNotReceive().SetGroupRoleAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<GroupRole>());
     }
 
     [Fact]

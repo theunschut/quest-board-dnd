@@ -120,6 +120,28 @@ internal class UserRepository(QuestBoardContext dbContext, IMapper mapper, IActi
     }
 
     /// <inheritdoc/>
+    public async Task<bool> UpdateGroupRoleAsync(int userId, int groupId, GroupRole role, CancellationToken token = default)
+    {
+        var ug = await DbContext.UserGroups
+            .FirstOrDefaultAsync(ug => ug.UserId == userId && ug.GroupId == groupId, token);
+        if (ug == null) return false;
+
+        ug.GroupRole = (int)role;
+        try
+        {
+            await DbContext.SaveChangesAsync(token);
+            return true;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // The row was deleted between the read and the save, so the update touched nothing. Stop tracking the
+            // stale row so a later save in this scope does not try the same update again.
+            DbContext.Entry(ug).State = EntityState.Detached;
+            return false;
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<IReadOnlySet<int>> GetUserIdsAdministeringOtherGroupsAsync(IReadOnlyCollection<int> userIds, int groupId, CancellationToken token = default)
     {
         if (userIds.Count == 0) return new HashSet<int>();
