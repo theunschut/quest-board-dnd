@@ -2454,7 +2454,7 @@ Plans:
 **Goal:** A failed request (404, 403, 500 and other status codes) shows an error page styled in the existing theme instead of the bare default, with three actions: go back, go to the home page (`/`), and log out and return to the login page. Prompted by the operator: following a link to something on a board other than the active one currently ends on a plain 404 (see the phase 99 deferred cross-board link switch).
 **Requirements**: TBD
 **Depends on:** Phase 102; executes only after Phase 100 has finished in this checkout (103-01 checks it)
-**Plans:** 6/18 plans executed
+**Plans:** 7/18 plans executed
 
 Plans:
 
@@ -2486,7 +2486,7 @@ Planning record: no requirement IDs are mapped, so CONTEXT decisions D-01..D-19 
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 103-07-PLAN.md — Board-aware resolver through both callers: an access level and page per registry route (still 18), role and page narrowing with the SuperAdmin flag, the leak's board-level facts enabled, the facts that break rewritten in the same commit
+- [x] 103-07-PLAN.md — Board-aware resolver through both callers: an access level and page per registry route (still 18), role and page narrowing with the SuperAdmin flag, the leak's board-level facts enabled, the facts that break rewritten in the same commit
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
