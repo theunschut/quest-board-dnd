@@ -60,6 +60,12 @@ public class ErrorPagesGuardTests
         "QuestBoard.IntegrationTests/Helpers/ErrorPageComparison.cs",
         "QuestBoard.IntegrationTests/Controllers/AccountControllerIntegrationTests.cs",
         "QuestBoard.IntegrationTests/Controllers/GroupSessionMiddlewareIntegrationTests.cs",
+        "QuestBoard.IntegrationTests/Helpers/CapturingLoggerProvider.cs",
+        "QuestBoard.IntegrationTests/Helpers/ThrowingServicesWebApplicationFactory.cs",
+        "QuestBoard.IntegrationTests/Tests/ErrorPageServerErrorTests.cs",
+        "QuestBoard.IntegrationTests/Tests/ErrorPageRateLimitTests.cs",
+        "QuestBoard.IntegrationTests/Tests/ErrorPageFallbackLayoutTests.cs",
+        "docs/server-setup.md",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it
@@ -110,8 +116,10 @@ public class ErrorPagesGuardTests
         var gate = program.IndexOf("app.UseMiddleware<ErrorPageGateMiddleware>();", StringComparison.Ordinal);
         var routing = program.IndexOf("app.UseRouting();", StringComparison.Ordinal);
         var exceptionHandler = program.IndexOf("app.UseExceptionHandler(", StringComparison.Ordinal);
+        var handlerOptions = program.IndexOf("ExceptionHandlingPath = \"/Error\"", StringComparison.Ordinal);
+        var freshScope = program.IndexOf("CreateScopeForErrors = true", StringComparison.Ordinal);
 
-        new[] { staticFiles, statusPages, gate, routing, exceptionHandler }.Should().OnlyContain(i => i >= 0);
+        new[] { staticFiles, statusPages, gate, routing, exceptionHandler, handlerOptions, freshScope }.Should().OnlyContain(i => i >= 0);
         statusPages.Should().BeGreaterThan(staticFiles, "status pages answer for the files the static-file middleware does not serve");
         gate.Should().BeGreaterThan(statusPages, "the gate flips the feature the status pages middleware created");
         statusPages.Should().BeLessThan(routing, "the re-executed request must be routed again");
@@ -122,6 +130,10 @@ public class ErrorPagesGuardTests
         var blockEnd = BlockEnd(program, blockStart);
 
         exceptionHandler.Should().BeInRange(blockStart, blockEnd, "the exception handler belongs to the not-Development block");
+        handlerOptions.Should().BeInRange(blockStart, blockEnd, "the handler's endpoint is set where the handler is registered");
+        freshScope.Should().BeInRange(blockStart, blockEnd, "the handler's fresh scope is set where the handler is registered");
+        program.Should().NotContain("UseExceptionHandler(\"/Error\")", "a bare path form would run the page in the failed request's scope");
+        program.Should().NotContain("UseDeveloperExceptionPage", "the developer page stays the host's Development answer");
         statusPages.Should().NotBeInRange(blockStart, blockEnd, "status pages run in every environment, Development included");
         gate.Should().NotBeInRange(blockStart, blockEnd, "the gate runs wherever the status pages run");
     }
