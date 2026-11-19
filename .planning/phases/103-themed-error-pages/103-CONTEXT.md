@@ -206,3 +206,13 @@ any new alerting on errors.
 
 *Phase: 103-themed-error-pages*
 *Context gathered: 2026-11-18*
+
+## Operator answers at execution
+
+- logScopes: env (operator, 2026-11-19), amends D-12 and D-13: the 500 Reference is found in the journal only where `Logging__Console__IncludeScopes=true` is set (CT 102 through a systemd drop-in the operator adds, the Docker self-host path only if its operator sets it too), with no code change and no new log line.
+  Applied by the operator on 2026-11-19 as the systemd drop-in `20-log-scopes.conf` on CT 102 and verified read-only afterwards (the setting shows in `systemctl show`, the service restarted on 6.5.0 and `/` answered 200).
+- accessDeniedStatus: 403 (operator, 2026-11-19): the AccessDenied page answers status 403; the URL and the cookie path stay.
+- preGate1Structural: yes (operator, 2026-11-19), the operator's reading of D-19: the server slices may ship the structural error page with shared classes only (no error.css, error.mobile.css, error-actions.js, own styling or chrome) before Gate 1.
+- pageGateCounts: yes (operator, 2026-11-19): a deep link to a board that does not offer that page counts as a refusal and does not switch the board.
+- superAdminAsMember: yes (operator, 2026-11-19): the reused SuperAdmin test account is added as a Player of the two P103 One-Shot boards so the SuperAdmin-member switch is proven live.
+- contactToggle: dm-tier (settled, 2026-11-19): a Dungeon Master or Admin of the target board is entitled to know hidden contacts exist; the per-session show-hidden toggle only filters their own list, and modelling it would put session state into the Domain resolver.

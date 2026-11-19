@@ -2454,7 +2454,7 @@ Plans:
 **Goal:** A failed request (404, 403, 500 and other status codes) shows an error page styled in the existing theme instead of the bare default, with three actions: go back, go to the home page (`/`), and log out and return to the login page. Prompted by the operator: following a link to something on a board other than the active one currently ends on a plain 404 (see the phase 99 deferred cross-board link switch).
 **Requirements**: TBD
 **Depends on:** Phase 102; executes only after Phase 100 has finished in this checkout (103-01 checks it)
-**Plans:** 18 plans
+**Plans:** 1/18 plans executed
 
 Plans:
 
@@ -2462,7 +2462,7 @@ Planning record: no requirement IDs are mapped, so CONTEXT decisions D-01..D-19 
 
 **Wave 1**
 
-- [ ] 103-01-PLAN.md — Opening operator checkpoint: phase 100 finished in this checkout, SQL Server at 1433 up, ports 8350/8351, p103 fixtures approved, server-rule answers (page gate, Contacts toggle, AccessDenied status) and the logging choice; scratch root from the phase 100 tools with email suppression forced; anonymous capture tracer; overlap anchors re-read; begin-phase
+- [x] 103-01-PLAN.md — Opening operator checkpoint: phase 100 finished in this checkout, SQL Server at 1433 up, ports 8350/8351, p103 fixtures approved, server-rule answers (page gate, Contacts toggle, AccessDenied status) and the logging choice; scratch root from the phase 100 tools with email suppression forced; anonymous capture tracer; overlap anchors re-read; begin-phase
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
