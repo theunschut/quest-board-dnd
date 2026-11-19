@@ -2454,7 +2454,7 @@ Plans:
 **Goal:** A failed request (404, 403, 500 and other status codes) shows an error page styled in the existing theme instead of the bare default, with three actions: go back, go to the home page (`/`), and log out and return to the login page. Prompted by the operator: following a link to something on a board other than the active one currently ends on a plain 404 (see the phase 99 deferred cross-board link switch).
 **Requirements**: TBD
 **Depends on:** Phase 102; executes only after Phase 100 has finished in this checkout (103-01 checks it)
-**Plans:** 1/18 plans executed
+**Plans:** 2/18 plans executed
 
 Plans:
 
@@ -2466,7 +2466,7 @@ Planning record: no requirement IDs are mapped, so CONTEXT decisions D-01..D-19 
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 103-02-PLAN.md — p103 fixtures through the app's forms (three P103 boards, four p103 accounts, hidden and visible records on the target board), nothing existing changed
+- [x] 103-02-PLAN.md — p103 fixtures through the app's forms (three P103 boards, four p103 accounts, hidden and visible records on the target board), nothing existing changed
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
