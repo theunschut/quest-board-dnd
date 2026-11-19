@@ -37,8 +37,9 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
         // Reminder rows and a follow-up quest point at this quest with no cascade, so the database refuses the
         // delete while they exist. The rows are selected by this quest's id alone, past the board filter: a
         // follow-up often lives on another board and must keep its place, and the reminder rows follow the quest
-        // wherever it is. Everything is a tracked change saved together with the quest, so the delete either
-        // happens whole or not at all.
+        // wherever it is. Everything here is a tracked change saved together with the quest in one save. The
+        // quest's signups are removed by the caller beforehand in their own saves, so a refusal here leaves them
+        // deleted.
         var reminderLogs = await DbContext.ReminderLogs
             .IgnoreQueryFilters()
             .Where(r => r.QuestId == entity.Id)
