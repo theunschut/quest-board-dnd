@@ -165,8 +165,14 @@ builder.Services.AddRateLimiter(options =>
     options.OnRejected = async (context, cancellationToken) =>
     {
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-        await context.HttpContext.Response.WriteAsync(
-            "Too many requests. Please try again later.", cancellationToken);
+
+        // A browser navigation gets the themed page from the status-code pages middleware, which
+        // only renders over a response with no body; every other caller keeps the plain sentence.
+        if (!BrowserNavigation.IsDocumentNavigation(context.HttpContext.Request))
+        {
+            await context.HttpContext.Response.WriteAsync(
+                "Too many requests. Please try again later.", cancellationToken);
+        }
     };
 });
 
@@ -344,7 +350,13 @@ app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error");
+    // The error page runs in a fresh scope: a request whose save failed leaves its own database
+    // context unusable, and the page must not share it.
+    app.UseExceptionHandler(new ExceptionHandlerOptions
+    {
+        ExceptionHandlingPath = "/Error",
+        CreateScopeForErrors = true
+    });
     app.UseHsts();
 }
 

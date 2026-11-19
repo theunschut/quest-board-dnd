@@ -37,7 +37,10 @@ public class ErrorController(ILogger<ErrorController> logger) : Controller
             isAuthenticated,
             backHref: BrowserNavigation.SameSiteLocalReferer(Request),
             showSwitchBoard: status == 404 && isAuthenticated && await ViewerBelongsToSeveralBoardsAsync(),
-            loginReturnUrl: isAuthenticated ? null : LocalReturnUrl(status));
+            loginReturnUrl: isAuthenticated ? null : LocalReturnUrl(status),
+            // The id the hosting layer logs as RequestId, so a quoted reference can be found in the
+            // service log. Nothing from the exception itself is read.
+            reference: status == 500 ? HttpContext.TraceIdentifier : null);
         return View("ErrorPage", model);
     }
 

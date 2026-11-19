@@ -39,12 +39,19 @@ public class ErrorPageViewModel
     /// </summary>
     public string? LoginReturnUrl { get; init; }
 
+    /// <summary>
+    /// The request's trace identifier, set on the 500 page only so a member can quote it and the service
+    /// log can be searched for it. Nothing about the exception itself ever goes into the model.
+    /// </summary>
+    public string? Reference { get; init; }
+
     public static ErrorPageViewModel For(
         int statusCode,
         bool isAuthenticated,
         string? backHref = null,
         bool showSwitchBoard = false,
-        string? loginReturnUrl = null)
+        string? loginReturnUrl = null,
+        string? reference = null)
     {
         var (variant, heading, sentence) = statusCode switch
         {
@@ -77,6 +84,7 @@ public class ErrorPageViewModel
             BackHref = backHref,
             ShowSwitchBoard = showSwitchBoard,
             LoginReturnUrl = loginReturnUrl,
+            Reference = statusCode == 500 ? reference : null,
         };
     }
 }

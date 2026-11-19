@@ -67,11 +67,19 @@ EmailSettings__SmtpUsername=<GMAIL_ADDRESS>
 EmailSettings__SmtpPassword=<GMAIL_APP_PASSWORD>
 EmailSettings__FromEmail=<FROM_EMAIL>
 ReverseProxy__KnownProxies__0=<TRAEFIK_CT_IP>
+Logging__Console__IncludeScopes=true
 EOF
 
 chmod 600 /etc/questboard/env
 chown questboard:questboard /etc/questboard/env
 ```
+
+`Logging__Console__IncludeScopes=true` makes each line in the service log carry its request id. The error page
+shows a member a "Reference" for an unexpected failure; it is that request id, so
+`journalctl -u questboard | grep <reference>` finds the failure that member hit. Without the setting the default
+console format leaves the request id out of the log and a quoted reference cannot be matched to a log line. On the
+Docker self-host path set the same variable in the `environment` list of the `questboard` service in
+`docker-compose.yml`, then recreate the container.
 
 ### Create the systemd service
 
