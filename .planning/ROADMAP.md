@@ -2454,7 +2454,7 @@ Plans:
 **Goal:** A failed request (404, 403, 500 and other status codes) shows an error page styled in the existing theme instead of the bare default, with three actions: go back, go to the home page (`/`), and log out and return to the login page. Prompted by the operator: following a link to something on a board other than the active one currently ends on a plain 404 (see the phase 99 deferred cross-board link switch).
 **Requirements**: TBD
 **Depends on:** Phase 102; executes only after Phase 100 has finished in this checkout (103-01 checks it)
-**Plans:** 4/18 plans executed
+**Plans:** 5/18 plans executed
 
 Plans:
 
@@ -2478,7 +2478,7 @@ Planning record: no requirement IDs are mapped, so CONTEXT decisions D-01..D-19 
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 103-05-PLAN.md — Actions: Go back (same-site Referer), Home, Log out ending on login (Logout toLogin), Log in with a local return URL, Switch board for two or more boards; HEAD, POST, no-store, no active board, 409; the comparison helper
+- [x] 103-05-PLAN.md — Actions: Go back (same-site Referer), Home, Log out ending on login (Logout toLogin), Log in with a local return URL, Switch board for two or more boards; HEAD, POST, no-store, no active board, 409; the comparison helper
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
