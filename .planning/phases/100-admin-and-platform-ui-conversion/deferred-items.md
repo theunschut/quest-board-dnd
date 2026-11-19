@@ -57,3 +57,18 @@ The final sweep (every manifest row under both User-Agents, the accessibility ba
 | 16 | By design, kept from earlier Gate 1 and planner answers: the phone Admin/Platform lists show display names only (Q-86), the phone Quests list has no description or DM email (Q-89, Q-90), the phone empty-state sentences differ from desktop (Q-94) | Info | Recorded decisions, not defects | findings-trace.json statuses `recorded` |
 | 17 | The throwaway account `P100 Audit Throwaway Member` created for the click-throughs stays as a disabled p100 account with no board membership (an account cannot be deleted through the app) | Info (fixture hygiene) | Clearly named, on no board; the throwaway quests and memberships were removed | none |
 | 18 | The sweep's `focus` action drops focus before the full-page capture, so `admin-users-focus-refused.png` does not show the ring; the one-frame-per-kind probe (`focus-frames/`) shows it on every kind, including a refused button | Info (harness) | Not an app defect | none |
+
+## Gate 2 answers (100-23)
+
+The operator answered the Gate 2 sheet (v1) in chat: every text change t1 to t17, the pairs, the findings and the inherited questions approved, the fixtures kept, and each exception or decision answered as follows.
+
+| # | Item | Gate 2 entry | Answer |
+|---|------|--------------|--------|
+| 7 | Group/Delete help line contrast (4.25:1 at the lightest possible pixel) | `A100-board-delete-help` (e1) | Accepted as it is |
+| 8 | Group/Delete heading order (h1 then h3) | `A100-delete-heading-skip` (e5) | Fixed: the three section headings of the delete body are h2 (commit 37fe6df0); the page reads h1 then h2 on both layouts and a render fact pins it. Closed |
+| 9 | White switch knob on the gold track | `A100-switch-knob` (e2) | Accepted as it is |
+| 10 | Group/Index Delete wrap and Members Email wrap at 1440 | `A100-wraps-1440` (e3) | Accepted as they are |
+| 11 | Toast Close button 21 px on desktop | `A100-toast-close-21px` (e4) | Accepted (inherited, shared partial) |
+| 12 | No submit lock on four admin forms | `D100-no-submit-lock` (d1) | Accepted as at the baseline |
+| 13 | EmailStats persistent alert box | `D100-emailstats-alert` (d2) | Accepted |
+| 6 | `QuestService.RemoveAsync` separate signup saves | `D100-questservice-removeasync` (d3) | Accepted as an older residual; stays open for a later review |
