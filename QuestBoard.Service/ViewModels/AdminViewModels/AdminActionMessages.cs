@@ -30,6 +30,16 @@ public static class AdminActionMessages
     public static string AddedToGroup(string name, GroupRole role) =>
         $"{name} has been added to the group as {AdminPlatformDisplay.GroupRoleName(role)}. A notification email has been sent.";
 
+    /// <summary>The sentence added to a Success toast when the account was changed but its hourly share of emails was spent.</summary>
+    public const string EmailSkippedRateLimited = "No email was sent, because too many emails were sent to this account recently.";
+
+    /// <summary>
+    /// Shown after an existing account was added to the board while its hourly share of emails was already spent: the
+    /// person is on the board, but nobody was emailed.
+    /// </summary>
+    public static string AddedToGroupEmailNotSent(string name, GroupRole role) =>
+        $"{name} has been added to the group as {AdminPlatformDisplay.GroupRoleName(role)}. {EmailSkippedRateLimited}";
+
     /// <summary>Shown after a member was removed from the board; the account itself and its other boards are untouched.</summary>
     public static string MemberRemoved(string name) => $"{name} was removed from the group.";
 

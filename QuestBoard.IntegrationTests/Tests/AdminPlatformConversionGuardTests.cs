@@ -128,6 +128,7 @@ public class AdminPlatformConversionGuardTests
         "QuestBoard.Service/Views/Admin/EmailStats.cshtml",
         "QuestBoard.IntegrationTests/Controllers/BoardPageGateMatrixTests.cs",
         "QuestBoard.IntegrationTests/Tests/LinkedBoardStaticGuardTests.cs",
+        "QuestBoard.IntegrationTests/Controllers/AddedMemberMailBudgetTests.cs",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it

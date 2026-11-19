@@ -16,6 +16,7 @@ using QuestBoard.Service.ViewModels.AdminViewModels;
 using QuestBoard.Service.ViewModels.PlatformViewModels;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 
 namespace QuestBoard.Service.Areas.Platform.Controllers;
 
@@ -27,7 +28,8 @@ public class GroupController(
     IIdentityService identityService,
     IBackgroundJobClient jobClient,
     IBoardPageSettingsService boardPageSettingsService,
-    ILogger<GroupController> logger) : Controller
+    ILogger<GroupController> logger,
+    PartitionedRateLimiter<int> emailResendLimiter) : Controller
 {
     private const string ConcurrencyMessage = "Someone else changed this board while you were editing. Reload the page and try again.";
 
@@ -310,6 +312,15 @@ public class GroupController(
         });
     }
 
+    // An added account already exists, so its mail shares that person's hourly budget with the resend and email-change
+    // buttons. A spent budget never refuses the add: the person joins the board, only the mail is skipped, and the
+    // toast says so. A fixed-window permit counts as soon as it is granted, so the lease is released at once.
+    private bool TryTakeAddedMemberMailPermit(int userId)
+    {
+        using var lease = emailResendLimiter.AttemptAcquire(userId);
+        return lease.IsAcquired;
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddMember(int id, AddMemberViewModel model, string? search, string? memberSearch)
@@ -342,6 +353,12 @@ public class GroupController(
         {
             case CreateOrAddToGroupOutcome.AddedToGroup:
                 {
+                    if (!TryTakeAddedMemberMailPermit(result.UserId!.Value))
+                    {
+                        TempData["Success"] = AdminActionMessages.AddedToGroupEmailNotSent(result.Name, model.Role);
+                        return RedirectToAction(nameof(Members), new { id, search, memberSearch });
+                    }
+
                     // Existing user added to a group they weren't in — notify them by email.
                     var loginUrl = Url.Action("Login", "Account", null, Request.Scheme);
                     if (loginUrl == null)
@@ -357,6 +374,12 @@ public class GroupController(
 
             case CreateOrAddToGroupOutcome.AddedToGroupStrandedAccount:
                 {
+                    if (!TryTakeAddedMemberMailPermit(result.UserId!.Value))
+                    {
+                        TempData["Success"] = AdminActionMessages.AddedToGroupEmailNotSent(result.Name, model.Role);
+                        return RedirectToAction(nameof(Members), new { id, search, memberSearch });
+                    }
+
                     // Account was never confirmed — send a welcome email with a set-password link instead.
                     var rawToken = await identityService.GeneratePasswordResetTokenForUserAsync(result.UserId!.Value);
                     if (rawToken != null)
@@ -431,6 +454,12 @@ public class GroupController(
 
             case CreateOrAddToGroupOutcome.AddedToGroup:
                 {
+                    if (!TryTakeAddedMemberMailPermit(result.UserId!.Value))
+                    {
+                        TempData["Success"] = AdminActionMessages.AddedToGroupEmailNotSent(result.Name, model.GroupRole);
+                        return RedirectToAction(nameof(Members), new { id, search, memberSearch });
+                    }
+
                     var loginUrl = Url.Action("Login", "Account", null, Request.Scheme);
                     if (loginUrl == null)
                         // userId is a database-internal integer identifier, not personal data — despite
@@ -445,6 +474,12 @@ public class GroupController(
 
             case CreateOrAddToGroupOutcome.AddedToGroupStrandedAccount:
                 {
+                    if (!TryTakeAddedMemberMailPermit(result.UserId!.Value))
+                    {
+                        TempData["Success"] = AdminActionMessages.AddedToGroupEmailNotSent(result.Name, model.GroupRole);
+                        return RedirectToAction(nameof(Members), new { id, search, memberSearch });
+                    }
+
                     var rawToken = await identityService.GeneratePasswordResetTokenForUserAsync(result.UserId!.Value);
                     if (rawToken != null)
                     {

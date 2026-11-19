@@ -171,12 +171,14 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // Rate-limit the repeatable manual admin email-send buttons (SendConfirmationEmail,
-// EditUser's email-change branch), partitioned per TARGET userId so no single recipient's inbox is
+// EditUser's email-change branch) and the mail sent when an existing account is added to a board (Create User
+// by address, the platform Add Member and Create New User), partitioned per TARGET userId so no single recipient's inbox is
 // spammed regardless of which admin triggers it. This is a singleton PartitionedRateLimiter<int>
 // consumed via AttemptAcquire in AdminController — NOT an AddRateLimiter policy, because userId/Id
 // are POST form fields (not route values) and the policy-factory path runs before MVC model binding.
 // 3 requests / 1 hour per target user, key "email-resend:{userId}".
-// CreateUser's welcome email is exempt from this per-target limiter; it has its own per-administrator limit below.
+// A spent budget skips only the mail of an add, never the add itself. The welcome email for a brand-new account is
+// exempt from this per-target limiter; CreateUser has its own per-administrator limit below.
 builder.Services.AddSingleton(_ => PartitionedRateLimiter.Create<int, string>(userId =>
     RateLimitPartition.GetFixedWindowLimiter(
         partitionKey: $"email-resend:{userId}",

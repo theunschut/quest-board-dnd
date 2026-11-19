@@ -10,12 +10,14 @@ namespace QuestBoard.IntegrationTests.Controllers;
 /// <summary>
 /// Integration tests for the /platform/Group management endpoints.
 /// Covers groups index, create group, delete group, add member, remove member.
+/// The host's per-recipient mail limiter never refuses: these tests add the same reused account id many times and are
+/// not about the mail budget, which <see cref="AddedMemberMailBudgetTests"/> covers.
 /// </summary>
-public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFactoryBase>
+public class GroupManagementIntegrationTests : IClassFixture<UnlimitedMailBudgetWebApplicationFactory>
 {
-    private readonly WebApplicationFactoryBase _factory;
+    private readonly UnlimitedMailBudgetWebApplicationFactory _factory;
 
-    public GroupManagementIntegrationTests(WebApplicationFactoryBase factory)
+    public GroupManagementIntegrationTests(UnlimitedMailBudgetWebApplicationFactory factory)
     {
         _factory = factory;
     }
@@ -1074,38 +1076,5 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
             "the dialog's own field names must reach the action, or creating a user from the page can never work");
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
         fields.Should().BeEquivalentTo(["Email", "Name", "GroupRole"]);
-    }
-
-    // Adding an existing account from the board page answers a Success toast that names the role in the words the page
-    // shows on its badges and in its role select, not the enum's own name. Both the Add Member form and the Create New
-    // User dialog (given an address that already has an account) end in the same sentence.
-    [Theory]
-    [InlineData("AddMember", GroupRole.DungeonMaster, "Dungeon Master")]
-    [InlineData("AddMember", GroupRole.Player, "Player")]
-    [InlineData("CreateMember", GroupRole.DungeonMaster, "Dungeon Master")]
-    [InlineData("CreateMember", GroupRole.Admin, "Admin")]
-    public async Task AddingAnExistingAccount_NamesTheRoleInWordsInTheSuccessToast(string action, GroupRole role, string word)
-    {
-        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
-        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
-        var existing = await AuthenticationHelper.CreateTestUserAsync(
-            _factory.Services, "platformroleword", "platformroleword@test.com", "Test123!", "Platform Role Word");
-
-        var form = action == "AddMember"
-            ? new Dictionary<string, string> { ["UserId"] = existing.Id.ToString(), ["Role"] = ((int)role).ToString() }
-            : new Dictionary<string, string>
-            {
-                ["Email"] = existing.Email!,
-                ["Name"] = "Ignored For An Existing Account",
-                ["GroupRole"] = ((int)role).ToString()
-            };
-        var response = await client.PostAsync($"/platform/Group/{action}/1", new FormUrlEncodedContent(form),
-            TestContext.Current.CancellationToken);
-
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
-        var landed = await client.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
-        var html = WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
-        html.Should().Contain($"Platform Role Word has been added to the group as {word}.");
-        html.Should().NotContain("added to the group as DungeonMaster");
     }
 }

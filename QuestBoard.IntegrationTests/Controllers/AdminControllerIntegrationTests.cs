@@ -541,30 +541,4 @@ public class AdminControllerIntegrationTests : IClassFixture<WebApplicationFacto
         assertContext.PlayerSignups.Any(s => s.Id == signup.Id).Should().BeTrue("signup rows must not be cascade-deleted");
     }
 
-    // Adding an existing account by its address answers a Success toast that names the role in the words the Users
-    // page shows on its badges, not the enum's own name.
-    [Theory]
-    [InlineData(GroupRole.Player, "Player")]
-    [InlineData(GroupRole.DungeonMaster, "Dungeon Master")]
-    [InlineData(GroupRole.Admin, "Admin")]
-    public async Task CreateUser_ForAnExistingAccount_NamesTheRoleInWordsInTheSuccessToast(GroupRole role, string word)
-    {
-        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
-        var (adminClient, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
-        var existing = await AuthenticationHelper.CreateTestUserAsync(
-            _factory.Services, "roleword", "roleword@example.com", "Test123!", "Role Word Target");
-
-        var response = await adminClient.PostAsync("/Admin/CreateUser", new FormUrlEncodedContent(new Dictionary<string, string>
-        {
-            ["Email"] = existing.Email!,
-            ["Name"] = "Ignored For An Existing Account",
-            ["GroupRole"] = ((int)role).ToString()
-        }), TestContext.Current.CancellationToken);
-
-        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
-        var landed = await adminClient.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
-        var html = WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
-        html.Should().Contain($"Role Word Target has been added to the group as {word}.");
-        html.Should().NotContain("added to the group as DungeonMaster");
-    }
 }

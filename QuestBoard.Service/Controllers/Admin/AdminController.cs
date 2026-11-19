@@ -148,6 +148,9 @@ public class AdminController(IUserService userService, IQuestService questServic
 
             case CreateOrAddToGroupOutcome.AddedToGroup:
                 {
+                    if (!TryTakeAddedMemberMailPermit(result.UserId!.Value))
+                        return this.RedirectWithSuccess(nameof(Users), AdminActionMessages.AddedToGroupEmailNotSent(result.Name, model.GroupRole));
+
                     var group = await groupService.GetByIdAsync(groupId.Value);
                     var loginUrl = Url.Action("Login", "Account", null, Request.Scheme);
                     if (loginUrl == null || group == null)
@@ -162,7 +165,10 @@ public class AdminController(IUserService userService, IQuestService questServic
 
             case CreateOrAddToGroupOutcome.AddedToGroupStrandedAccount:
                 {
-                    var rawToken = await identityService.GeneratePasswordResetTokenForUserAsync(result.UserId!.Value);
+                    if (!TryTakeAddedMemberMailPermit(result.UserId!.Value))
+                        return this.RedirectWithSuccess(nameof(Users), AdminActionMessages.AddedToGroupEmailNotSent(result.Name, model.GroupRole));
+
+                    var rawToken = await identityService.GeneratePasswordResetTokenForUserAsync(result.UserId.Value);
                     if (rawToken != null)
                     {
                         var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(rawToken));
@@ -193,6 +199,15 @@ public class AdminController(IUserService userService, IQuestService questServic
 
                 return View(model);
         }
+    }
+
+    // An added account already exists, so its mail shares that person's hourly budget with the resend and email-change
+    // buttons. A spent budget never refuses the add: the person joins the board, only the mail is skipped, and the
+    // toast says so. A fixed-window permit counts as soon as it is granted, so the lease is released at once.
+    private bool TryTakeAddedMemberMailPermit(int userId)
+    {
+        using var lease = emailResendLimiter.AttemptAcquire(userId);
+        return lease.IsAcquired;
     }
 
     [HttpGet]
