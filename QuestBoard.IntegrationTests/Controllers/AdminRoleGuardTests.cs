@@ -363,6 +363,34 @@ public class AdminRoleGuardTests : IClassFixture<WebApplicationFactoryBase>
         (await RoleOnBoardAsync(member.Id)).Should().BeNull("a role change must never re-create a removed membership");
     }
 
+    // The removal lands after the update has read and changed the tracked row but before its save reaches the store,
+    // so the save itself finds the row gone. The update must answer false rather than throw or re-create the row.
+    [Fact]
+    public async Task RoleChange_WhoseRowIsRemovedDuringTheSave_AnswersFalse_AndDoesNotPutThePersonBack()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var member = await SeedMemberAsync("savedrace", GroupRole.Player);
+
+        using var roleChangeScope = _factory.Services.CreateScope();
+        var context = roleChangeScope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        var repository = roleChangeScope.ServiceProvider.GetRequiredService<QuestBoard.Domain.Interfaces.IUserRepository>();
+
+        var removalsDuringSave = 0;
+        context.SavingChanges += (_, _) =>
+        {
+            removalsDuringSave++;
+            using var removalScope = _factory.Services.CreateScope();
+            var groupService = removalScope.ServiceProvider.GetRequiredService<QuestBoard.Domain.Interfaces.IGroupService>();
+            groupService.RemoveMemberAsync(1, member.Id, CancellationToken.None).GetAwaiter().GetResult();
+        };
+
+        var updated = await repository.UpdateGroupRoleAsync(member.Id, 1, GroupRole.Admin, TestContext.Current.CancellationToken);
+
+        removalsDuringSave.Should().Be(1, "the removal must have raced the update's own save");
+        updated.Should().BeFalse("the row the update changed was deleted before its save landed");
+        (await RoleOnBoardAsync(member.Id)).Should().BeNull("a role change must never re-create a removed membership");
+    }
+
     [Fact]
     public async Task UpdateGroupRole_ForAnExistingMember_StillChangesTheRole()
     {
