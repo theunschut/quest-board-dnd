@@ -187,4 +187,24 @@ public class CrossBoardRouteTargetTests
         target!.Kind.Should().Be(CrossBoardLookupKind.Quest);
         target.Id.Should().Be(42);
     }
+
+    [Fact]
+    public void QuestEdit_BothParsersCarryTheOwnerOrAdminAccessAndTheQuestsPage()
+    {
+        CrossBoardRouteTarget.TryFromLocalUrl("/Quest/Edit/5", out var fromUrl).Should().BeTrue();
+
+        var context = new DefaultHttpContext();
+        context.Request.RouteValues["controller"] = "Quest";
+        context.Request.RouteValues["action"] = "Edit";
+        context.Request.RouteValues["id"] = "5";
+        CrossBoardRouteTarget.TryFromRouteValues(context, out var fromRoute).Should().BeTrue();
+
+        foreach (var target in new[] { fromUrl!, fromRoute! })
+        {
+            target.Kind.Should().Be(CrossBoardLookupKind.Quest);
+            target.Id.Should().Be(5);
+            target.Access.Should().Be(CrossBoardAccess.QuestOwnerOrAdmin);
+            target.Page.Should().Be(BoardPage.Quests);
+        }
+    }
 }

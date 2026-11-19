@@ -47,6 +47,17 @@ public class CrossBoardLinkRegistryTests
     }
 
     [Fact]
+    public void TryGetRouteEntry_QuestEdit_ResolvesToQuestKindOwnerOrAdminAccessAndTheQuestsPage()
+    {
+        var found = CrossBoardLinkRegistry.TryGetRouteEntry(null, "Quest", "Edit", out var entry);
+
+        found.Should().BeTrue();
+        entry.Kind.Should().Be(CrossBoardLookupKind.Quest);
+        entry.Access.Should().Be(CrossBoardAccess.QuestOwnerOrAdmin);
+        entry.Page.Should().Be(BoardPage.Quests);
+    }
+
+    [Fact]
     public void RegisteredRoutes_HasExactly18Entries()
     {
         CrossBoardLinkRegistry.RegisteredRoutes.Should().HaveCount(18);
