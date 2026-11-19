@@ -351,7 +351,7 @@ public class GroupController(
                     else
                         jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, model.Role.ToString(), loginUrl, CancellationToken.None));
 
-                    TempData["Success"] = $"{result.Name} has been added to the group as {model.Role}. A notification email has been sent.";
+                    TempData["Success"] = AdminActionMessages.AddedToGroup(result.Name, model.Role);
                     return RedirectToAction(nameof(Members), new { id, search, memberSearch });
                 }
 
@@ -374,7 +374,7 @@ public class GroupController(
                         }
                     }
 
-                    TempData["Success"] = $"{result.Name} has been added to the group as {model.Role}. A notification email has been sent.";
+                    TempData["Success"] = AdminActionMessages.AddedToGroup(result.Name, model.Role);
                     return RedirectToAction(nameof(Members), new { id, search, memberSearch });
                 }
 
@@ -439,7 +439,7 @@ public class GroupController(
                     else
                         jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, model.GroupRole.ToString(), loginUrl, CancellationToken.None));
 
-                    TempData["Success"] = $"{result.Name} has been added to the group as {model.GroupRole}. A notification email has been sent.";
+                    TempData["Success"] = AdminActionMessages.AddedToGroup(result.Name, model.GroupRole);
                     return RedirectToAction(nameof(Members), new { id, search, memberSearch });
                 }
 
@@ -461,7 +461,7 @@ public class GroupController(
                         }
                     }
 
-                    TempData["Success"] = $"{result.Name} has been added to the group as {model.GroupRole}. A notification email has been sent.";
+                    TempData["Success"] = AdminActionMessages.AddedToGroup(result.Name, model.GroupRole);
                     return RedirectToAction(nameof(Members), new { id, search, memberSearch });
                 }
 

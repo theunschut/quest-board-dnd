@@ -157,7 +157,7 @@ public class AdminController(IUserService userService, IQuestService questServic
                     else
                         jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, model.GroupRole.ToString(), loginUrl, CancellationToken.None));
 
-                    return this.RedirectWithSuccess(nameof(Users), $"{result.Name} has been added to the group as {model.GroupRole}. A notification email has been sent.");
+                    return this.RedirectWithSuccess(nameof(Users), AdminActionMessages.AddedToGroup(result.Name, model.GroupRole));
                 }
 
             case CreateOrAddToGroupOutcome.AddedToGroupStrandedAccount:
@@ -178,7 +178,7 @@ public class AdminController(IUserService userService, IQuestService questServic
                         }
                     }
 
-                    return this.RedirectWithSuccess(nameof(Users), $"{result.Name} has been added to the group as {model.GroupRole}. A notification email has been sent.");
+                    return this.RedirectWithSuccess(nameof(Users), AdminActionMessages.AddedToGroup(result.Name, model.GroupRole));
                 }
 
             case CreateOrAddToGroupOutcome.AlreadyMember:

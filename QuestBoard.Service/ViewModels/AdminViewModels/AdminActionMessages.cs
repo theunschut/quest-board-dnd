@@ -1,3 +1,5 @@
+using QuestBoard.Domain.Enums;
+
 namespace QuestBoard.Service.ViewModels.AdminViewModels;
 
 /// <summary>
@@ -20,6 +22,13 @@ public static class AdminActionMessages
 
     /// <summary>Shown after a password was reset for the named account.</summary>
     public static string PasswordReset(string name) => $"Password reset successfully for {name}!";
+
+    /// <summary>
+    /// Shown after an existing account was added to the board and told so by email. The role is the displayed word
+    /// ("Dungeon Master"), never the enum name.
+    /// </summary>
+    public static string AddedToGroup(string name, GroupRole role) =>
+        $"{name} has been added to the group as {AdminPlatformDisplay.GroupRoleName(role)}. A notification email has been sent.";
 
     /// <summary>Shown after a member was removed from the board; the account itself and its other boards are untouched.</summary>
     public static string MemberRemoved(string name) => $"{name} was removed from the group.";
