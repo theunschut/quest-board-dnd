@@ -14,25 +14,36 @@
             <div class="card-body modern-card-body">
                 <p>@Model.Sentence</p>
                 <hr>
-                <div class="d-flex flex-wrap gap-2 justify-content-end">
-                    @if (Model.IsAuthenticated)
-                    {
-                        <form asp-controller="Account" asp-action="Logout" asp-area="" method="post" class="d-inline">
-                            <input type="hidden" name="toLogin" value="true" />
-                            <button type="submit" class="btn btn-secondary">
-                                <i class="fas fa-sign-out-alt me-2" aria-hidden="true"></i>Log out
-                            </button>
-                        </form>
-                    }
-                    else
-                    {
-                        <a asp-controller="Account" asp-action="Login" asp-area="" class="btn btn-secondary">
-                            <i class="fas fa-sign-in-alt me-2" aria-hidden="true"></i>Log in
-                        </a>
-                    }
-                    <a href="/" class="btn btn-primary">
-                        <i class="fas fa-home me-2" aria-hidden="true"></i>Home
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-secondary" data-history-back href="@Model.BackHref" hidden="@(Model.BackHref is null)">
+                        <i class="fas fa-arrow-left me-2" aria-hidden="true"></i>Go back
                     </a>
+                    <div class="d-flex flex-wrap gap-2 ms-auto">
+                        @if (Model.ShowSwitchBoard)
+                        {
+                            <a href="/groups/pick" class="btn btn-info">
+                                <i class="fas fa-arrows-rotate me-2" aria-hidden="true"></i>Switch board
+                            </a>
+                        }
+                        @if (Model.IsAuthenticated)
+                        {
+                            <form asp-controller="Account" asp-action="Logout" asp-area="" method="post" class="d-inline">
+                                <input type="hidden" name="toLogin" value="true" />
+                                <button type="submit" class="btn btn-secondary">
+                                    <i class="fas fa-sign-out-alt me-2" aria-hidden="true"></i>Log out
+                                </button>
+                            </form>
+                        }
+                        else
+                        {
+                            <a asp-controller="Account" asp-action="Login" asp-area="" asp-route-returnUrl="@Model.LoginReturnUrl" class="btn btn-secondary">
+                                <i class="fas fa-sign-in-alt me-2" aria-hidden="true"></i>Log in
+                            </a>
+                        }
+                        <a href="/" class="btn btn-primary">
+                            <i class="fas fa-home me-2" aria-hidden="true"></i>Home
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

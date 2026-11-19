@@ -26,19 +26,23 @@ public static class ErrorPageComparison
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     /// <summary>
-    /// One throwaway navigation so the client holds the antiforgery cookie before either response being
-    /// compared is made; without it only the first response would carry a Set-Cookie header.
+    /// Two throwaway navigations so the client already holds the cookies a first response would set: one to
+    /// the error endpoint for the antiforgery cookie, and one to a board page that does not exist for the
+    /// session cookie. Without them only the first response of a pair would carry a Set-Cookie header.
     /// </summary>
     public static async Task PrimeAsync(params HttpClient[] clients)
     {
         foreach (var client in clients)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, "/Error/404");
-            request.Headers.TryAddWithoutValidation("Accept", "text/html");
-            request.Headers.TryAddWithoutValidation("Sec-Fetch-Dest", "document");
-            request.Headers.TryAddWithoutValidation("Sec-Fetch-Mode", "navigate");
-            using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
-            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            foreach (var url in new[] { "/Error/404", $"/Quest/Details/{int.MaxValue}" })
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                request.Headers.TryAddWithoutValidation("Accept", "text/html");
+                request.Headers.TryAddWithoutValidation("Sec-Fetch-Dest", "document");
+                request.Headers.TryAddWithoutValidation("Sec-Fetch-Mode", "navigate");
+                using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+                await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            }
         }
     }
 

@@ -229,4 +229,66 @@ public class GroupSessionMiddlewareIntegrationTests(WebApplicationFactoryBase fa
             factory.TestGroupContext.ActiveGroupId = 1;
         }
     }
+
+    private static HttpRequestMessage BrowserNavigation(string url, HttpMethod? method = null)
+    {
+        var request = new HttpRequestMessage(method ?? HttpMethod.Get, url);
+        request.Headers.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8");
+        request.Headers.TryAddWithoutValidation("Sec-Fetch-Dest", "document");
+        request.Headers.TryAddWithoutValidation("Sec-Fetch-Mode", "navigate");
+        return request;
+    }
+
+    // An exempt path answers its own error: a viewer with no active board who asks the account area
+    // for something that does not exist sees the error page, not a detour through the picker.
+    [Fact]
+    public async Task AuthenticatedUser_NoActiveGroup_MissingActionOnAnExemptPath_SeesTheErrorPage()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "noboardnotfound", "noboardnotfound@example.com", roles: ["Player"]);
+
+        factory.TestGroupContext.ActiveGroupId = null;
+        try
+        {
+            var response = await client.SendAsync(
+                BrowserNavigation("/Account/NoSuchAction"), TestContext.Current.CancellationToken);
+            var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            response.Headers.Location.Should().BeNull();
+            body.Should().Contain("Page not found");
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
+
+    // A write with no active board is refused with a conflict rather than a redirect that would drop
+    // the submitted body; a browser navigation gets that refusal as the themed page.
+    [Fact]
+    public async Task AuthenticatedUser_NoActiveGroup_NavigationPostToABoardPage_GetsTheThemedConflictPage()
+    {
+        await TestDataHelper.ClearDatabaseAsync(factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            factory, "noboardconflict", "noboardconflict@example.com", roles: ["Player"]);
+
+        factory.TestGroupContext.ActiveGroupId = null;
+        try
+        {
+            var response = await client.SendAsync(
+                BrowserNavigation("/quests", HttpMethod.Post), TestContext.Current.CancellationToken);
+            var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+            response.Headers.Location.Should().BeNull();
+            body.Should().Contain("Your board session has changed");
+            body.Should().Contain("Error 409");
+        }
+        finally
+        {
+            factory.TestGroupContext.ActiveGroupId = 1;
+        }
+    }
 }

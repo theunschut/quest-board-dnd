@@ -56,6 +56,10 @@ public class ErrorPagesGuardTests
         "QuestBoard.IntegrationTests/Security/CrossBoardOracleParityTests.cs",
         "QuestBoard.IntegrationTests/Security/CrossBoardHiddenRecordTests.cs",
         "QuestBoard.IntegrationTests/Security/BoardPageCoverageTests.cs",
+        "QuestBoard.Service/Controllers/Admin/AccountController.cs",
+        "QuestBoard.IntegrationTests/Helpers/ErrorPageComparison.cs",
+        "QuestBoard.IntegrationTests/Controllers/AccountControllerIntegrationTests.cs",
+        "QuestBoard.IntegrationTests/Controllers/GroupSessionMiddlewareIntegrationTests.cs",
     ];
 
     // Written as regex data, each forbidden shape built from fragments, so this file never holds the shapes it

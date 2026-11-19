@@ -21,7 +21,30 @@ public class ErrorPageViewModel
     /// <summary>True for a signed-in viewer: the page offers Log out instead of Log in.</summary>
     public bool IsAuthenticated { get; init; }
 
-    public static ErrorPageViewModel For(int statusCode, bool isAuthenticated)
+    /// <summary>
+    /// A local path and query taken from a same-site Referer, or null. When null the Go back link is
+    /// rendered hidden, and a script reveals it only when the browser has a history to go back through.
+    /// </summary>
+    public string? BackHref { get; init; }
+
+    /// <summary>
+    /// True only on a 404 for a signed-in viewer who belongs to two or more boards. It is read from the
+    /// viewer's own memberships and never from the record that was asked for.
+    /// </summary>
+    public bool ShowSwitchBoard { get; init; }
+
+    /// <summary>
+    /// The local path and query of the page an anonymous viewer was refused, for the Log in link, or null.
+    /// Never set for a 404, a non-GET request or an address the site would not treat as local.
+    /// </summary>
+    public string? LoginReturnUrl { get; init; }
+
+    public static ErrorPageViewModel For(
+        int statusCode,
+        bool isAuthenticated,
+        string? backHref = null,
+        bool showSwitchBoard = false,
+        string? loginReturnUrl = null)
     {
         var (variant, heading, sentence) = statusCode switch
         {
@@ -51,6 +74,9 @@ public class ErrorPageViewModel
             Docket = $"Error {statusCode}",
             Sentence = sentence,
             IsAuthenticated = isAuthenticated,
+            BackHref = backHref,
+            ShowSwitchBoard = showSwitchBoard,
+            LoginReturnUrl = loginReturnUrl,
         };
     }
 }

@@ -42,4 +42,44 @@ public class BrowserNavigationTests
     {
         BrowserNavigation.IsDocumentNavigation(RequestWith(accept, fetchDest, requestedWith)).Should().Be(expected);
     }
+
+    private static HttpRequest RequestFor(string host, string? referer)
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString(host);
+        if (referer != null)
+            context.Request.Headers.Referer = referer;
+        return context.Request;
+    }
+
+    [Theory]
+    [InlineData("host", "https://host/Quest/Details/5?x=1", "/Quest/Details/5?x=1")]
+    [InlineData("host", "http://host/Quest/Details/5", "/Quest/Details/5")]
+    [InlineData("HOST", "https://host/quests", "/quests")]
+    [InlineData("host:5000", "http://host:5000/Shop?page=2", "/Shop?page=2")]
+    [InlineData("host", "https://host/", "/")]
+    [InlineData("host", "https://host", "/")]
+    [InlineData("host", "https://other/Quest/Details/5", null)]
+    [InlineData("host", "https://host.evil.example/Quest", null)]
+    [InlineData("host", "https://evil.example/@host/Quest", null)]
+    [InlineData("host:5000", "http://host:6000/Quest", null)]
+    [InlineData("host", "//host/Quest", null)]
+    [InlineData("host", "//other/Quest", null)]
+    [InlineData("host", "/Quest/Details/5", null)]
+    [InlineData("host", "Quest/Details/5", null)]
+    [InlineData("host", "javascript:alert(1)", null)]
+    [InlineData("host", "garbage value", null)]
+    [InlineData("host", "", null)]
+    [InlineData("host", null, null)]
+    [InlineData("host", "https://host/Error/404", null)]
+    [InlineData("host", "https://host/error/404", null)]
+    [InlineData("host", "https://host/Error", null)]
+    [InlineData("host", "https://host/%45rror/404", null)]
+    [InlineData("host", "https://host//evil.example/path", null)]
+    [InlineData("host", "https://host/\\evil.example/path", null)]
+    [InlineData("host", "https://host/Errors/list", "/Errors/list")]
+    public void SameSiteLocalReferer_AcceptsOnlyALocalPathOfTheSameHost(string host, string? referer, string? expected)
+    {
+        BrowserNavigation.SameSiteLocalReferer(RequestFor(host, referer)).Should().Be(expected);
+    }
 }

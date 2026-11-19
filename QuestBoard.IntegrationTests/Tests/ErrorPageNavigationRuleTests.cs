@@ -118,4 +118,57 @@ public class ErrorPageNavigationRuleTests(WebApplicationFactoryBase factory) : I
         status.Should().Be(HttpStatusCode.NotFound);
         body.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task MissingRoute_RequestedWithHead_AnswersTheStatusAndNoBody()
+    {
+        var client = await SignedInClientAsync("headnav");
+
+        var (status, body) = await ErrorPageRenderTests.SendAsync(
+            client, ErrorPageRenderTests.Navigation("/no-such-route-here", HttpMethod.Head));
+
+        status.Should().Be(HttpStatusCode.NotFound);
+        body.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetOnlyRecordPage_RequestedWithHead_AnswersItsStatusAndNoBody()
+    {
+        var client = await SignedInClientAsync("headrecord");
+
+        var (status, body) = await ErrorPageRenderTests.SendAsync(
+            client, ErrorPageRenderTests.Navigation($"/Quest/Details/{int.MaxValue}", HttpMethod.Head));
+
+        ((int)status).Should().BeInRange(400, 599);
+        body.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task MissingRoute_PostedByANavigation_KeepsItsStatusAndGetsThePage()
+    {
+        var client = await SignedInClientAsync("postnav");
+
+        var (status, body) = await ErrorPageRenderTests.SendAsync(
+            client, ErrorPageRenderTests.Navigation("/no-such-route-here", HttpMethod.Post));
+
+        status.Should().Be(HttpStatusCode.NotFound);
+        body.Should().Contain("Page not found");
+        body.Should().Contain("Error 404");
+    }
+
+    [Theory]
+    [InlineData("/no-such-route-here")]
+    [InlineData("/Error/500")]
+    [InlineData("/Error/403")]
+    public async Task EveryThemedPage_IsAnsweredWithNoStoreCaching(string url)
+    {
+        var client = await SignedInClientAsync("nostore");
+
+        var response = await client.SendAsync(
+            ErrorPageRenderTests.Navigation(url), TestContext.Current.CancellationToken);
+
+        response.Headers.CacheControl.Should().NotBeNull();
+        response.Headers.CacheControl!.NoStore.Should().BeTrue();
+        response.Headers.Pragma.ToString().Should().Contain("no-cache");
+    }
 }
