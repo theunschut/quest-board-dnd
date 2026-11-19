@@ -2454,7 +2454,7 @@ Plans:
 **Goal:** A failed request (404, 403, 500 and other status codes) shows an error page styled in the existing theme instead of the bare default, with three actions: go back, go to the home page (`/`), and log out and return to the login page. Prompted by the operator: following a link to something on a board other than the active one currently ends on a plain 404 (see the phase 99 deferred cross-board link switch).
 **Requirements**: TBD
 **Depends on:** Phase 102; executes only after Phase 100 has finished in this checkout (103-01 checks it)
-**Plans:** 2/18 plans executed
+**Plans:** 3/18 plans executed
 
 Plans:
 
@@ -2470,7 +2470,7 @@ Planning record: no requirement IDs are mapped, so CONTEXT decisions D-01..D-19 
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 103-03-PLAN.md — Frozen baseline on 8351, error-row manifest, BEFORE of every bare 404/403/400/409/429/500 under both User-Agents, the deep-link leak proven live and as red facts committed skipped, switch pins, starting test inventory
+- [x] 103-03-PLAN.md — Frozen baseline on 8351, error-row manifest, BEFORE of every bare 404/403/400/409/429/500 under both User-Agents, the deep-link leak proven live and as red facts committed skipped, switch pins, starting test inventory
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
