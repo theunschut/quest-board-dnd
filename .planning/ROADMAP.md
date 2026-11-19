@@ -2454,7 +2454,7 @@ Plans:
 **Goal:** A failed request (404, 403, 500 and other status codes) shows an error page styled in the existing theme instead of the bare default, with three actions: go back, go to the home page (`/`), and log out and return to the login page. Prompted by the operator: following a link to something on a board other than the active one currently ends on a plain 404 (see the phase 99 deferred cross-board link switch).
 **Requirements**: TBD
 **Depends on:** Phase 102; executes only after Phase 100 has finished in this checkout (103-01 checks it)
-**Plans:** 3/18 plans executed
+**Plans:** 4/18 plans executed
 
 Plans:
 
@@ -2474,7 +2474,7 @@ Planning record: no requirement IDs are mapped, so CONTEXT decisions D-01..D-19 
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 103-04-PLAN.md — Tracer: status-code re-execute for every environment, the navigation gate, the error endpoint for /Error and /Error/{code}, the copy map, a structural page in a minimal layout, the parity fact rewritten, the phase guard scaffold
+- [x] 103-04-PLAN.md — Tracer: status-code re-execute for every environment, the navigation gate, the error endpoint for /Error and /Error/{code}, the copy map, a structural page in a minimal layout, the parity fact rewritten, the phase guard scaffold
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
