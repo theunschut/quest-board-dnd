@@ -22,14 +22,6 @@ public class CrossBoardHiddenRecordTests(CrossBoardWebApplicationFactory factory
 {
     private const string ActiveBoardName = "EuphoriaInn";
 
-    // Headers that legitimately differ between any two responses and say nothing about existence.
-    private static readonly HashSet<string> VolatileHeaderNames = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Date",
-        "Request-Id",
-        "traceparent"
-    };
-
     private sealed record Scenario(HttpClient Client, string TargetBoardName, string Suffix, int OwnerId, int TargetBoardId);
 
     private static HttpRequestMessage NavigationGet(string url)
@@ -39,27 +31,6 @@ public class CrossBoardHiddenRecordTests(CrossBoardWebApplicationFactory factory
         request.Headers.Add("Sec-Fetch-Mode", "navigate");
         request.Headers.Add("Accept", "text/html");
         return request;
-    }
-
-    private static Dictionary<string, string> CollectComparableHeaders(HttpResponseMessage response)
-    {
-        return response.Headers
-            .Concat(response.Content.Headers)
-            .Where(h => !VolatileHeaderNames.Contains(h.Key))
-            .ToDictionary(h => h.Key, h => string.Join(",", h.Value), StringComparer.OrdinalIgnoreCase);
-    }
-
-    // Status, redirect target, body and every header that is not time or tracing plumbing.
-    private static async Task AssertIndistinguishableAsync(HttpResponseMessage hidden, HttpResponseMessage nonexistent)
-    {
-        hidden.StatusCode.Should().Be(nonexistent.StatusCode);
-        hidden.Headers.Location.Should().Be(nonexistent.Headers.Location);
-
-        var hiddenBody = await hidden.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        var nonexistentBody = await nonexistent.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        hiddenBody.Should().Be(nonexistentBody);
-
-        CollectComparableHeaders(hidden).Should().BeEquivalentTo(CollectComparableHeaders(nonexistent));
     }
 
     // The viewer is a member of the default board (active) and of a second board that holds the record. A second
@@ -132,11 +103,12 @@ public class CrossBoardHiddenRecordTests(CrossBoardWebApplicationFactory factory
     private async Task AssertLooksLikeANonexistentIdAsync(Scenario scenario, string hiddenUrl, string nonexistentUrl)
     {
         var control = await SignInAgainAsync(scenario);
+        await ErrorPageComparison.PrimeAsync(control, scenario.Client);
 
         var nonexistent = await control.SendAsync(NavigationGet(nonexistentUrl), TestContext.Current.CancellationToken);
         var hidden = await scenario.Client.SendAsync(NavigationGet(hiddenUrl), TestContext.Current.CancellationToken);
 
-        await AssertIndistinguishableAsync(hidden, nonexistent);
+        await ErrorPageComparison.AssertIndistinguishableAsync(hidden, nonexistent);
 
         // The board the viewer was on is still the one they are on, and nothing on the next page announces a switch.
         var followUp = await scenario.Client.SendAsync(NavigationGet("/quests"), TestContext.Current.CancellationToken);

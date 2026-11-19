@@ -172,10 +172,15 @@ public class AccountController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Logout()
+    public async Task<IActionResult> Logout(bool toLogin = false)
     {
         await userService.SignOutAsync();
-        return RedirectToAction(nameof(HomeController.Index), "Home");
+
+        // A flag rather than a URL keeps the redirect target fixed: nothing a caller sends can
+        // steer a signed-out browser to another address.
+        return toLogin
+            ? RedirectToAction(nameof(Login))
+            : RedirectToAction(nameof(HomeController.Index), "Home");
     }
 
     [HttpGet]
@@ -432,4 +437,4 @@ public class AccountController(
 
         return RedirectToAction(nameof(Profile));
     }
-}
+}

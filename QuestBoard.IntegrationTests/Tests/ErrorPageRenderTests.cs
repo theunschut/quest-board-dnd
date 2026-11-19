@@ -52,6 +52,31 @@ public class ErrorPageRenderTests(WebApplicationFactoryBase factory) : IClassFix
     }
 
     [Fact]
+    public async Task MissingRecord_ForASignedInViewer_OffersALogOutFormAndNoLogInLink()
+    {
+        var client = await SignedInClientAsync("nflogout");
+
+        var (_, body) = await SendAsync(client, Navigation($"/Quest/Details/{int.MaxValue}"));
+
+        var form = Regex.Match(body, "<form\\b[^>]*action=\"/Account/Logout\"[^>]*>(?<inner>.*?)</form>", RegexOptions.Singleline);
+        form.Success.Should().BeTrue();
+        form.Value.Should().Contain("method=\"post\"");
+        form.Groups["inner"].Value.Should().Contain("name=\"__RequestVerificationToken\"");
+        form.Groups["inner"].Value.Should().MatchRegex("name=\"toLogin\"[^>]*value=\"true\"|value=\"true\"[^>]*name=\"toLogin\"");
+        form.Groups["inner"].Value.Should().Contain("btn btn-secondary");
+        body.Should().NotContain("/Account/Login");
+    }
+
+    [Fact]
+    public async Task MissingRecord_ForAnAnonymousViewer_OffersALogInLinkAndNoLogOutForm()
+    {
+        var (_, body) = await SendAsync(factory.CreateClient(), Navigation("/Error/404"));
+
+        body.Should().Contain("href=\"/Account/Login\"");
+        body.Should().NotContain("/Account/Logout");
+    }
+
+    [Fact]
     public async Task MissingRecord_NeverEchoesTheIdOrThePath()
     {
         var client = await SignedInClientAsync("nfecho");
@@ -66,26 +91,28 @@ public class ErrorPageRenderTests(WebApplicationFactoryBase factory) : IClassFix
     public async Task TwoMissingRecords_AnswerIdenticalBodies()
     {
         var client = await SignedInClientAsync("nftwo");
+        await ErrorPageComparison.PrimeAsync(client);
 
         var (firstStatus, first) = await SendAsync(client, Navigation($"/Quest/Details/{int.MaxValue}"));
         var (secondStatus, second) = await SendAsync(client, Navigation($"/Quest/Details/{int.MaxValue - 7}"));
 
         firstStatus.Should().Be(HttpStatusCode.NotFound);
         secondStatus.Should().Be(HttpStatusCode.NotFound);
-        second.Should().Be(first);
+        ErrorPageComparison.AssertSameBody(first, second);
     }
 
     [Fact]
     public async Task ErrorEndpoint_VisitedDirectlyAsANavigation_AnswersTheSamePage()
     {
         var client = await SignedInClientAsync("nfdirect");
+        await ErrorPageComparison.PrimeAsync(client);
 
         var (viaMissing, missingBody) = await SendAsync(client, Navigation($"/Quest/Details/{int.MaxValue}"));
         var (status, body) = await SendAsync(client, Navigation("/Error/404"));
 
         status.Should().Be(HttpStatusCode.NotFound);
         viaMissing.Should().Be(HttpStatusCode.NotFound);
-        body.Should().Be(missingBody);
+        ErrorPageComparison.AssertSameBody(body, missingBody);
     }
 
     [Fact]

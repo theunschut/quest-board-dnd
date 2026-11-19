@@ -260,6 +260,60 @@ public class AccountControllerIntegrationTests(WebApplicationFactoryBase factory
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.OK);
     }
 
+    [Fact]
+    public async Task Logout_Post_WithToLogin_RedirectsToTheLoginPage()
+    {
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(factory);
+        var getResponse = await client.GetAsync("/Account/Profile", TestContext.Current.CancellationToken);
+        var (token, cookieValue) = await AntiForgeryHelper.ExtractAntiForgeryTokenAsync(getResponse);
+        if (!string.IsNullOrEmpty(cookieValue))
+        {
+            client.DefaultRequestHeaders.Add("Cookie", $".AspNetCore.Antiforgery={cookieValue}");
+        }
+
+        var formContent = AntiForgeryHelper.CreateFormContentWithAntiForgeryToken(
+            new Dictionary<string, string> { ["toLogin"] = "true" },
+            token);
+
+        var response = await client.PostAsync("/Account/Logout", formContent, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().Be("/Account/Login");
+    }
+
+    [Fact]
+    public async Task Logout_Post_WithoutToLogin_RedirectsToTheHomePage()
+    {
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(factory);
+        var getResponse = await client.GetAsync("/Account/Profile", TestContext.Current.CancellationToken);
+        var (token, cookieValue) = await AntiForgeryHelper.ExtractAntiForgeryTokenAsync(getResponse);
+        if (!string.IsNullOrEmpty(cookieValue))
+        {
+            client.DefaultRequestHeaders.Add("Cookie", $".AspNetCore.Antiforgery={cookieValue}");
+        }
+
+        var response = await client.PostAsync(
+            "/Account/Logout",
+            AntiForgeryHelper.CreateFormContentWithAntiForgeryToken([], token),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().Be("/");
+    }
+
+    [Fact]
+    public async Task Logout_Get_NeverSignsAnyoneOut()
+    {
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(factory);
+
+        var logout = await client.GetAsync("/Account/Logout?toLogin=true", TestContext.Current.CancellationToken);
+        var profile = await client.GetAsync("/Account/Profile", TestContext.Current.CancellationToken);
+
+        logout.StatusCode.Should().NotBe(HttpStatusCode.Redirect);
+        logout.StatusCode.Should().NotBe(HttpStatusCode.OK);
+        profile.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     // ForgotPassword GET renders the email-entry form (mirrors Login_Get).
     [Fact]
     public async Task ForgotPassword_Get_ShouldReturnSuccessStatusCode()

@@ -23,18 +23,6 @@ namespace QuestBoard.IntegrationTests.Security;
 public class CrossBoardOracleParityTests(CrossBoardWebApplicationFactory factory)
     : IClassFixture<CrossBoardWebApplicationFactory>
 {
-    // Headers that legitimately vary between any two responses and therefore say nothing about
-    // membership or existence: a wall-clock timestamp, and the two per-request correlation
-    // headers ASP.NET Core's diagnostics pipeline can attach when distributed tracing is active.
-    // Excluding them is what makes the remaining comparison mean something -- if every other
-    // header still matched byte-for-byte, a real distinguishing signal would have nowhere to hide.
-    private static readonly HashSet<string> VolatileHeaderNames = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Date",
-        "Request-Id",
-        "traceparent"
-    };
-
     // Board A (group 1, seeded by ClearDatabaseAsync) and Board B are both real memberships for
     // the viewer; Board C carries one row of every entity-backed family plus a member the viewer
     // does not share any board with, for the BoardMember/profile family. The viewer is Admin
@@ -158,28 +146,6 @@ public class CrossBoardOracleParityTests(CrossBoardWebApplicationFactory factory
         return request;
     }
 
-    private static Dictionary<string, string> CollectComparableHeaders(HttpResponseMessage response)
-    {
-        return response.Headers
-            .Concat(response.Content.Headers)
-            .Where(h => !VolatileHeaderNames.Contains(h.Key))
-            .ToDictionary(h => h.Key, h => string.Join(",", h.Value), StringComparer.OrdinalIgnoreCase);
-    }
-
-    // One test, two requests, one assertion set -- two separate 404 tests could each describe a
-    // different 404 and nothing would notice, whereas this fails the moment anyone introduces a
-    // distinguishing branch between "exists but you're not a member" and "does not exist".
-    private static async Task AssertIndistinguishableAsync(HttpResponseMessage nonMemberResponse, HttpResponseMessage nonexistentResponse)
-    {
-        nonMemberResponse.StatusCode.Should().Be(nonexistentResponse.StatusCode);
-
-        var nonMemberBody = await nonMemberResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        var nonexistentBody = await nonexistentResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        nonMemberBody.Should().Be(nonexistentBody);
-
-        CollectComparableHeaders(nonMemberResponse).Should().BeEquivalentTo(CollectComparableHeaders(nonexistentResponse));
-    }
-
     // One route per family -- the registry's 18 routes reduce to 8 distinct lookup kinds, and a
     // pair per kind covers every code path a pair per route would, per this plan's own recorded
     // scoping decision. ContactCategory and BoardMember have no separate "Details" route, so their
@@ -204,12 +170,13 @@ public class CrossBoardOracleParityTests(CrossBoardWebApplicationFactory factory
         var (client, ids) = await SeedViewerOnBoardsAAndBWithEntitiesOnBoardCAsync(suffix);
         var id = ids[family];
 
+        await ErrorPageComparison.PrimeAsync(client);
         var nonMemberResponse = await client.SendAsync(
             NavigationGet(string.Format(urlTemplate, id)), TestContext.Current.CancellationToken);
         var nonexistentResponse = await client.SendAsync(
             NavigationGet(string.Format(urlTemplate, int.MaxValue)), TestContext.Current.CancellationToken);
 
-        await AssertIndistinguishableAsync(nonMemberResponse, nonexistentResponse);
+        await ErrorPageComparison.AssertIndistinguishableAsync(nonMemberResponse, nonexistentResponse);
     }
 
     [Fact]
@@ -227,6 +194,7 @@ public class CrossBoardOracleParityTests(CrossBoardWebApplicationFactory factory
         var selectBoardAForm = new Dictionary<string, string> { ["groupId"] = "1" };
         await superAdminClient.PostAsync("/GroupPicker/SelectGroup", new FormUrlEncodedContent(selectBoardAForm), TestContext.Current.CancellationToken);
 
+        await ErrorPageComparison.PrimeAsync(superAdminClient);
         var nonMemberResponse = await superAdminClient.SendAsync(
             NavigationGet($"/Quest/Details/{questId}"), TestContext.Current.CancellationToken);
         var nonexistentResponse = await superAdminClient.SendAsync(
@@ -236,7 +204,7 @@ public class CrossBoardOracleParityTests(CrossBoardWebApplicationFactory factory
         // board gate both special-case SuperAdmin, but the resolver never does -- a cross-board
         // read that answered to a role rather than to a membership is exactly what this phase
         // exists to close off, so a SuperAdmin gets the same non-oracle pair as anyone else.
-        await AssertIndistinguishableAsync(nonMemberResponse, nonexistentResponse);
+        await ErrorPageComparison.AssertIndistinguishableAsync(nonMemberResponse, nonexistentResponse);
     }
 
     [Fact]

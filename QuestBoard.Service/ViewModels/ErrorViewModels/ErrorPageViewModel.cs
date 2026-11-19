@@ -18,6 +18,9 @@ public class ErrorPageViewModel
 
     public string Sentence { get; init; } = string.Empty;
 
+    /// <summary>True for a signed-in viewer: the page offers Log out instead of Log in.</summary>
+    public bool IsAuthenticated { get; init; }
+
     public static ErrorPageViewModel For(int statusCode, bool isAuthenticated)
     {
         var (variant, heading, sentence) = statusCode switch
@@ -47,6 +50,7 @@ public class ErrorPageViewModel
             Heading = heading,
             Docket = $"Error {statusCode}",
             Sentence = sentence,
+            IsAuthenticated = isAuthenticated,
         };
     }
 }
