@@ -207,4 +207,62 @@ public class CrossBoardRouteTargetTests
             target.Page.Should().Be(BoardPage.Quests);
         }
     }
+
+    [Theory]
+    [MemberData(nameof(CrossBoardLinkRegistryTests.RegisteredRouteEntries), MemberType = typeof(CrossBoardLinkRegistryTests))]
+    public void EachRegisteredRoute_BothParsersFillKindAccessAndPageFromTheRegistryEntry(
+        string controller, string action, CrossBoardLookupKind kind, CrossBoardAccess access, BoardPage page)
+    {
+        CrossBoardLinkRegistry.TryGetRouteEntry(null, controller, action, out var entry).Should().BeTrue();
+
+        CrossBoardRouteTarget.TryFromLocalUrl($"/{controller}/{action}/9", out var fromUrl).Should().BeTrue();
+
+        var context = new DefaultHttpContext();
+        context.Request.RouteValues["controller"] = controller;
+        context.Request.RouteValues["action"] = action;
+        context.Request.RouteValues["id"] = "9";
+        CrossBoardRouteTarget.TryFromRouteValues(context, out var fromRoute).Should().BeTrue();
+
+        foreach (var target in new[] { fromUrl!, fromRoute! })
+        {
+            target.Id.Should().Be(9);
+            target.Kind.Should().Be(kind).And.Be(entry.Kind);
+            target.Access.Should().Be(access).And.Be(entry.Access);
+            target.Page.Should().Be(page).And.Be(entry.Page);
+        }
+    }
+
+    [Theory]
+    [InlineData("/Platform/Quest/Details/42")]
+    [InlineData("/Admin/Quest/Manage/42")]
+    [InlineData("/Quest/Edit/5/extra")]
+    [InlineData("/Quest/Edit/five")]
+    [InlineData("/Quest/Index/5")]
+    public void TryFromLocalUrl_AreaFourSegmentNonNumericOrUnregisteredAddress_StillYieldsNoTarget(string url)
+    {
+        var found = CrossBoardRouteTarget.TryFromLocalUrl(url, out var target);
+
+        found.Should().BeFalse();
+        target.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("Quest", "Edit", "five")]
+    [InlineData("Quest", "Edit", null)]
+    [InlineData("Quest", "Index", "5")]
+    public void TryFromRouteValues_NonNumericMissingIdOrUnregisteredAction_YieldsNoTarget(string controller, string action, string? id)
+    {
+        var context = new DefaultHttpContext();
+        context.Request.RouteValues["controller"] = controller;
+        context.Request.RouteValues["action"] = action;
+        if (id != null)
+        {
+            context.Request.RouteValues["id"] = id;
+        }
+
+        var found = CrossBoardRouteTarget.TryFromRouteValues(context, out var target);
+
+        found.Should().BeFalse();
+        target.Should().BeNull();
+    }
 }

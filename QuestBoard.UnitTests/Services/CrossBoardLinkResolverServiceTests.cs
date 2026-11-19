@@ -67,4 +67,252 @@ public class CrossBoardLinkResolverServiceTests
         target!.GroupId.Should().Be(BoardC);
         ThenLookupReceivedBoards(CrossBoardLookupKind.Quest, BoardC);
     }
+
+    [Fact]
+    public async Task ViewerWithNoMemberships_ResolvesToNothingWithoutReadingAnyBoard()
+    {
+        _groupService.GetGroupsForUserAsync(ViewerId, Arg.Any<CancellationToken>()).Returns(new List<GroupWithMemberCount>());
+
+        var target = await ResolveAsync(CrossBoardAccess.Member, BoardPage.Quests);
+
+        target.Should().BeNull();
+        await _repository.DidNotReceiveWithAnyArgs().GetViewerBoardsAsync(default, default!, default);
+        ThenNoLookupWasMade();
+    }
+
+    [Fact]
+    public async Task OnlyTheViewersOwnMemberBoardsAreReadAndOffered()
+    {
+        GivenViewerBoards(Board(BoardB, GroupRole.Player), Board(BoardC, GroupRole.DungeonMaster));
+
+        await ResolveAsync(CrossBoardAccess.Member, BoardPage.Quests);
+
+        await _repository.Received(1).GetViewerBoardsAsync(
+            ViewerId,
+            Arg.Is<IReadOnlyCollection<int>>(ids => ids.OrderBy(i => i).SequenceEqual(new[] { BoardB, BoardC })),
+            Arg.Any<CancellationToken>());
+        ThenLookupReceivedBoards(CrossBoardLookupKind.Quest, BoardB, BoardC);
+    }
+
+    [Theory]
+    [InlineData(CrossBoardAccess.DungeonMasterTier, BoardPage.Events, CrossBoardLookupKind.Event)]
+    [InlineData(CrossBoardAccess.QuestOwnerOrAdmin, BoardPage.Quests, CrossBoardLookupKind.Quest)]
+    public async Task PlayerOnlyBoard_IsDroppedForARolePage_AndNothingIsLookedUp(CrossBoardAccess access, BoardPage page, CrossBoardLookupKind kind)
+    {
+        GivenViewerBoards(Board(BoardB, GroupRole.Player));
+
+        var target = await ResolveAsync(access, page, kind);
+
+        target.Should().BeNull();
+        ThenNoLookupWasMade();
+    }
+
+    [Theory]
+    [InlineData(CrossBoardAccess.Member, BoardPage.Quests, CrossBoardLookupKind.Quest)]
+    [InlineData(CrossBoardAccess.CharacterOwnerOrAdmin, BoardPage.Characters, CrossBoardLookupKind.Character)]
+    [InlineData(CrossBoardAccess.CompletedQuest, BoardPage.QuestLog, CrossBoardLookupKind.Quest)]
+    [InlineData(CrossBoardAccess.ContactVisible, BoardPage.Contacts, CrossBoardLookupKind.Contact)]
+    [InlineData(CrossBoardAccess.ShopItemVisible, BoardPage.Shop, CrossBoardLookupKind.ShopItem)]
+    public async Task PlayerOnlyBoard_IsKeptWhenTheRuleTurnsOnTheRecordRatherThanTheRole(CrossBoardAccess access, BoardPage page, CrossBoardLookupKind kind)
+    {
+        GivenViewerBoards(Board(BoardB, GroupRole.Player));
+
+        var target = await ResolveAsync(access, page, kind);
+
+        target.Should().NotBeNull();
+        target!.GroupId.Should().Be(BoardB);
+        ThenLookupReceivedBoards(kind, BoardB);
+    }
+
+    [Theory]
+    [InlineData(GroupRole.DungeonMaster)]
+    [InlineData(GroupRole.Admin)]
+    public async Task DungeonMasterTierBoard_IsKeptForADungeonMasterPage(GroupRole role)
+    {
+        GivenViewerBoards(Board(BoardB, GroupRole.Player), Board(BoardC, role));
+
+        var target = await ResolveAsync(CrossBoardAccess.DungeonMasterTier, BoardPage.Shop, CrossBoardLookupKind.ShopItem);
+
+        target!.GroupId.Should().Be(BoardC);
+        ThenLookupReceivedBoards(CrossBoardLookupKind.ShopItem, BoardC);
+    }
+
+    [Theory]
+    [InlineData(CrossBoardAccess.DungeonMasterTier)]
+    [InlineData(CrossBoardAccess.QuestOwnerOrAdmin)]
+    [InlineData(CrossBoardAccess.AdminForOtherUser)]
+    public async Task SuperAdminWhoIsAPlayerOnABoard_IsTreatedAsAnAdminThere(CrossBoardAccess access)
+    {
+        GivenViewerBoards(Board(BoardB, GroupRole.Player));
+        var kind = access == CrossBoardAccess.AdminForOtherUser ? CrossBoardLookupKind.BoardMember : CrossBoardLookupKind.Quest;
+        var page = access == CrossBoardAccess.AdminForOtherUser ? BoardPage.DungeonMasterProfile : BoardPage.Quests;
+        _repository.ResolveSharedBoardIdsForUserAsync(5, Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<IReadOnlyCollection<int>>(1).ToList());
+
+        var target = await ResolveAsync(access, page, kind, superAdmin: true);
+
+        target.Should().NotBeNull();
+        target!.GroupId.Should().Be(BoardB);
+    }
+
+    [Fact]
+    public async Task SuperAdminWhoIsAPlayerOnABoard_IsOnlyAnAdminOnThatBoardNotOnOthers()
+    {
+        // Admin is raised only where the viewer is already a member, so the boards offered are
+        // exactly the member boards and never any other.
+        GivenViewerBoards(Board(BoardB, GroupRole.Player), Board(BoardC, GroupRole.Player));
+
+        await ResolveAsync(CrossBoardAccess.DungeonMasterTier, BoardPage.Events, CrossBoardLookupKind.Event, superAdmin: true);
+
+        await _repository.Received(1).GetViewerBoardsAsync(
+            ViewerId,
+            Arg.Is<IReadOnlyCollection<int>>(ids => ids.OrderBy(i => i).SequenceEqual(new[] { BoardB, BoardC })),
+            Arg.Any<CancellationToken>());
+        ThenLookupReceivedBoards(CrossBoardLookupKind.Event, BoardB, BoardC);
+    }
+
+    [Theory]
+    [InlineData(CrossBoardAccess.Member)]
+    [InlineData(CrossBoardAccess.DungeonMasterTier)]
+    [InlineData(CrossBoardAccess.QuestOwnerOrAdmin)]
+    [InlineData(CrossBoardAccess.AdminForOtherUser)]
+    public async Task SuperAdminWhoIsNotAMember_ResolvesToNothingWithoutReadingAnyBoard(CrossBoardAccess access)
+    {
+        _groupService.GetGroupsForUserAsync(ViewerId, Arg.Any<CancellationToken>()).Returns(new List<GroupWithMemberCount>());
+
+        var target = await ResolveAsync(access, BoardPage.Quests, superAdmin: true);
+
+        target.Should().BeNull();
+        await _repository.DidNotReceiveWithAnyArgs().GetViewerBoardsAsync(default, default!, default);
+        ThenNoLookupWasMade();
+    }
+
+    [Fact]
+    public async Task BoardThatSwitchedThePageOff_IsDropped_AndTheOtherBoardIsOffered()
+    {
+        GivenViewerBoards(
+            Board(BoardB, GroupRole.Admin, disabled: BoardPageSet.Empty.With(BoardPage.Shop)),
+            Board(BoardC, GroupRole.Admin));
+
+        var target = await ResolveAsync(CrossBoardAccess.ShopItemVisible, BoardPage.Shop, CrossBoardLookupKind.ShopItem);
+
+        target!.GroupId.Should().Be(BoardC);
+        ThenLookupReceivedBoards(CrossBoardLookupKind.ShopItem, BoardC);
+    }
+
+    [Fact]
+    public async Task BoardWhoseTypeNeverOffersThePage_IsDropped()
+    {
+        GivenViewerBoards(Board(BoardB, GroupRole.Admin, BoardType.Campaign));
+
+        var target = await ResolveAsync(CrossBoardAccess.ShopItemVisible, BoardPage.Shop, CrossBoardLookupKind.ShopItem);
+
+        target.Should().BeNull();
+        ThenNoLookupWasMade();
+    }
+
+    [Fact]
+    public async Task QuestLogPage_IsUnavailableWhenTheBoardSwitchedTheQuestListOff()
+    {
+        GivenViewerBoards(Board(BoardB, GroupRole.Admin, disabled: BoardPageSet.Empty.With(BoardPage.Quests)));
+
+        var target = await ResolveAsync(CrossBoardAccess.CompletedQuest, BoardPage.QuestLog);
+
+        target.Should().BeNull();
+        ThenNoLookupWasMade();
+    }
+
+    [Fact]
+    public async Task BoardThatOffersEveryPage_AdminOnIt_IsOfferedForEveryPage()
+    {
+        GivenViewerBoards(Board(BoardB, GroupRole.Admin));
+
+        foreach (var page in new[] { BoardPage.Quests, BoardPage.Events, BoardPage.Characters, BoardPage.Contacts, BoardPage.QuestLog, BoardPage.Shop, BoardPage.DungeonMasterProfile })
+        {
+            (await ResolveAsync(CrossBoardAccess.Member, page)).Should().NotBeNull($"{page} is offered on a One-Shot board with nothing switched off");
+        }
+    }
+
+    [Fact]
+    public async Task LookupFindingNothing_ResolvesToNothing()
+    {
+        GivenViewerBoards(Board(BoardB, GroupRole.Admin));
+        _repository.ResolveBoardIdAsync(Arg.Any<CrossBoardLookupKind>(), Arg.Any<int>(), Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>())
+            .Returns((int?)null);
+
+        var target = await ResolveAsync(CrossBoardAccess.Member, BoardPage.Quests);
+
+        target.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ProfileEdit_TwoSharedBoardsOfWhichOneIsAdmin_ResolvesToThatOne()
+    {
+        GivenViewerBoards(Board(BoardB, GroupRole.Player), Board(BoardC, GroupRole.Admin));
+        SharedBoardsOfTargetAre(BoardB, BoardC);
+
+        var target = await ResolveAsync(CrossBoardAccess.AdminForOtherUser, BoardPage.DungeonMasterProfile, CrossBoardLookupKind.BoardMember);
+
+        target!.GroupId.Should().Be(BoardC);
+        await _repository.Received(1).ResolveSharedBoardIdsForUserAsync(
+            5,
+            Arg.Is<IReadOnlyCollection<int>>(ids => ids.SequenceEqual(new[] { BoardC })),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProfileEdit_NoBoardWhereTheViewerIsAnAdmin_ResolvesToNothing()
+    {
+        GivenViewerBoards(Board(BoardB, GroupRole.Player), Board(BoardC, GroupRole.DungeonMaster));
+        SharedBoardsOfTargetAre(BoardB, BoardC);
+
+        var target = await ResolveAsync(CrossBoardAccess.AdminForOtherUser, BoardPage.DungeonMasterProfile, CrossBoardLookupKind.BoardMember);
+
+        target.Should().BeNull();
+        ThenNoLookupWasMade();
+    }
+
+    [Fact]
+    public async Task ProfileEdit_TwoSharedAdminBoards_IsAmbiguousAndResolvesToNothing()
+    {
+        GivenViewerBoards(Board(BoardB, GroupRole.Admin), Board(BoardC, GroupRole.Admin));
+        SharedBoardsOfTargetAre(BoardB, BoardC);
+
+        var target = await ResolveAsync(CrossBoardAccess.AdminForOtherUser, BoardPage.DungeonMasterProfile, CrossBoardLookupKind.BoardMember);
+
+        target.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ProfileView_BoardWithoutTheProfilePage_IsDroppedBeforeTheExactlyOneRule()
+    {
+        GivenViewerBoards(
+            Board(BoardB, GroupRole.Player, BoardType.Campaign),
+            Board(BoardC, GroupRole.Player));
+        SharedBoardsOfTargetAre(BoardB, BoardC);
+
+        var target = await ResolveAsync(CrossBoardAccess.Member, BoardPage.DungeonMasterProfile, CrossBoardLookupKind.BoardMember);
+
+        target!.GroupId.Should().Be(BoardC);
+        await _repository.Received(1).ResolveSharedBoardIdsForUserAsync(
+            5,
+            Arg.Is<IReadOnlyCollection<int>>(ids => ids.SequenceEqual(new[] { BoardC })),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProfileView_TwoSharedBoardsThatBothOfferThePage_IsAmbiguousAndResolvesToNothing()
+    {
+        GivenViewerBoards(Board(BoardB, GroupRole.Player), Board(BoardC, GroupRole.Player));
+        SharedBoardsOfTargetAre(BoardB, BoardC);
+
+        var target = await ResolveAsync(CrossBoardAccess.Member, BoardPage.DungeonMasterProfile, CrossBoardLookupKind.BoardMember);
+
+        target.Should().BeNull();
+    }
+
+    // The target user's boards that are among the offered ones, as the repository would answer.
+    private void SharedBoardsOfTargetAre(params int[] targetBoardIds)
+        => _repository.ResolveSharedBoardIdsForUserAsync(5, Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>())
+            .Returns(call => (IReadOnlyList<int>)call.ArgAt<IReadOnlyCollection<int>>(1).Where(targetBoardIds.Contains).ToList());
 }

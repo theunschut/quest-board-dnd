@@ -77,6 +77,9 @@ public class ErrorPagesGuardTests
         "QuestBoard.Service/Controllers/GroupPickerController.cs",
         "QuestBoard.IntegrationTests/Security/CrossBoardAuthorizationBoundaryTests.cs",
         "QuestBoard.IntegrationTests/Middleware/CrossBoardRouteCoverageTests.cs",
+        "QuestBoard.UnitTests/Helpers/CrossBoardLinkRegistryTests.cs",
+        "QuestBoard.UnitTests/Helpers/CrossBoardRouteTargetTests.cs",
+        "QuestBoard.UnitTests/Services/CrossBoardLinkResolverServiceTests.cs",
         "docs/server-setup.md",
     ];
 

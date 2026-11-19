@@ -1,4 +1,7 @@
+using System.Reflection;
+using Microsoft.AspNetCore.Mvc;
 using QuestBoard.Domain.Enums;
+using QuestBoard.Service.Filters;
 using QuestBoard.Service.Helpers;
 
 namespace QuestBoard.UnitTests.Helpers;
@@ -96,6 +99,113 @@ public class CrossBoardLinkRegistryTests
 
         found.Should().BeTrue();
         kind.Should().Be(expectedKind);
+    }
+
+    // What each route asks of the viewer on the board it would take them to, and the page it
+    // belongs to. A change to any row has to be made here on purpose: a wrong access level either
+    // switches a viewer to a page that refuses them, or stops switching one that would have served.
+    public static IEnumerable<object[]> RegisteredRouteEntries()
+    {
+        yield return ["Quest", "Details", CrossBoardLookupKind.Quest, CrossBoardAccess.Member, BoardPage.Quests];
+        yield return ["Quest", "Edit", CrossBoardLookupKind.Quest, CrossBoardAccess.QuestOwnerOrAdmin, BoardPage.Quests];
+        yield return ["Quest", "Manage", CrossBoardLookupKind.Quest, CrossBoardAccess.DungeonMasterTier, BoardPage.Quests];
+        yield return ["Quest", "CreateFollowUp", CrossBoardLookupKind.Quest, CrossBoardAccess.QuestOwnerOrAdmin, BoardPage.Quests];
+        yield return ["QuestLog", "Details", CrossBoardLookupKind.Quest, CrossBoardAccess.CompletedQuest, BoardPage.QuestLog];
+        yield return ["QuestLog", "EditRecap", CrossBoardLookupKind.Quest, CrossBoardAccess.CompletedQuest, BoardPage.QuestLog];
+        yield return ["Events", "Details", CrossBoardLookupKind.Event, CrossBoardAccess.Member, BoardPage.Events];
+        yield return ["Events", "Edit", CrossBoardLookupKind.Event, CrossBoardAccess.DungeonMasterTier, BoardPage.Events];
+        yield return ["Characters", "Details", CrossBoardLookupKind.Character, CrossBoardAccess.Member, BoardPage.Characters];
+        yield return ["Characters", "Edit", CrossBoardLookupKind.Character, CrossBoardAccess.CharacterOwnerOrAdmin, BoardPage.Characters];
+        yield return ["Contacts", "Details", CrossBoardLookupKind.Contact, CrossBoardAccess.ContactVisible, BoardPage.Contacts];
+        yield return ["Contacts", "Edit", CrossBoardLookupKind.Contact, CrossBoardAccess.DungeonMasterTier, BoardPage.Contacts];
+        yield return ["Shop", "Details", CrossBoardLookupKind.ShopItem, CrossBoardAccess.ShopItemVisible, BoardPage.Shop];
+        yield return ["ShopManagement", "Edit", CrossBoardLookupKind.ShopItem, CrossBoardAccess.DungeonMasterTier, BoardPage.Shop];
+        yield return ["Series", "Details", CrossBoardLookupKind.EventSeries, CrossBoardAccess.Member, BoardPage.Events];
+        yield return ["ContactCategoryManagement", "Edit", CrossBoardLookupKind.ContactCategory, CrossBoardAccess.DungeonMasterTier, BoardPage.Contacts];
+        yield return ["DungeonMaster", "Profile", CrossBoardLookupKind.BoardMember, CrossBoardAccess.Member, BoardPage.DungeonMasterProfile];
+        yield return ["DungeonMaster", "EditProfile", CrossBoardLookupKind.BoardMember, CrossBoardAccess.AdminForOtherUser, BoardPage.DungeonMasterProfile];
+    }
+
+    [Fact]
+    public void RouteEntryTable_CoversEveryRegisteredRoute()
+    {
+        RegisteredRouteEntries().Should().HaveCount(18);
+        RegisteredRouteEntries()
+            .Select(row => $"/{row[0]}/{row[1]}")
+            .Should().BeEquivalentTo(CrossBoardLinkRegistry.RegisteredRoutes);
+    }
+
+    [Theory]
+    [MemberData(nameof(RegisteredRouteEntries))]
+    public void TryGetRouteEntry_EachRegisteredRoute_ResolvesToItsKindAccessAndPage(
+        string controller, string action, CrossBoardLookupKind kind, CrossBoardAccess access, BoardPage page)
+    {
+        var found = CrossBoardLinkRegistry.TryGetRouteEntry(null, controller, action, out var entry);
+
+        found.Should().BeTrue();
+        entry.Kind.Should().Be(kind);
+        entry.Access.Should().Be(access);
+        entry.Page.Should().Be(page);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("Platform")]
+    public void TryGetRouteEntry_AreaScopedRoute_FindsNoEntryUnlessTheAreaIsAbsent(string? area)
+    {
+        var found = CrossBoardLinkRegistry.TryGetRouteEntry(area, "Quest", "Edit", out _);
+
+        found.Should().Be(string.IsNullOrEmpty(area));
+    }
+
+    // The registry names the page a route belongs to, and so does the page attribute the gate
+    // reads on the controller. Two places naming the same fact drift apart; this reads the
+    // attributes by reflection and compares them, so a later change to either side fails here
+    // rather than reopening a way to learn that a record exists. The pages named on an action and
+    // its controller together must be exactly the registered page, because the gate requires every
+    // named page, and no overload of the action may be exempt from the gate.
+    [Theory]
+    [MemberData(nameof(RegisteredRouteEntries))]
+    public void EachRegisteredRoute_CarriesThePageItsActionIsGatedBy(
+        string controller, string action, CrossBoardLookupKind kind, CrossBoardAccess access, BoardPage page)
+    {
+        _ = kind;
+        _ = access;
+        CrossBoardLinkRegistry.TryGetRouteEntry(null, controller, action, out var entry).Should().BeTrue();
+        var registeredPage = entry.Page;
+        registeredPage.Should().Be(page);
+
+        var controllerType = ControllerTypeNamed(controller);
+        var overloads = controllerType
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .Where(method => string.Equals(method.Name, action, StringComparison.Ordinal))
+            .ToList();
+        overloads.Should().NotBeEmpty($"{controller}/{action} must be an action of {controllerType.Name}");
+
+        var gatedPages = overloads
+            .SelectMany(method => method.GetCustomAttributes<BoardPageAttribute>(inherit: true))
+            .Concat(controllerType.GetCustomAttributes<BoardPageAttribute>(inherit: true))
+            .Select(attribute => attribute.Page)
+            .Distinct()
+            .ToList();
+
+        gatedPages.Should().BeEquivalentTo([registeredPage], $"{controller}/{action} is gated by exactly the page the registry names");
+        overloads.Should().OnlyContain(
+            method => method.GetCustomAttribute<BoardPageExemptAttribute>() == null,
+            $"{controller}/{action} must not be exempt from the page gate, or the board narrowing would refuse a page that serves");
+    }
+
+    private static Type ControllerTypeNamed(string controller)
+    {
+        var matches = typeof(CrossBoardLinkRegistry).Assembly.GetTypes()
+            .Where(type => typeof(Controller).IsAssignableFrom(type)
+                && !type.IsAbstract
+                && string.Equals(type.Name, controller + "Controller", StringComparison.Ordinal)
+                && type.Namespace?.Contains(".Areas.", StringComparison.Ordinal) != true)
+            .ToList();
+        matches.Should().ContainSingle($"{controller}Controller is the one default-route controller of that name");
+        return matches[0];
     }
 
     // The six image subresources arrive as a non-document fetch destination and fail the
