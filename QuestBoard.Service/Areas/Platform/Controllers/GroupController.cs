@@ -366,7 +366,7 @@ public class GroupController(
                         // flowing from the newly created account, it carries no PII of its own.
                         logger.LogError("Failed to generate Login callback URL for userId {UserId}", result.UserId);
                     else
-                        jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, model.Role.ToString(), loginUrl, CancellationToken.None));
+                        jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, AdminPlatformDisplay.GroupRoleName(model.Role), loginUrl, CancellationToken.None));
 
                     TempData["Success"] = AdminActionMessages.AddedToGroup(result.Name, model.Role);
                     return RedirectToAction(nameof(Members), new { id, search, memberSearch });
@@ -466,7 +466,7 @@ public class GroupController(
                         // flowing from the newly created account, it carries no PII of its own.
                         logger.LogError("Failed to generate Login callback URL for userId {UserId}", result.UserId);
                     else
-                        jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, model.GroupRole.ToString(), loginUrl, CancellationToken.None));
+                        jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, AdminPlatformDisplay.GroupRoleName(model.GroupRole), loginUrl, CancellationToken.None));
 
                     TempData["Success"] = AdminActionMessages.AddedToGroup(result.Name, model.GroupRole);
                     return RedirectToAction(nameof(Members), new { id, search, memberSearch });

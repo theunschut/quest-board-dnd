@@ -158,7 +158,7 @@ public class AdminController(IUserService userService, IQuestService questServic
                         // flowing from the newly created account, it carries no PII of its own.
                         logger.LogError("Failed to generate Login callback URL or resolve group for userId {UserId}", result.UserId);
                     else
-                        jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, model.GroupRole.ToString(), loginUrl, CancellationToken.None));
+                        jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, AdminPlatformDisplay.GroupRoleName(model.GroupRole), loginUrl, CancellationToken.None));
 
                     return this.RedirectWithSuccess(nameof(Users), AdminActionMessages.AddedToGroup(result.Name, model.GroupRole));
                 }

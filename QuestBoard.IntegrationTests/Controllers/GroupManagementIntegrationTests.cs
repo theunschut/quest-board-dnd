@@ -880,6 +880,64 @@ public class GroupManagementIntegrationTests : IClassFixture<UnlimitedMailBudget
         _factory.JobClient.EnqueuedJobs.Count(j => j.Type == typeof(WelcomeEmailJob)).Should().Be(0);
     }
 
+    // The membership email names the role in the same words the pages use, not the enum name
+    [Fact]
+    public async Task AddMember_ExistingConfirmedUser_AsDungeonMaster_EmailNamesTheRoleInDisplayWords()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        var (_, newUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "dmaddmember", "dmaddmember@test.com", roles: []);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var membership = db.UserGroups.FirstOrDefault(ug => ug.UserId == newUser.Id && ug.GroupId == 1);
+            if (membership != null)
+            {
+                db.UserGroups.Remove(membership);
+                await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+            }
+        }
+
+        _factory.JobClient.Clear();
+
+        var formData = new Dictionary<string, string>
+        {
+            ["UserId"] = newUser.Id.ToString(),
+            ["Role"] = ((int)GroupRole.DungeonMaster).ToString()
+        };
+        var response = await client.PostAsync("/platform/Group/AddMember/1",
+            new FormUrlEncodedContent(formData), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.OK);
+        var job = _factory.JobClient.EnqueuedJobs.Single(j => j.Type == typeof(GroupMembershipAddedEmailJob));
+        (job.Args[3] as string).Should().Be("Dungeon Master");
+    }
+
+    // The email's article follows the display word: "an Admin", "a Dungeon Master"
+    [Theory]
+    [InlineData("Admin", "as an <strong>Admin</strong>")]
+    [InlineData("Dungeon Master", "as a <strong>Dungeon Master</strong>")]
+    [InlineData("Player", "as a <strong>Player</strong>")]
+    public async Task AddedToGroupEmail_RendersTheRoleWithAMatchingArticle(string role, string expected)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var renderer = scope.ServiceProvider.GetRequiredService<IEmailRenderService>();
+
+        var html = await renderer.RenderAsync<QuestBoard.Service.Components.Emails.AddedToGroup>(new Dictionary<string, object?>
+        {
+            ["UserName"] = "P100 Reader",
+            ["GroupName"] = "P100 Board",
+            ["Role"] = role,
+            ["LoginUrl"] = "https://board.example.invalid/login",
+            ["AppUrl"] = "https://board.example.invalid"
+        });
+
+        html.Should().Contain(expected);
+    }
+
     // AddMember on an existing stranded (never-confirmed) user enqueues a welcome/set-password email instead
     [Fact]
     public async Task AddMember_ExistingStrandedUser_ShouldEnqueueWelcomeEmailJob()
