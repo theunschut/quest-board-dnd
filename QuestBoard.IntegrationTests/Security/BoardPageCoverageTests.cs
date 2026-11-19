@@ -25,6 +25,7 @@ public class BoardPageCoverageTests
         "CalendarFeedController",
         "MarkdownController",
         "EmailPreviewController",
+        "ErrorController",
         "AdminController",
         "GroupController",
         "LinkedBoardsController",
