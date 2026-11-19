@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using QuestBoard.Domain.Enums;
 using QuestBoard.Domain.Interfaces;
+using QuestBoard.Domain.Models;
 using QuestBoard.Repository.Entities;
 
 namespace QuestBoard.Repository;
@@ -11,9 +12,30 @@ namespace QuestBoard.Repository;
 // filtered tables, so the query can only ever answer with a board the caller already belongs
 // to -- it cannot be used to discover a board the caller is not a member of. The one thing this
 // class is permitted to leak is an integer board id the caller already knows they belong to;
-// nothing here ever selects entity data.
+// nothing here ever selects entity data. The viewer's own boards are read here too: their ids,
+// the viewer's role, the board type and the switched-off pages, which is what a link needs to
+// know before it may take the viewer anywhere.
 internal sealed class CrossBoardLinkRepository(QuestBoardContext dbContext) : ICrossBoardLinkRepository
 {
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<CrossBoardViewerBoard>> GetViewerBoardsAsync(int viewerId, IReadOnlyCollection<int> memberGroupIds, CancellationToken token = default)
+    {
+        // Pinned to the viewer's own membership rows and to the membership set the caller passed,
+        // so a board the viewer does not belong to can never appear. The projection selects
+        // ids, the role, the board type and the disabled-page mask only -- no board content.
+        // Like the shared-board lookup below, this reads across boards on purpose, so it keeps
+        // working if membership ever gains a board-scoped filter.
+        var rows = await dbContext.UserGroups
+            .IgnoreQueryFilters()
+            .Where(ug => ug.UserId == viewerId && memberGroupIds.Contains(ug.GroupId))
+            .Select(ug => new { ug.GroupId, ug.GroupRole, ug.Group.BoardType, ug.Group.DisabledPages })
+            .ToListAsync(token);
+
+        return rows
+            .Select(r => new CrossBoardViewerBoard(r.GroupId, (GroupRole)r.GroupRole, (BoardType)r.BoardType, new BoardPageSet(r.DisabledPages)))
+            .ToList();
+    }
+
     /// <inheritdoc/>
     public async Task<int?> ResolveBoardIdAsync(CrossBoardLookupKind kind, int id, IReadOnlyCollection<int> memberGroupIds, CancellationToken token = default)
     {

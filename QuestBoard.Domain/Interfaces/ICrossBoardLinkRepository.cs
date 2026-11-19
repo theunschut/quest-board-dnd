@@ -1,4 +1,5 @@
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Models;
 
 namespace QuestBoard.Domain.Interfaces;
 
@@ -10,6 +11,13 @@ namespace QuestBoard.Domain.Interfaces;
 /// </summary>
 public interface ICrossBoardLinkRepository
 {
+    /// <summary>
+    /// Reads the viewer's role, the board type and the switched-off pages for each of the
+    /// boards the viewer belongs to, limited to the given membership set. Carries no board
+    /// content, only what a link needs to know before it may take the viewer there.
+    /// </summary>
+    Task<IReadOnlyList<CrossBoardViewerBoard>> GetViewerBoardsAsync(int viewerId, IReadOnlyCollection<int> memberGroupIds, CancellationToken token = default);
+
     /// <summary>
     /// Resolves the board an entity of the given kind and id lives on, restricted to the
     /// caller's own membership set. Returns null if the id does not exist, or exists on a board

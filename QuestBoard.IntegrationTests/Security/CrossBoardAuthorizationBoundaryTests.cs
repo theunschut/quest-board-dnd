@@ -9,10 +9,10 @@ namespace QuestBoard.IntegrationTests.Security;
 /// switched to, not the board that was active when the request began. The middleware runs before
 /// authorization precisely so this is true; these facts are what make that pipeline position a
 /// tested contract rather than a comment in Program.cs. Two directional facts pin both halves --
-/// the role that must now pass, and the role that must still be refused -- and two further facts
-/// prove the resolver itself never consults roles at all: an entity the landed page refuses to
-/// serve still resolves and still switches the board, because the lookup only ever answers which
-/// board owns an id, never whether the viewer should see what is there.
+/// the role that must now pass, and the role that must never be switched there at all, because the
+/// resolver only offers a board where the viewer's role can open the page. Two further facts prove
+/// that rules which depend on the record itself, not the board, are still left to the landed page:
+/// an entity such a page refuses to serve still resolves and still switches the board.
 /// </summary>
 public class CrossBoardAuthorizationBoundaryTests(CrossBoardWebApplicationFactory factory)
     : IClassFixture<CrossBoardWebApplicationFactory>
@@ -121,22 +121,25 @@ public class CrossBoardAuthorizationBoundaryTests(CrossBoardWebApplicationFactor
     }
 
     [Fact]
-    public async Task DungeonMasterOnActiveBoard_PlayerOnTargetBoard_IsRefusedTheQuestEditPage()
+    public async Task DungeonMasterOnActiveBoard_PlayerOnTargetBoard_IsNotSwitchedAndGetsTheAnswerANonexistentIdGets()
     {
         var suffix = Guid.NewGuid().ToString("N")[..8];
         var (client, _, questId) = await SeedViewerAsDmOnActiveBoardAndPlayerOnTargetBoardAsync(suffix);
+        await ErrorPageComparison.PrimeAsync(client);
 
-        var response = await client.SendAsync(NavigationGet($"/Quest/Edit/{questId}"), TestContext.Current.CancellationToken);
+        // The resolver only offers a board where the viewer's role can open the page. Here the viewer is
+        // only a Player on the board that holds the quest, so the link is answered exactly as a link to an
+        // id that does not exist, and the active board stays where it was. The nonexistent id goes first so
+        // the second request starts from the same state.
+        var nonexistent = await client.SendAsync(NavigationGet($"/Quest/Edit/{int.MaxValue}"), TestContext.Current.CancellationToken);
+        var refused = await client.SendAsync(NavigationGet($"/Quest/Edit/{questId}"), TestContext.Current.CancellationToken);
 
-        // The lookup does not consult roles at all -- it answers only which board owns the id,
-        // and the board switch happens regardless of the outcome the page then reaches. This is
-        // precisely why the lookup can be audited in one file: it is never the thing deciding who
-        // gets refused.
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Redirect, HttpStatusCode.Unauthorized);
+        await ErrorPageComparison.AssertIndistinguishableAsync(refused, nonexistent);
 
         var followUp = await client.SendAsync(NavigationGet("/quests"), TestContext.Current.CancellationToken);
         var followUpBody = await followUp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        followUpBody.Should().Contain($"BoundaryRefuseQuest{suffix}", because: "the board must have switched to Board B even though the page then refused the viewer");
+        followUpBody.Should().NotContain($"BoundaryRefuseQuest{suffix}", because: "the board must not have switched to a board whose page the viewer's role would refuse");
+        followUpBody.Should().NotContain("board-switch-toast");
     }
 
     [Fact]

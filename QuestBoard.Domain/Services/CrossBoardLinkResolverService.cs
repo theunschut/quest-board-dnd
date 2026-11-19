@@ -1,22 +1,31 @@
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 
 namespace QuestBoard.Domain.Services;
 
-// This class answers exactly one question -- which board owns this id -- and nothing about
-// whether the viewer should be allowed to see or act on it once there. A cancelled event, an
-// archived shop item, or a page the viewer is only a Player on all still resolve here; the page
-// itself is what applies visibility rules and authorization policy. Keeping those concerns out
-// of this class is what keeps the whole tenancy bypass auditable in one place.
+// This class answers one question -- which of the viewer's own boards may this link take them
+// to -- and it answers it only from boards the viewer belongs to. A board qualifies when it
+// offers the page the link opens and the viewer's role there can open that page. There is no
+// separate answer for a record that exists but may not be opened: it ends in the same null as an
+// id that does not exist, so the answer can never be used to learn that something is there.
+// Rules that depend on the record itself (whose quest it is, whether a shop item is on sale) are
+// not decided here. Keeping the whole tenancy bypass in one place is what keeps it auditable.
 internal sealed class CrossBoardLinkResolverService(IGroupService groupService, ICrossBoardLinkRepository repository) : ICrossBoardLinkResolver
 {
     /// <inheritdoc/>
-    // Takes a plain int userId and nothing else -- no ClaimsPrincipal, no role flag -- so there is
-    // nowhere a "but this viewer is a SuperAdmin" branch could be added without changing the
-    // signature. A SuperAdmin who is not a member of the target board resolves to nothing here,
-    // exactly like any other non-member.
-    public async Task<CrossBoardTarget?> ResolveAsync(CrossBoardLookupKind kind, int id, int userId, CancellationToken token = default)
+    // The SuperAdmin flag only raises the viewer's role on boards they are already a member of.
+    // Membership is read first and stays mandatory, so a SuperAdmin who is not a member of the
+    // target board resolves to nothing, exactly like any other non-member.
+    public async Task<CrossBoardTarget?> ResolveAsync(
+        CrossBoardLookupKind kind,
+        CrossBoardAccess access,
+        BoardPage page,
+        int id,
+        int userId,
+        bool viewerIsSuperAdmin,
+        CancellationToken token = default)
     {
         // Read fresh on every call, never cached -- a membership that was revoked a second ago
         // must not still open a board.
@@ -28,12 +37,24 @@ internal sealed class CrossBoardLinkResolverService(IGroupService groupService, 
 
         var memberGroupIds = memberships.Select(g => g.Id).ToList();
 
-        if (kind == CrossBoardLookupKind.BoardMember)
+        var viewerBoards = await repository.GetViewerBoardsAsync(userId, memberGroupIds, token);
+        var eligibleGroupIds = viewerBoards
+            .Where(board => BoardPagePolicy.IsAvailable(board.BoardType, board.DisabledPages, page)
+                && RoleMeetsAccess(board.Role, access, viewerIsSuperAdmin))
+            .Select(board => board.GroupId)
+            .ToList();
+
+        if (eligibleGroupIds.Count == 0)
         {
-            return await ResolveBoardMemberAsync(id, memberships, memberGroupIds, token);
+            return null;
         }
 
-        var resolvedGroupId = await repository.ResolveBoardIdAsync(kind, id, memberGroupIds, token);
+        if (kind == CrossBoardLookupKind.BoardMember)
+        {
+            return await ResolveBoardMemberAsync(id, memberships, eligibleGroupIds, token);
+        }
+
+        var resolvedGroupId = await repository.ResolveBoardIdAsync(kind, id, eligibleGroupIds, token);
         if (resolvedGroupId is not { } targetGroupId)
         {
             return null;
@@ -43,19 +64,36 @@ internal sealed class CrossBoardLinkResolverService(IGroupService groupService, 
         return new CrossBoardTarget(targetMembership.Id, targetMembership.Name);
     }
 
+    // What the viewer's role on a board has to be for the page behind the link to open at all. A
+    // SuperAdmin counts as an Admin on boards they belong to. Access levels that turn on the
+    // record rather than the role leave the role open here.
+    private static bool RoleMeetsAccess(GroupRole role, CrossBoardAccess access, bool viewerIsSuperAdmin)
+    {
+        var effectiveRole = viewerIsSuperAdmin ? GroupRole.Admin : role;
+
+        return access switch
+        {
+            CrossBoardAccess.DungeonMasterTier or CrossBoardAccess.QuestOwnerOrAdmin => effectiveRole >= GroupRole.DungeonMaster,
+            CrossBoardAccess.AdminForOtherUser => effectiveRole == GroupRole.Admin,
+            _ => true
+        };
+    }
+
     // A profile link is only worth following automatically when there is exactly one board it
     // can mean. When the viewer and the target share several boards there is no right answer to
     // guess, and guessing would move the viewer's board for a page that would have rendered
-    // anyway -- so today's behaviour stands instead. An absent id never reaches here at all,
-    // because the route reader requires an id it can parse, which is what makes the self-edit
-    // form of the profile edit route a no-op by construction.
+    // anyway -- so today's behaviour stands instead. Boards that would refuse the viewer are
+    // removed before that count, so a board that could not open the page never makes the answer
+    // ambiguous. An absent id never reaches here at all, because the route reader requires an id
+    // it can parse, which is what makes the self-edit form of the profile edit route a no-op by
+    // construction.
     private async Task<CrossBoardTarget?> ResolveBoardMemberAsync(
         int targetUserId,
         IList<GroupWithMemberCount> memberships,
-        IReadOnlyCollection<int> memberGroupIds,
+        IReadOnlyCollection<int> eligibleGroupIds,
         CancellationToken token)
     {
-        var sharedGroupIds = await repository.ResolveSharedBoardIdsForUserAsync(targetUserId, memberGroupIds, token);
+        var sharedGroupIds = await repository.ResolveSharedBoardIdsForUserAsync(targetUserId, eligibleGroupIds, token);
         if (sharedGroupIds.Count != 1)
         {
             return null;

@@ -28,7 +28,8 @@ namespace QuestBoard.Service.Middleware;
 ///   5. No board is currently active. There is nothing to switch from, and the session-recovery
 ///      middleware ahead of this one has already sent that case to the group picker; this guard
 ///      is defensive.
-///   6. The resolver finds no board the viewer belongs to for this id. The request continues and
+///   6. The resolver finds no board the viewer belongs to, that offers the page and whose role
+///      requirement the viewer meets, for this id. The request continues and
 ///      the action answers exactly as it does today -- deliberately the same path a nonexistent
 ///      id takes, because a branch here is how this feature would turn into a way to find out
 ///      which boards exist and who belongs to them.
@@ -74,7 +75,13 @@ public class CrossBoardDeepLinkMiddleware(RequestDelegate next)
 
         var resolver = context.RequestServices.GetRequiredService<ICrossBoardLinkResolver>();
         var userId = int.Parse(context.User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var target = await resolver.ResolveAsync(routeTarget.Kind, routeTarget.Id, userId);
+        var target = await resolver.ResolveAsync(
+            routeTarget.Kind,
+            routeTarget.Access,
+            routeTarget.Page,
+            routeTarget.Id,
+            userId,
+            context.User.IsInRole("SuperAdmin"));
 
         if (target == null)
         {

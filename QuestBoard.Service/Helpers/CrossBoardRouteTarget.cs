@@ -5,9 +5,10 @@ namespace QuestBoard.Service.Helpers;
 
 /// <summary>
 /// A parsed, registry-confirmed cross-board lookup target for the current request -- what kind
-/// of thing the id points at, and the id itself.
+/// of thing the id points at, the id itself, what the page asks of the viewer and which board
+/// page it belongs to.
 /// </summary>
-internal sealed record CrossBoardRouteTarget(CrossBoardLookupKind Kind, int Id)
+internal sealed record CrossBoardRouteTarget(CrossBoardLookupKind Kind, int Id, CrossBoardAccess Access, BoardPage Page)
 {
     // Route values are populated by UseRouting(), which runs before this is ever called, so no
     // manual URL parsing is needed here.
@@ -22,9 +23,9 @@ internal sealed record CrossBoardRouteTarget(CrossBoardLookupKind Kind, int Id)
         var idRaw = context.GetRouteValue("id") as string;
 
         if (int.TryParse(idRaw, out var id)
-            && CrossBoardLinkRegistry.TryGetLookupKind(area, controller, action, out var kind))
+            && CrossBoardLinkRegistry.TryGetRouteEntry(area, controller, action, out var entry))
         {
-            target = new CrossBoardRouteTarget(kind, id);
+            target = new CrossBoardRouteTarget(entry.Kind, id, entry.Access, entry.Page);
             return true;
         }
 
@@ -81,12 +82,12 @@ internal sealed record CrossBoardRouteTarget(CrossBoardLookupKind Kind, int Id)
 
         // Three segments can only have come from the default route, which has no area -- so no
         // area is a statement about the shape already established above, not an assumption.
-        if (!CrossBoardLinkRegistry.TryGetLookupKind(null, segments[0], segments[1], out var kind))
+        if (!CrossBoardLinkRegistry.TryGetRouteEntry(null, segments[0], segments[1], out var entry))
         {
             return false;
         }
 
-        target = new CrossBoardRouteTarget(kind, id);
+        target = new CrossBoardRouteTarget(entry.Kind, id, entry.Access, entry.Page);
         return true;
     }
 }

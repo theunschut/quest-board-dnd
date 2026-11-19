@@ -167,7 +167,7 @@ public class CrossBoardHiddenRecordTests(CrossBoardWebApplicationFactory factory
         await AssertLooksLikeANonexistentIdAsync(scenario, $"/QuestLog/Details/{quest.Id}", $"/QuestLog/Details/{int.MaxValue}");
     }
 
-    [Fact(Skip = "Fails until the cross-board resolver applies the target page's own visibility rule: editing a quest needs a Dungeon Master role on the board the quest lives on.")]
+    [Fact]
     public async Task HiddenRecord_QuestEditOfAnotherDungeonMaster_ForAViewerWhoIsOnlyAPlayerOnTheTargetBoard_LooksLikeANonexistentId()
     {
         var scenario = await SeedAsync(Guid.NewGuid().ToString("N")[..8], GroupRole.DungeonMaster, GroupRole.Player);

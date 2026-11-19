@@ -4,18 +4,27 @@ using QuestBoard.Domain.Models;
 namespace QuestBoard.Domain.Interfaces;
 
 /// <summary>
-/// Resolves whether an entity of a given kind and id lives on a board the caller is a member
-/// of, and if so which one. Answers only "which board owns this id" -- never whether the caller
-/// is allowed to see or act on it once there. A cancelled event, an archived shop item, or a
-/// page the caller is only a Player on all still resolve; the page itself applies visibility
-/// rules and authorization policy.
+/// Decides which board a viewer may be taken to for a link to an entity of a given kind and id,
+/// drawing only on boards the viewer belongs to. A board qualifies when it offers the page the
+/// link opens and the viewer's role there can open it; a SuperAdmin counts as an Admin on every
+/// board they are a member of and is never offered a board they do not belong to. A link that
+/// cannot be taken anywhere looks the same whether the record does not exist or exists but may
+/// not be opened.
 /// </summary>
 public interface ICrossBoardLinkResolver
 {
     /// <summary>
-    /// Returns the board an entity lives on, restricted to boards the given user belongs to, or
-    /// null if the entity does not exist or is on a board the user does not belong to -- the two
-    /// cases are indistinguishable on purpose.
+    /// Returns the board the link may take the viewer to, restricted to boards the given user
+    /// belongs to, that offer the page and whose role requirement the viewer meets, or null when
+    /// no such board holds the entity -- a missing id, a board the user is not on, a board that
+    /// does not offer the page and a role that may not open it all give the same answer on purpose.
     /// </summary>
-    Task<CrossBoardTarget?> ResolveAsync(CrossBoardLookupKind kind, int id, int userId, CancellationToken token = default);
+    Task<CrossBoardTarget?> ResolveAsync(
+        CrossBoardLookupKind kind,
+        CrossBoardAccess access,
+        BoardPage page,
+        int id,
+        int userId,
+        bool viewerIsSuperAdmin,
+        CancellationToken token = default);
 }
