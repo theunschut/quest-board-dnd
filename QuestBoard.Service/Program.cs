@@ -350,6 +350,12 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+// Every environment gets themed status pages for a browser navigation that ends in a bodiless 4xx or
+// 5xx; the developer exception page stays Development's answer to an unhandled exception. The gate
+// right after it turns the pages off for anything that is not a page request (scripts, images, the
+// calendar feed, the job dashboard, the health endpoint) so those keep their bare status.
+app.UseStatusCodePagesWithReExecute("/Error/{0}", createScopeForStatusCodePages: true);
+app.UseMiddleware<ErrorPageGateMiddleware>();
 app.UseMiddleware<MobileDetectionMiddleware>();
 
 app.UseRouting();

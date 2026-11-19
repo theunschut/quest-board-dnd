@@ -1,0 +1,23 @@
+@model QuestBoard.Service.ViewModels.ErrorViewModels.ErrorPageViewModel
+@{
+    Layout = "_Layout.Error";
+    ViewData["Title"] = Model.Heading;
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8 col-xl-6">
+        <div class="card modern-card">
+            <div class="card-header modern-card-header">
+                <h1 class="mb-0">@Model.Heading</h1>
+                <span class="header-subtitle">@Model.Docket</span>
+            </div>
+            <div class="card-body modern-card-body">
+                <p>@Model.Sentence</p>
+                <hr>
+                <a href="/" class="btn btn-primary">
+                    <i class="fas fa-home me-2" aria-hidden="true"></i>Home
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
