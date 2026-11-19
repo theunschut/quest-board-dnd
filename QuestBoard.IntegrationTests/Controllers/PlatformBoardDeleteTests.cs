@@ -276,6 +276,30 @@ public class PlatformBoardDeleteTests : IClassFixture<WebApplicationFactoryBase>
         html.Should().Contain("Sequel Tale (on Neighbour Table)");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Get_HasOneH1ThenH2SectionHeadings_WithNoSkippedLevel(bool mobile)
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        await BoardMoveSeed.SeedBoardAsync(_factory, BoardId, BoardName, BoardType.OneShot);
+        await BoardMoveSeed.SeedBoardAsync(_factory, 62, "Neighbour Table", BoardType.OneShot);
+        var dungeonMaster = await BoardMoveSeed.CreateUserAsync(_factory, "headingDm", "Heading Dm");
+        var originalId = await BoardMoveSeed.SeedQuestAsync(
+            _factory, BoardId, "Original Tale", dungeonMaster.Id, [new DateTime(2030, 1, 5, 18, 0, 0)]);
+        await BoardMoveSeed.SeedQuestAsync(
+            _factory, 62, "Sequel Tale", dungeonMaster.Id, [new DateTime(2030, 2, 5, 18, 0, 0)], originalQuestId: originalId);
+
+        var html = await GetDeletePageAsync(client, mobile ? PhoneUserAgent : null);
+
+        var headings = Regex.Matches(html, @"<h([1-6])\b[^>]*>(.*?)</h\1>", RegexOptions.Singleline)
+            .Select(m => (Level: int.Parse(m.Groups[1].Value), Text: WebUtility.HtmlDecode(Regex.Replace(m.Groups[2].Value, "<[^>]+>", "")).Trim()))
+            .ToList();
+        headings.Select(h => h.Level).Should().Equal(1, 2, 2, 2);
+        headings.Skip(1).Select(h => h.Text).Should().Equal("What will be deleted", "Kept, but unlinked", "Not affected");
+    }
+
     [Fact]
     public async Task Get_HidesTheUnlinkedSectionWhenNothingIsUnlinked()
     {
