@@ -12,7 +12,7 @@ created: 2026-11-18
 # Phase 100 — Security
 
 > Per-phase security contract for the Admin and Platform conversion: the server-rules audit (gap table), the verdicts, the live proofs on p100 fixtures, the operator's answers and the threat register.
-> Written by plan 100-04 before any fix, put to the operator by 100-05, implemented by 100-06 to 100-10 and 100-19, and closed by plan 100-22: every gap now carries its closing evidence (commit, enabled fact, live proof) or the operator's residual words in "Closing evidence" below. Status `verified`: the evidence is complete, and the phase security audit of 2026-11-19 filled the threat register below. One low threat (T-100-81) stays open below the block_on threshold, so `threats_open` is 0.
+> Written by plan 100-04 before any fix, put to the operator by 100-05, implemented by 100-06 to 100-10 and 100-19, and closed by plan 100-22: every gap now carries its closing evidence (commit, enabled fact, live proof) or the operator's residual words in "Closing evidence" below. Status `verified`: the evidence is complete, and the phase security audit of 2026-11-19 filled the threat register below. All 82 threats are closed (T-100-81 on the operator's wording approval), so `threats_open` is 0.
 
 ## Audit gap table
 
@@ -159,7 +159,7 @@ G-01 and G-03 were decided before the checkpoint (D-02, D-03) and were not re-as
 
 ### Approved sentences
 
-All 15 approved verbatim ("sentences as proposed"); `{name}` is replaced by the person's name.
+The first 15 approved verbatim ("sentences as proposed"), the last two after the code review (WR-02); `{name}` is replaced by the person's name.
 
 | Key | Text | Source |
 |-----|------|--------|
@@ -178,6 +178,8 @@ All 15 approved verbatim ("sentences as proposed"); `{name}` is replaced by the 
 | toastCreateLimit | You have created many accounts in a short time. Try again later. | approved (O-5 limit) |
 | toastCreateMemberFailed | The account could not be created. Check the details and try again. | approved (O-12 toast) |
 | toastPlatformNonMember | {name} was not a member of this group. | approved (G-13) |
+| emailSkippedRateLimited | No email was sent, because too many emails were sent to this account recently. | approved by the operator 2026-11-19 ("sure" to approving the WR-02 wording, relayed by the parent session) |
+| toastAddedEmailNotSent | {name} has been added to the group as {role}. No email was sent, because too many emails were sent to this account recently. | approved by the operator 2026-11-19 ("sure" to approving the WR-02 wording, relayed by the parent session); `{role}` is the display word |
 
 ### Gate 1 answers that reach the Admin Users page (100-14)
 
@@ -346,13 +348,11 @@ Filled by the phase security audit on 2026-11-19 at c7f7ae18 (ASVS level 1, bloc
 | T-100-78 | Tampering | an unreviewed release or image publication | high | mitigate | CLOSED | no tag at HEAD or containing phase commits; `docker-publish.yml` and `release.yml` run on tags only |
 | T-100-79 | Repudiation | Gate 2 answers | low | mitigate | CLOSED | `gate2/answers.json`: source operator, versions v1 and v2 |
 | T-100-80 | Denial of service | self removal or removal of the last Admin | medium | mitigate | CLOSED | `UserService.cs:196-214`; `AdminController.cs:386-393`; `AdminRoleGuardTests.cs:105,136,185,199` |
-| T-100-81 | Tampering | a server fix shipping unapproved wording | low | mitigate | OPEN (non-blocking) | the 15 approved sentences match the code, but `AdminActionMessages.cs:34,40-41` (`EmailSkippedRateLimited` and `AddedToGroupEmailNotSent`, from WR-02 commit d5103df7) were added after Gate 2 (edf81f9f). They are not in the approved set and appear 0 times in gate2/index.html. The fallback text at `UserService.cs:112` (reachable only in a race) was also never shown |
+| T-100-81 | Tampering | a server fix shipping unapproved wording | low | mitigate | CLOSED | the 15 approved sentences match the code, but `AdminActionMessages.cs:34,40-41` (`EmailSkippedRateLimited` and `AddedToGroupEmailNotSent`, from WR-02 commit d5103df7) were added after Gate 2 (edf81f9f). They are not in the approved set and appear 0 times in gate2/index.html. The fallback text at `UserService.cs:112` (reachable only in a race) was also never shown | Closed 2026-11-19: the operator approved both sentences verbatim; they are now in "Approved sentences".
 
 ### Open threats
 
-| Threat ID | Severity | Blocking | What is missing | To close it |
-|-----------|----------|----------|-----------------|-------------|
-| T-100-81 | low | no (below block_on high; not counted in `threats_open`) | The WR-02 behaviour was approved by the operator (option (a), relayed through the parent session: the add is never refused, the mail is skipped when the recipient's budget is spent, and the Success toast says so). The wording of the two new sentences was not approved: `AdminActionMessages.EmailSkippedRateLimited` ("No email was sent, because too many emails were sent to this account recently.") and the toast `AdminActionMessages.AddedToGroupEmailNotSent` that ends with it ("{name} has been added to the group as {role}. No email was sent, because too many emails were sent to this account recently."). Neither is among the 15 approved sentences, and Gate 2 never showed them. | The operator approves the wording verbatim; then add both to "Approved sentences" with that source and mark T-100-81 closed. |
+None. T-100-81 (unapproved WR-02 wording, low) closed 2026-11-19 when the operator approved both sentences verbatim.
 
 ### Accepted risks
 
@@ -371,6 +371,6 @@ Filled by the phase security audit on 2026-11-19 at c7f7ae18 (ASVS level 1, bloc
 
 | Threats found | Closed | Open |
 |---------------|--------|------|
-| 82 | 81 | 1 (low, below block_on high) |
+| 82 | 82 | 0 (T-100-81 closed 2026-11-19 on the operator's wording approval) |
 
 ASVS level 1, block_on high, `threats_open: 0`. Verified at c7f7ae18 against the code, the scratch tooling and re-runs of the security-relevant tests and checks.
