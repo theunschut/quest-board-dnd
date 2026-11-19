@@ -134,9 +134,8 @@ internal class UserRepository(QuestBoardContext dbContext, IMapper mapper, IActi
         }
         catch (DbUpdateConcurrencyException)
         {
-            // The row was deleted between the read and the save, so the update touched nothing. Stop tracking the
-            // stale row so a later save in this scope does not try the same update again.
-            DbContext.Entry(ug).State = EntityState.Detached;
+            // The row was deleted between the read and the save, so the update touched nothing and the person is no
+            // longer a member. The caller answers that and makes no further save in this request.
             return false;
         }
     }
