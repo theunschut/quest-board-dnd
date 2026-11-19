@@ -2189,7 +2189,7 @@ Plans:
 **Goal:** Convert the admin pages and the Platform area on top of the foundation's Platform layouts. Convert the admin and Platform pages to the foundation with their approved relayouts and readable badges, tables and mailto links, keeping the three Platform Group twins.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the foundation's Platform layouts, which this phase verifies)
-**Plans:** 23/23 plans executed
+**Plans:** 23/23 plans complete
 
 **Scope:**
 
