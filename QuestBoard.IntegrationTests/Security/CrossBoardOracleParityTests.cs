@@ -7,8 +7,8 @@ namespace QuestBoard.IntegrationTests.Security;
 /// <summary>
 /// Generalises the original tracer route's non-member/nonexistent-id parity fact across every
 /// entity family the registry covers, plus a SuperAdmin, plus the two structural guarantees a
-/// failed resolution must hold: it never leaves the board half-switched, and it never grows a
-/// rendered error page a plain 404 does not already have.
+/// failed resolution must hold: it never leaves the board half-switched, and the 404 a browser sees
+/// is one fixed page that names neither the id nor the path.
 ///
 /// What these facts do and do not establish: they prove the response to "exists on a board you
 /// are not in" and the response to "does not exist" are indistinguishable to the requester in
@@ -257,20 +257,30 @@ public class CrossBoardOracleParityTests(CrossBoardWebApplicationFactory factory
     }
 
     [Fact]
-    public async Task CrossBoardOracleParity_UnresolvableEntity_Returns404WithEmptyBody()
+    public async Task CrossBoardOracleParity_UnresolvableEntity_ScriptGetsAnEmptyNotFoundAndANavigationGetsTheFixedPage()
     {
         var suffix = Guid.NewGuid().ToString("N")[..8];
         var (client, _) = await SeedViewerOnBoardsAAndBWithEntitiesOnBoardCAsync(suffix);
 
-        var response = await client.SendAsync(NavigationGet($"/Quest/Details/{int.MaxValue}"), TestContext.Current.CancellationToken);
+        // A script (no HTML Accept header) still gets the bare framework 404: an empty body, exactly as
+        // before the themed pages existed.
+        var scriptResponse = await client.SendAsync(NavigationGet($"/Quest/Details/{int.MaxValue}"), TestContext.Current.CancellationToken);
 
-        // The application registers no status-code page middleware, so this is the bare
-        // framework 404 -- an empty body, not a rendered error page. A rendered error page for
-        // this case was considered and deliberately deferred: after this phase, a member
-        // following a genuine cross-board link never reaches a 404 at all, and only a genuinely
-        // nonexistent id still does, exactly as it does today.
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        body.Should().BeEmpty();
+        scriptResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var scriptBody = await scriptResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        scriptBody.Should().BeEmpty();
+
+        // A document navigation gets the themed 404, whose copy is fixed: it names neither the id nor the
+        // path, so it says nothing a nonexistent id and a hidden record would not both say.
+        var navigationRequest = NavigationGet($"/Quest/Details/{int.MaxValue}");
+        navigationRequest.Headers.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+        var navigationResponse = await client.SendAsync(navigationRequest, TestContext.Current.CancellationToken);
+
+        navigationResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var navigationBody = WebUtility.HtmlDecode(
+            await navigationResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        navigationBody.Should().Contain("It may have been removed, or it may belong to a board you're not viewing right now.");
+        navigationBody.Should().NotContain(int.MaxValue.ToString());
+        navigationBody.Should().NotContain("/Quest/Details");
     }
 }

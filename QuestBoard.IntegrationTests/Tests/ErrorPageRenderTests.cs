@@ -98,4 +98,91 @@ public class ErrorPageRenderTests(WebApplicationFactoryBase factory) : IClassFix
         body.Should().NotContain("legacy-pages.css");
         body.Should().NotContain("toast");
     }
+    public static TheoryData<int, string, string> CopyMap => new()
+    {
+        { 400, "That request could not be processed", "Something about that request was not valid. Go back and try again." },
+        { 409, "Your board session has changed", "Pick your board again, then retry. Nothing was saved." },
+        { 429, "Please wait a moment", "Too many requests. Please try again later." },
+        { 500, "Something went wrong", "We hit a problem on our side. Please try again in a moment." },
+        { 418, "Something went wrong", "That request could not be completed. Go back or return home." },
+        { 503, "Something went wrong", "That request could not be completed. Go back or return home." },
+    };
+
+    [Theory]
+    [MemberData(nameof(CopyMap))]
+    public async Task ErrorEndpoint_AsANavigation_AnswersItsStatusWithTheCopyOfThatStatus(int code, string heading, string sentence)
+    {
+        var (status, body) = await SendAsync(factory.CreateClient(), Navigation($"/Error/{code}"));
+        var text = WebUtility.HtmlDecode(body);
+
+        ((int)status).Should().Be(code);
+        Regex.Matches(body, "<h1\\b").Count.Should().Be(1);
+        text.Should().Contain(heading);
+        text.Should().Contain($"Error {code}");
+        text.Should().Contain(sentence);
+    }
+
+    [Fact]
+    public async Task ErrorEndpoint_Forbidden_SignedIn_AsksToContactAnAdministrator()
+    {
+        var client = await SignedInClientAsync("forbidauth");
+
+        var (status, body) = await SendAsync(client, Navigation("/Error/403"));
+        var text = WebUtility.HtmlDecode(body);
+
+        status.Should().Be(HttpStatusCode.Forbidden);
+        text.Should().Contain("You Don't Have Permission");
+        text.Should().Contain("Error 403");
+        text.Should().Contain("If you believe you should have access to this page, please contact an administrator.");
+        text.Should().NotContain("Please log in to access this page.");
+        text.Should().NotContain("Dungeon Master");
+    }
+
+    [Fact]
+    public async Task ErrorEndpoint_Forbidden_SignedOut_AsksToLogIn()
+    {
+        var (status, body) = await SendAsync(factory.CreateClient(), Navigation("/Error/403"));
+        var text = WebUtility.HtmlDecode(body);
+
+        status.Should().Be(HttpStatusCode.Forbidden);
+        text.Should().Contain("You Don't Have Permission");
+        text.Should().Contain("Please log in to access this page.");
+        text.Should().NotContain("please contact an administrator");
+    }
+
+    [Theory]
+    [InlineData(200)]
+    [InlineData(302)]
+    [InlineData(999)]
+    [InlineData(0)]
+    public async Task ErrorEndpoint_WithACodeThatIsNotAnError_AnswersTheNotFoundPage(int code)
+    {
+        var (status, body) = await SendAsync(factory.CreateClient(), Navigation($"/Error/{code}"));
+
+        status.Should().Be(HttpStatusCode.NotFound);
+        WebUtility.HtmlDecode(body).Should().Contain("Page not found");
+        body.Should().Contain("Error 404");
+    }
+
+    [Fact]
+    public async Task ErrorEndpoint_WithNoCode_AnswersTheServerErrorCopy()
+    {
+        var (status, body) = await SendAsync(factory.CreateClient(), Navigation("/Error"));
+
+        status.Should().Be(HttpStatusCode.InternalServerError);
+        body.Should().Contain("Error 500");
+        WebUtility.HtmlDecode(body).Should().Contain("We hit a problem on our side. Please try again in a moment.");
+    }
+
+    [Theory]
+    [InlineData("POST")]
+    [InlineData("PUT")]
+    [InlineData("DELETE")]
+    public async Task ErrorEndpoint_AcceptsEveryVerbWithoutAnAntiforgeryToken(string verb)
+    {
+        var (status, body) = await SendAsync(factory.CreateClient(), Navigation("/Error/418", new HttpMethod(verb)));
+
+        ((int)status).Should().Be(418);
+        body.Should().Contain("Error 418");
+    }
 }

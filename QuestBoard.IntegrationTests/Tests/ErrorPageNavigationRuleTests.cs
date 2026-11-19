@@ -76,4 +76,46 @@ public class ErrorPageNavigationRuleTests(WebApplicationFactoryBase factory) : I
         status.Should().Be(HttpStatusCode.NotFound);
         body.Should().BeEmpty();
     }
+    [Fact]
+    public async Task ErrorEndpoint_VisitedByAScript_AnswersTheBareStatusWithNoBody()
+    {
+        var (status, body) = await ErrorPageRenderTests.SendAsync(factory.CreateClient(), Request("/Error/404", "*/*", "empty"));
+
+        status.Should().Be(HttpStatusCode.NotFound);
+        body.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task HealthEndpoint_ForABrowserAcceptingHtml_KeepsItsPlainTextBody()
+    {
+        var response = await factory.CreateClient().SendAsync(
+            ErrorPageRenderTests.Navigation("/health"), TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.Content.Headers.ContentType?.MediaType.Should().Be("text/plain");
+        body.Should().NotContain("<h1");
+    }
+
+    [Fact]
+    public async Task JobDashboardPath_ForANavigation_IsNeverGivenTheErrorPage()
+    {
+        var client = await SignedInClientAsync("hangfire");
+
+        var (_, body) = await ErrorPageRenderTests.SendAsync(client, ErrorPageRenderTests.Navigation("/hangfire/missing"));
+
+        body.Should().NotContain("Page not found");
+    }
+
+    [Theory]
+    [InlineData("/css/does-not-exist.css", "text/css,*/*;q=0.1", "style")]
+    [InlineData("/js/does-not-exist.js", "*/*", "script")]
+    [InlineData("/images/does-not-exist.png", "image/avif,image/webp,*/*", "image")]
+    [InlineData("/css/does-not-exist.css", "text/html,*/*;q=0.8", "style")]
+    public async Task MissingStaticFile_RequestedAsAnAsset_StaysABareNotFound(string url, string accept, string fetchDest)
+    {
+        var (status, body) = await ErrorPageRenderTests.SendAsync(factory.CreateClient(), Request(url, accept, fetchDest));
+
+        status.Should().Be(HttpStatusCode.NotFound);
+        body.Should().BeEmpty();
+    }
 }
