@@ -1,0 +1,74 @@
+# Phase 100 deferred items
+
+Out-of-scope discoveries made while executing the phase. Each row names where it was found, what it is and what was done.
+
+## Found while executing
+
+| Found in | Item | Status |
+|----------|------|--------|
+| 100-02 (fixture creation) | The Platform Group Members "Create New User" modal posts its fields as `CreateMember.Email`, `CreateMember.Name` and `CreateMember.GroupRole`, but the `CreateMember` action binds an unprefixed `CreateMemberViewModel`. A form submitted as built therefore always arrives with empty fields, fails validation and re-renders the Members page with the modal closed and no visible message. The integration tests post unprefixed names, so they do not see it. The fixture tool submits the same form with the `CreateMember.` prefix removed from its field names, which creates the account through the real endpoint. Found in `Areas/Platform/Views/Group/Members.cshtml` (modal inputs) against `GroupController.CreateMember`. | Not fixed in 100-02 (the plan changes no source). Needs an owner: bind the view-model with `[Bind(Prefix = "CreateMember")]` or post unprefixed names, and give the failed path a visible reopen or toast. Related to the plan that decides the failed-create behaviour. Update from 100-04: reproduced as a skipped fact (`GroupManagementIntegrationTests.CreateMember_PostedWithTheFieldNamesTheDialogUses_CreatesTheAccount`) and put to the operator as finding X-3 / O-16 in the security document, so it is in scope and no longer only deferred. Answered at the audit checkpoint: O-16 yes, the binding is fixed together with G-15 in 100-19. |
+
+## Server gaps no converted view reaches (D-04)
+
+From the server-rules audit (plan 100-04). Severity and the reason each is out of scope; the full gap table is in `100-SECURITY.md`.
+
+| Where | What was read or measured | Severity | Why it is out of scope |
+|-------|---------------------------|----------|------------------------|
+| Owner notification of an admin password reset and of an admin-initiated email change (`AdminController.cs:263-277`, `:328-332`; gap G-12) | Read: no mail reaches the account owner when a board Admin resets their password, and the old address is not told when an Admin starts an email change | Low | A notification is a new email template, which is the email phase's territory; no converted view shows or sends it. Deferred: confirmed by the operator at the audit checkpoint (O-8 defer, G-12 residual; operator in chat: "approve all recommendations") |
+| Anonymous email-change confirmation that also renames the account (`AccountController.cs:298-318`, `IdentityService.cs:124-135`) | Read: `ConfirmEmailChange` is an anonymous token link; on success it changes the address and also sets the username to the new address, and the token only reaches the new address's owner | Low on its own (the token is bound to the new address and mailed to it). It was the second hop of the takeover chain only while a board Admin could start an email change for an elevated account, which the reach rule closes in scope | Reached from an email link, not from any of the 25 views; the Account area is not part of this conversion |
+| `QuestController.Delete` (the Dungeon Master's own quest delete) | Read: it goes through the same `QuestService.RemoveAsync` as the Admin delete, so the reminder-row and follow-up cleanup in the audit's quest-delete gap (G-05) fixes it as well | Medium (same defect as the Admin delete, shared fix) | Not reachable from a converted view; no separate change is planned, it is covered by the shared service fix |
+| Two SuperAdmins can disable each other and only SQL recovers (`UsersController.cs:33-60`; gap G-16) | Read, and an existing test pins that a peer SuperAdmin may be disabled | Info | Platform design choice, recorded; the Platform Users page is converted but this behaviour is not changed by this phase; accepted as design by the operator at the audit checkpoint (G-16 residual) |
+| Simultaneous mutual demotion of two Admins of one board (race against the last-Admin check; audit question O-7) | A serializable transaction is not available under the in-memory test provider; the self rule blocks the single-actor case and a SuperAdmin can restore an Admin from the Platform page | Low | Accepted by the operator at the audit checkpoint (O-7 accept); recorded, not fixed |
+
+## Left at the close of the conversion (100-21)
+
+The closing census is zero (no inline style, style element, inline script, handler, colour literal or important flag across the area's 29 views and 7 sheets), so no census finding is left. What remains is below, each with its severity and why it was not fixed in the closing plan, which adds no view, look or wording change. Items 1, 4 and 5 are put to the Gate 2 review.
+
+| # | Where | What was read or measured | Severity | Why it is left |
+|---|-------|---------------------------|----------|----------------|
+| 1 | Platform Group/Delete, `#board-delete-help` (a `.form-text` line on the glass card) | Measured 4.25:1 against the 4.5:1 minimum, identical before and after the phase. Group/Delete links only `platform-group-delete.css` and its phone twin, and no slice of the phase owned those sheets | Medium (a real contrast failure on one help line, pre-existing) | A fix is a colour rule in a sheet the Delete pair links (or linking `platform-pages.css` and giving `.form-text` the card colour): a look change, which the closing plan prohibits. Candidate for the review (accept as pre-existing, or fix in a follow-up) |
+| 2 | `LinkedBoardStaticGuardTests.FeatureSourceFiles` | Named the deleted `platform-linked-boards.mobile.css`, inert because the scan keeps only files that exist | Info | Fixed in the closing plan: the entry now names the successor `platform-pages.mobile.css` (rename recorded) |
+| 3 | `GroupMembersViewModel.CreateMember` | Not read by the controller (it binds `CreateMemberViewModel` directly) but both Members views still read the field names and display names from it through `DisplayNameFor` | Info | Not dead: removing it would change where the dialog's labels come from. Left |
+| 4 | The white switch knob on the gold checked track (Group/Create, Group/Edit switches) | About 1.6:1 between knob and track; the state is carried by track colour and knob position and no automated check flags it | Low | A look change; for the review |
+| 5 | Group/Index at 1440: the Delete button wraps to a second line for an empty board; Platform Members at 1440: a long email wraps at hyphens inside the Email cell | Readable, no overflow | Low | A look change; for the review |
+| 6 | `QuestService.RemoveAsync` | Deletes the quest's signups through separate saves before the repository's final tracked save, so a refused final save leaves the signups gone while the toast says nothing was changed | Medium (older than the phase; the phase added only the reminder-row and follow-up cleanup to the final save) | Open for review: making the whole delete one save changes the service's transaction shape, which is more than the conversion owns |
+
+## Closing sweep (100-22)
+
+The final sweep (every manifest row under both User-Agents, the accessibility bar, the click-throughs of every destructive form, the live refusals, the Platform layout probes and the SQL-backed suites) found no regression against BEFORE: 95 comparisons, 0 failing, 0 new contrast failure, lost control, overflow, small phone target, missing focus ring or console error. This table lists every out-of-scope gap of the phase with its severity, where it is and why it was not changed, plus every finding or measurement this sweep defers. The "Gate 2 entry" column names the record in `~/qb-ui-review/phase-100/contrast-exceptions.json` that carries the item for an explicit operator answer; nothing here is treated as approved. This plan changes no repository source file, so a fix for any item becomes a gap-closure plan requested from the orchestrator.
+
+| # | Item and where | Severity | Why it is deferred | Gate 2 entry |
+|---|----------------|----------|--------------------|--------------|
+| 1 | Owner notification of an admin password reset and of an admin-initiated email change (`AdminController` reset and email-change paths; gap G-12) | Low | A notification is a new email template, the email phase's territory; operator: defer (O-8) | none (decided) |
+| 2 | Anonymous email-change confirmation that also renames the account (`AccountController` `ConfirmEmailChange`) | Low | Not reachable from a converted view; the token is bound to the new address | none |
+| 3 | `QuestController.Delete` (the Dungeon Master's own quest delete) shares `QuestService.RemoveAsync` | Medium (shared defect, see item 6) | Not reachable from a converted view; it gets the reminder-row and follow-up cleanup through the shared repository fix | covered by `D100-questservice-removeasync` |
+| 4 | Two SuperAdmins can disable each other and only SQL recovers (`UsersController` Disable; gap G-16) | Info | Platform design choice; operator accepted | none (decided) |
+| 5 | Simultaneous mutual demotion of two Admins of one board (O-7) | Low | No serializable transaction under the in-memory provider; operator accepted | none (decided) |
+| 6 | `QuestService.RemoveAsync` deletes signups through separate saves before the repository's final tracked save: a refused final save leaves the signups gone while the toast says nothing was changed | Medium (older than the phase) | Making the whole delete one save changes the Domain service and needs a SQL fact that forces a refusal | `D100-questservice-removeasync`: accept the residual or fix in a gap-closure plan |
+| 7 | Platform Group/Delete `#board-delete-help` help line: 4.25:1 at the lightest possible board pixel (6.95:1 desktop and 5.56:1 phone at the pixel actually behind it on the render), identical BEFORE and AFTER | Medium (the one in-main contrast failure left in the area) | The Delete pair links only the two Delete sheets, which no slice owned; the fix is a look change in a sheet | `A100-board-delete-help` (both User-Agents) |
+| 8 | Platform Group/Delete heading order: the h1 title is followed by h3 sub-headings (BEFORE h2 then h3). Found by this sweep: 100-16 made the title the h1 and left the partial's sub-headings | Low | A regression of one heading level; no control, contrast or reflow is affected; this plan changes no source file | `A100-delete-heading-skip` (recommended: gap-closure plan turns the two h3 of `_BoardDeleteBody.cshtml` into h2 and updates the render fact) |
+| 9 | White switch knob on the gold checked track on Group/Edit: 1.63:1 knob to track and 1.47:1 checked track to unchecked track | Low | The state is also carried by the knob position and the row text; a look change | `A100-switch-knob` |
+| 10 | At 1440 Group/Index wraps Delete to a second line on 4 of 26 board rows; Platform Members wraps long addresses in the Email cell (59 of 63) | Low | Readable, no overflow, nothing lost; a layout change for the review | `A100-wraps-1440` |
+| 11 | The toast Close button is 21 by 21 px on desktop (shared toast partial, same as every page; Phase 99 recorded and the operator accepted it) | Low (inherited) | Shared view outside the area; this phase did not change it | `A100-toast-close-21px` |
+| 12 | The converted Admin forms (Create User, Reset Password, Edit User, Group Create and Edit) do not opt in to the `site.js` submit lock; only Group/Delete does, and `site.js` is unchanged from the baseline | Low | The lock is opt-in per form and none of these carried it at the baseline; a double click can post twice | `D100-no-submit-lock` |
+| 13 | Email Stats shows a persistent `role="alert"` box for the missing-key and API-error states | Info | Persistent page content that existed at the baseline, not a transient message | `D100-emailstats-alert` |
+| 14 | `GroupMembersViewModel.CreateMember` is no longer bound by the controller but both Members views read display names through it | Info | Not dead; removing it would move where the dialog labels come from | none |
+| 15 | `AdminControllerIntegrationTests.EmailStats_WhenSuperAdmin_ShouldSucceed` is order-dependent (302 when run alone), green in the full suite | Info (test only) | Pre-existing; not a regression | none |
+| 16 | By design, kept from earlier Gate 1 and planner answers: the phone Admin/Platform lists show display names only (Q-86), the phone Quests list has no description or DM email (Q-89, Q-90), the phone empty-state sentences differ from desktop (Q-94) | Info | Recorded decisions, not defects | findings-trace.json statuses `recorded` |
+| 17 | The throwaway account `P100 Audit Throwaway Member` created for the click-throughs stays as a disabled p100 account with no board membership (an account cannot be deleted through the app) | Info (fixture hygiene) | Clearly named, on no board; the throwaway quests and memberships were removed | none |
+| 18 | The sweep's `focus` action drops focus before the full-page capture, so `admin-users-focus-refused.png` does not show the ring; the one-frame-per-kind probe (`focus-frames/`) shows it on every kind, including a refused button | Info (harness) | Not an app defect | none |
+
+## Gate 2 answers (100-23)
+
+The operator answered the Gate 2 sheet (v1) in chat: every text change t1 to t17, the pairs, the findings and the inherited questions approved, the fixtures kept, and each exception or decision answered as follows.
+
+| # | Item | Gate 2 entry | Answer |
+|---|------|--------------|--------|
+| 7 | Group/Delete help line contrast (4.25:1 at the lightest possible pixel) | `A100-board-delete-help` (e1) | Accepted as it is |
+| 8 | Group/Delete heading order (h1 then h3) | `A100-delete-heading-skip` (e5) | Fixed: the three section headings of the delete body are h2 (commit 37fe6df0); the page reads h1 then h2 on both layouts and a render fact pins it. Closed |
+| 9 | White switch knob on the gold track | `A100-switch-knob` (e2) | Accepted as it is |
+| 10 | Group/Index Delete wrap and Members Email wrap at 1440 | `A100-wraps-1440` (e3) | Accepted as they are |
+| 11 | Toast Close button 21 px on desktop | `A100-toast-close-21px` (e4) | Accepted (inherited, shared partial) |
+| 12 | No submit lock on four admin forms | `D100-no-submit-lock` (d1) | Accepted as at the baseline |
+| 13 | EmailStats persistent alert box | `D100-emailstats-alert` (d2) | Accepted |
+| 6 | `QuestService.RemoveAsync` separate signup saves | `D100-questservice-removeasync` (d3) | Accepted as an older residual; stays open for a later review |

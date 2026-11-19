@@ -117,6 +117,194 @@ public class UserServiceTests
     // CreateOrAddToGroupAsync
     // ---------------------------------------------------------------------------
 
+    // ---------------------------------------------------------------------------
+    // ChangeMemberRoleAsync
+    // ---------------------------------------------------------------------------
+
+    private void GivenBoard(int groupId, int targetId, GroupRole? targetRole, int admins)
+    {
+        _repository.GetGroupRoleAsync(targetId, groupId).Returns(targetRole);
+        _repository.UpdateGroupRoleAsync(targetId, groupId, Arg.Any<GroupRole>(), Arg.Any<CancellationToken>())
+            .Returns(targetRole != null);
+        _groupService.CountMembersWithRoleAsync(groupId, GroupRole.Admin, Arg.Any<CancellationToken>()).Returns(admins);
+    }
+
+    private async Task AssertNothingWrittenAsync()
+    {
+        await _repository.DidNotReceive().UpdateGroupRoleAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<GroupRole>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().SetGroupRoleAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<GroupRole>());
+    }
+
+    [Theory]
+    [InlineData(GroupRole.Admin, GroupRole.DungeonMaster)]
+    [InlineData(GroupRole.Admin, GroupRole.Player)]
+    [InlineData(GroupRole.DungeonMaster, GroupRole.Admin)]
+    [InlineData(GroupRole.Player, GroupRole.DungeonMaster)]
+    public async Task ChangeMemberRoleAsync_WhenActorChangesTheirOwnRole_ReturnsSelfAndWritesNothing(GroupRole current, GroupRole requested)
+    {
+        GivenBoard(1, 7, current, admins: 2);
+
+        var result = await _sut.ChangeMemberRoleAsync(1, actingUserId: 7, targetUserId: 7, requested, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.Self);
+        await AssertNothingWrittenAsync();
+    }
+
+    [Theory]
+    [InlineData(GroupRole.DungeonMaster)]
+    [InlineData(GroupRole.Player)]
+    public async Task ChangeMemberRoleAsync_WhenTargetIsTheOnlyAdminAndWouldNoLongerBeOne_ReturnsLastAdminWhoeverActs(GroupRole requested)
+    {
+        // The actor is a different account (for example a platform administrator), so only the resulting role matters.
+        GivenBoard(1, 7, GroupRole.Admin, admins: 1);
+
+        var result = await _sut.ChangeMemberRoleAsync(1, actingUserId: 99, targetUserId: 7, requested, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.LastAdmin);
+        await AssertNothingWrittenAsync();
+    }
+
+    [Fact]
+    public async Task ChangeMemberRoleAsync_WhenAnotherAdminRemains_DemotesTheAdminAndReturnsChanged()
+    {
+        GivenBoard(1, 7, GroupRole.Admin, admins: 2);
+
+        var result = await _sut.ChangeMemberRoleAsync(1, actingUserId: 99, targetUserId: 7, GroupRole.DungeonMaster, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.Changed);
+        await _repository.Received(1).UpdateGroupRoleAsync(7, 1, GroupRole.DungeonMaster, Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(GroupRole.Player, GroupRole.Admin)]
+    [InlineData(GroupRole.Player, GroupRole.DungeonMaster)]
+    [InlineData(GroupRole.DungeonMaster, GroupRole.Admin)]
+    [InlineData(GroupRole.DungeonMaster, GroupRole.Player)]
+    public async Task ChangeMemberRoleAsync_WhenTargetIsNotAnAdmin_ReturnsChangedWithoutCountingAdmins(GroupRole current, GroupRole requested)
+    {
+        GivenBoard(1, 7, current, admins: 1);
+
+        var result = await _sut.ChangeMemberRoleAsync(1, actingUserId: 99, targetUserId: 7, requested, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.Changed);
+        await _repository.Received(1).UpdateGroupRoleAsync(7, 1, requested, Arg.Any<CancellationToken>());
+        await _groupService.DidNotReceive().CountMembersWithRoleAsync(Arg.Any<int>(), Arg.Any<GroupRole>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ChangeMemberRoleAsync_WhenTargetStaysAnAdmin_ReturnsChangedEvenWhenOnlyOne()
+    {
+        GivenBoard(1, 7, GroupRole.Admin, admins: 1);
+
+        var result = await _sut.ChangeMemberRoleAsync(1, actingUserId: 99, targetUserId: 7, GroupRole.Admin, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.Changed);
+    }
+
+    [Fact]
+    public async Task ChangeMemberRoleAsync_WhenTargetIsNotAMember_ReturnsNotAMemberAndWritesNothing()
+    {
+        GivenBoard(1, 7, null, admins: 1);
+
+        var result = await _sut.ChangeMemberRoleAsync(1, actingUserId: 99, targetUserId: 7, GroupRole.Admin, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.NotAMember);
+        await AssertNothingWrittenAsync();
+    }
+
+    // The person was on the board when the role was read but was removed before the change was saved. The update finds
+    // no row, so the answer is NotAMember and the membership is never created again.
+    [Fact]
+    public async Task ChangeMemberRoleAsync_WhenTheMembershipIsRemovedBeforeTheWrite_ReturnsNotAMemberAndNeverReAdds()
+    {
+        GivenBoard(1, 7, GroupRole.DungeonMaster, admins: 2);
+        _repository.UpdateGroupRoleAsync(7, 1, GroupRole.Admin, Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _sut.ChangeMemberRoleAsync(1, actingUserId: 99, targetUserId: 7, GroupRole.Admin, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.NotAMember);
+        await _repository.DidNotReceive().SetGroupRoleAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<GroupRole>());
+    }
+
+    [Fact]
+    public async Task ChangeMemberRoleAsync_WhenActorIsNotAMemberAndTargetIsAnother_IsNeverSelf()
+    {
+        // A platform administrator who is not on the board has an id that never matches a member's.
+        GivenBoard(1, 7, GroupRole.Player, admins: 1);
+
+        var result = await _sut.ChangeMemberRoleAsync(1, actingUserId: 1000, targetUserId: 7, GroupRole.DungeonMaster, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.Changed);
+    }
+
+    // ---------------------------------------------------------------------------
+    // TryRemoveMemberAsync
+    // ---------------------------------------------------------------------------
+
+    private async Task AssertNobodyRemovedAsync() =>
+        await _groupService.DidNotReceive().RemoveMemberAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+
+    [Theory]
+    [InlineData(GroupRole.Admin)]
+    [InlineData(GroupRole.DungeonMaster)]
+    [InlineData(GroupRole.Player)]
+    public async Task TryRemoveMemberAsync_WhenActorRemovesThemselves_ReturnsSelfAndRemovesNobody(GroupRole current)
+    {
+        GivenBoard(1, 7, current, admins: 2);
+
+        var result = await _sut.TryRemoveMemberAsync(1, actingUserId: 7, targetUserId: 7, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.Self);
+        await AssertNobodyRemovedAsync();
+    }
+
+    [Fact]
+    public async Task TryRemoveMemberAsync_WhenTargetIsTheOnlyAdmin_ReturnsLastAdminWhoeverActsAndRemovesNobody()
+    {
+        GivenBoard(1, 7, GroupRole.Admin, admins: 1);
+
+        var result = await _sut.TryRemoveMemberAsync(1, actingUserId: 99, targetUserId: 7, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.LastAdmin);
+        await AssertNobodyRemovedAsync();
+    }
+
+    [Fact]
+    public async Task TryRemoveMemberAsync_WhenAnotherAdminRemains_RemovesTheAdminAndReturnsChanged()
+    {
+        GivenBoard(1, 7, GroupRole.Admin, admins: 2);
+
+        var result = await _sut.TryRemoveMemberAsync(1, actingUserId: 99, targetUserId: 7, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.Changed);
+        await _groupService.Received(1).RemoveMemberAsync(1, 7, Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(GroupRole.DungeonMaster)]
+    [InlineData(GroupRole.Player)]
+    public async Task TryRemoveMemberAsync_WhenTargetIsNotAnAdmin_RemovesThemWithoutCountingAdmins(GroupRole current)
+    {
+        GivenBoard(1, 7, current, admins: 1);
+
+        var result = await _sut.TryRemoveMemberAsync(1, actingUserId: 99, targetUserId: 7, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.Changed);
+        await _groupService.Received(1).RemoveMemberAsync(1, 7, Arg.Any<CancellationToken>());
+        await _groupService.DidNotReceive().CountMembersWithRoleAsync(Arg.Any<int>(), Arg.Any<GroupRole>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TryRemoveMemberAsync_WhenTargetIsNotAMember_ReturnsNotAMemberAndRemovesNobody()
+    {
+        GivenBoard(1, 7, null, admins: 1);
+
+        var result = await _sut.TryRemoveMemberAsync(1, actingUserId: 99, targetUserId: 7, TestContext.Current.CancellationToken);
+
+        result.Should().Be(MemberChangeOutcome.NotAMember);
+        await AssertNobodyRemovedAsync();
+    }
+
     [Fact]
     public async Task CreateOrAddToGroupAsync_WhenEmailIsBrandNew_CreatesAccountAndReturnsNewAccountCreated()
     {
@@ -265,5 +453,198 @@ public class UserServiceTests
 
         // Assert: the service must not substitute empty-string or filter itself
         await _repository.Received(1).GetAvailableUsers(1, null, Arg.Any<CancellationToken>());
+    }
+
+    // ---------------------------------------------------------------------------
+    // GetAccountReachAsync and the guarded ResetPasswordAsync
+    // ---------------------------------------------------------------------------
+
+    private static IReadOnlySet<int> Ids(params int[] ids) => new HashSet<int>(ids);
+
+    [Fact]
+    public async Task GetAccountReachAsync_ForABoardAdminAndATargetWhoAdministersAnotherBoard_ReturnsAdministersAnotherBoard()
+    {
+        var actor = MakeNonSuperAdminPrincipal();
+        _identityService.GetUserIdAsync(actor).Returns(1);
+        _repository.GetUserIdsAdministeringOtherGroupsAsync(Arg.Any<IReadOnlyCollection<int>>(), 7, Arg.Any<CancellationToken>())
+            .Returns(Ids(20));
+
+        var result = await _sut.GetAccountReachAsync(actor, 7, [20, 21], TestContext.Current.CancellationToken);
+
+        result[20].Should().Be(AccountReach.AdministersAnotherBoard);
+        result[21].Should().Be(AccountReach.Reachable, "an account that is Admin only on the active board stays reachable");
+    }
+
+    [Fact]
+    public async Task GetAccountReachAsync_AsksTheRepositoryOnceForAnyNumberOfTargets()
+    {
+        var actor = MakeNonSuperAdminPrincipal();
+        _identityService.GetUserIdAsync(actor).Returns(1);
+        _repository.GetUserIdsAdministeringOtherGroupsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Ids());
+
+        await _sut.GetAccountReachAsync(actor, 7, [20, 21, 22, 23, 24], TestContext.Current.CancellationToken);
+
+        await _repository.Received(1).GetUserIdsAdministeringOtherGroupsAsync(
+            Arg.Is<IReadOnlyCollection<int>>(ids => ids.Count == 5), 7, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetAccountReachAsync_ForASuperAdminActor_ReachesEveryAccountWithoutAQuery()
+    {
+        var actor = MakeSuperAdminPrincipal();
+
+        var result = await _sut.GetAccountReachAsync(actor, 7, [20, 21], TestContext.Current.CancellationToken);
+
+        result.Values.Should().OnlyContain(r => r == AccountReach.Reachable);
+        await _repository.DidNotReceive().GetUserIdsAdministeringOtherGroupsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetAccountReachAsync_ForTheActorsOwnAccount_IsReachableEvenWhenTheyAdministerAnotherBoard()
+    {
+        var actor = MakeNonSuperAdminPrincipal();
+        _identityService.GetUserIdAsync(actor).Returns(20);
+        _repository.GetUserIdsAdministeringOtherGroupsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Ids(20));
+
+        var result = await _sut.GetAccountReachAsync(actor, 7, [20], TestContext.Current.CancellationToken);
+
+        result[20].Should().Be(AccountReach.Reachable);
+    }
+
+    [Fact]
+    public async Task GetAccountReachAsync_WithNoTargets_ReturnsEmptyWithoutAQuery()
+    {
+        var result = await _sut.GetAccountReachAsync(MakeNonSuperAdminPrincipal(), 7, [], TestContext.Current.CancellationToken);
+
+        result.Should().BeEmpty();
+        await _repository.DidNotReceive().GetUserIdsAdministeringOtherGroupsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ResetPasswordAsync_ForATargetOutOfReach_FailsAndNeverCallsTheIdentityReset()
+    {
+        var actor = MakeNonSuperAdminPrincipal();
+        _identityService.GetUserIdAsync(actor).Returns(1);
+        _repository.GetUserIdsAdministeringOtherGroupsAsync(Arg.Any<IReadOnlyCollection<int>>(), 7, Arg.Any<CancellationToken>())
+            .Returns(Ids(20));
+
+        var result = await _sut.ResetPasswordAsync(actor, 7, new User { Id = 20, Name = "Elsewhere" }, "NewPassword123!");
+
+        result.Succeeded.Should().BeFalse();
+        await _identityService.DidNotReceive().AdminResetPasswordAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<int>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task ResetPasswordAsync_ForAReachableTarget_CallsTheIdentityReset()
+    {
+        var actor = MakeNonSuperAdminPrincipal();
+        _identityService.GetUserIdAsync(actor).Returns(1);
+        _repository.GetUserIdsAdministeringOtherGroupsAsync(Arg.Any<IReadOnlyCollection<int>>(), 7, Arg.Any<CancellationToken>())
+            .Returns(Ids());
+        _identityService.AdminResetPasswordAsync(actor, 21, "NewPassword123!").Returns(IdentityResult.Success);
+
+        var result = await _sut.ResetPasswordAsync(actor, 7, new User { Id = 21, Name = "Here" }, "NewPassword123!");
+
+        result.Succeeded.Should().BeTrue();
+        await _identityService.Received(1).AdminResetPasswordAsync(actor, 21, "NewPassword123!");
+    }
+
+    [Fact]
+    public async Task GetAccountReachAsync_ForASuperAdminTarget_ReturnsSuperAdminAccount_EvenWithAPlayerMembershipOnly()
+    {
+        var actor = MakeNonSuperAdminPrincipal();
+        _identityService.GetUserIdAsync(actor).Returns(1);
+        _repository.GetUserIdsAdministeringOtherGroupsAsync(Arg.Any<IReadOnlyCollection<int>>(), 7, Arg.Any<CancellationToken>())
+            .Returns(Ids());
+        _identityService.GetSuperAdminIdsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>())
+            .Returns(Ids(20));
+
+        var result = await _sut.GetAccountReachAsync(actor, 7, [20, 21], TestContext.Current.CancellationToken);
+
+        result[20].Should().Be(AccountReach.SuperAdminAccount, "the Identity role decides, whatever membership rows the account has");
+        result[21].Should().Be(AccountReach.Reachable);
+    }
+
+    [Fact]
+    public async Task GetAccountReachAsync_ForATargetThatIsBothSuperAdminAndAnotherBoardsAdmin_ReturnsSuperAdminAccount()
+    {
+        var actor = MakeNonSuperAdminPrincipal();
+        _identityService.GetUserIdAsync(actor).Returns(1);
+        _repository.GetUserIdsAdministeringOtherGroupsAsync(Arg.Any<IReadOnlyCollection<int>>(), 7, Arg.Any<CancellationToken>())
+            .Returns(Ids(20));
+        _identityService.GetSuperAdminIdsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>())
+            .Returns(Ids(20));
+
+        var result = await _sut.GetAccountReachAsync(actor, 7, [20], TestContext.Current.CancellationToken);
+
+        result[20].Should().Be(AccountReach.SuperAdminAccount);
+    }
+
+    [Fact]
+    public async Task GetAccountReachAsync_ReadsSuperAdminIdsOnceForAnyNumberOfTargets()
+    {
+        var actor = MakeNonSuperAdminPrincipal();
+        _identityService.GetUserIdAsync(actor).Returns(1);
+        _repository.GetUserIdsAdministeringOtherGroupsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Ids());
+        _identityService.GetSuperAdminIdsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>())
+            .Returns(Ids());
+
+        await _sut.GetAccountReachAsync(actor, 7, [20, 21, 22, 23], TestContext.Current.CancellationToken);
+
+        await _identityService.Received(1).GetSuperAdminIdsAsync(
+            Arg.Is<IReadOnlyCollection<int>>(ids => ids.Count == 4), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetAccountReachAsync_ForASuperAdminActor_DoesNotReadTheIdentityRoles()
+    {
+        await _sut.GetAccountReachAsync(MakeSuperAdminPrincipal(), 7, [20], TestContext.Current.CancellationToken);
+
+        await _identityService.DidNotReceive().GetSuperAdminIdsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ResetPasswordAsync_ForASuperAdminTarget_FailsAndNeverCallsTheIdentityReset()
+    {
+        var actor = MakeNonSuperAdminPrincipal();
+        _identityService.GetUserIdAsync(actor).Returns(1);
+        _repository.GetUserIdsAdministeringOtherGroupsAsync(Arg.Any<IReadOnlyCollection<int>>(), 7, Arg.Any<CancellationToken>())
+            .Returns(Ids());
+        _identityService.GetSuperAdminIdsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>())
+            .Returns(Ids(20));
+
+        var result = await _sut.ResetPasswordAsync(actor, 7, new User { Id = 20, Name = "Platform" }, "NewPassword123!");
+
+        result.Succeeded.Should().BeFalse();
+        await _identityService.DidNotReceive().AdminResetPasswordAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<int>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task ResetPasswordAsync_ForASuperAdminActor_ResetsAnAdminOfAnotherBoard()
+    {
+        var actor = MakeSuperAdminPrincipal();
+        _identityService.AdminResetPasswordAsync(actor, 20, "NewPassword123!").Returns(IdentityResult.Success);
+
+        var result = await _sut.ResetPasswordAsync(actor, 7, new User { Id = 20, Name = "Elsewhere" }, "NewPassword123!");
+
+        result.Succeeded.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetAccountReachAsync_ForAnOrdinaryMemberOfAnotherBoard_IsReachable()
+    {
+        var actor = MakeNonSuperAdminPrincipal();
+        _identityService.GetUserIdAsync(actor).Returns(1);
+        _repository.GetUserIdsAdministeringOtherGroupsAsync(Arg.Any<IReadOnlyCollection<int>>(), 7, Arg.Any<CancellationToken>())
+            .Returns(Ids());
+        _identityService.GetSuperAdminIdsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>())
+            .Returns(Ids());
+
+        var result = await _sut.GetAccountReachAsync(actor, 7, [20], TestContext.Current.CancellationToken);
+
+        result[20].Should().Be(AccountReach.Reachable, "only an Admin of another board or a platform administrator is out of reach");
     }
 }

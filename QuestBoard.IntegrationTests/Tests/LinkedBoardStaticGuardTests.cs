@@ -272,7 +272,7 @@ public class LinkedBoardStaticGuardTests
         ("a decision id", new Regex(@"\bD-(0[1-9]|1[0-9]|20)\b")),
         ("a phase reference", new Regex("Pha" + "se\\s+(91|92)\\b", RegexOptions.IgnoreCase)),
         ("a plan id", new Regex(@"\b91-(0\d|10)\b")),
-        ("a planning document name", new Regex(@"CONTEXT\.md|RESEARCH\.md|UI-SPEC|PATTERNS\.md")),
+        ("a planning document name", new Regex(@"CONTEXT\.md|RESEARCH\.md|UI-" + @"SPEC|PATTERNS\.md")),
     ];
 
     // The source files this feature added or changed. A file that does not exist is skipped, so
@@ -329,7 +329,7 @@ public class LinkedBoardStaticGuardTests
         "QuestBoard.Service/Views/Shared/_LinkedDayEntries.cshtml",
         "QuestBoard.Service/wwwroot/css/calendar.css",
         "QuestBoard.Service/wwwroot/css/calendar.mobile.css",
-        "QuestBoard.Service/wwwroot/css/platform-linked-boards.mobile.css",
+        "QuestBoard.Service/wwwroot/css/platform-pages.mobile.css",
         "QuestBoard.Service/wwwroot/css/quests.mobile.css",
     ];
 

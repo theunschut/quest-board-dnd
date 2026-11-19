@@ -1,100 +1,60 @@
-@using QuestBoard.Domain.Extensions
-@using QuestBoard.Domain.Interfaces
+@using QuestBoard.Domain.Enums
 @using QuestBoard.Domain.Models.QuestBoard
+@using QuestBoard.Service.ViewModels.AdminViewModels
 @model IEnumerable<Quest>
 
 @{
-    var tokens = Antiforgery.GetAndStoreTokens(ViewContext.HttpContext);
+    var boardType = (BoardType)ViewBag.BoardType;
     var boardToday = (DateOnly)ViewBag.BoardToday;
 }
 
 @section Styles {
-    <link href="~/css/admin-quests.mobile.css" asp-append-version="true" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/admin-pages.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/admin-pages.mobile.css" asp-append-version="true" />
 }
 
-<div class="admin-quests-card-mobile mb-3">
-    <h5 class="mb-3">
-        <i class="fas fa-scroll text-warning me-2"></i>Quest Management
-    </h5>
-
-    @if (Model.Any())
-    {
-        @foreach (var quest in Model)
+<div class="card modern-card">
+    <div class="card-header modern-card-header page-bar">
+        <h1 class="mb-0">
+            <i class="fas fa-scroll me-2" aria-hidden="true"></i>Quest Management
+        </h1>
+    </div>
+    <div class="card-body modern-card-body">
+        @if (Model.Any())
         {
-            string statusBadge;
-            string statusIcon;
-            string statusText;
-
-            if (quest.HasBeenPlayed(boardToday))
+            @foreach (var quest in Model)
             {
-                statusBadge = "bg-dark";
-                statusIcon = "fas fa-flag-checkered";
-                statusText = "Done";
-            }
-            else if (quest.IsFinalized)
-            {
-                statusBadge = "bg-primary";
-                statusIcon = "fas fa-check-circle";
-                statusText = "Finalized";
-            }
-            else
-            {
-                statusBadge = "bg-success";
-                statusIcon = "fas fa-clock";
-                statusText = "Open";
-            }
-
-            <div class="quest-card-mobile mb-3">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <i class="fas fa-dragon text-muted"></i>
-                    <strong class="parchment-text">@quest.Title</strong>
-                    <span class="badge @statusBadge">
-                        <i class="@statusIcon me-1"></i>@statusText
-                    </span>
+                <div class="row-slip">
+                    <div class="row-slip__head">
+                        <span class="user-slip__name"><i class="fas fa-dragon me-2" aria-hidden="true"></i>@quest.Title</span>
+                        <partial name="_QuestStatusBadge" model="new QuestStatusBadgeModel(quest, boardType, boardToday)" />
+                    </div>
+                    <p class="slip-line">DM: @(quest.DungeonMaster?.Name ?? "Unknown")</p>
+                    <div class="row-slip__actions">
+                        <a asp-controller="Quest" asp-action="Edit" asp-route-id="@quest.Id" class="btn btn-warning">
+                            <i class="fas fa-edit me-2" aria-hidden="true"></i>Edit
+                        </a>
+                        <form asp-action="DeleteQuest" asp-route-id="@quest.Id" method="post"
+                              data-confirm-message="Are you sure you want to delete this quest? This action cannot be undone.">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash me-2" aria-hidden="true"></i>Delete
+                            </button>
+                        </form>
+                    </div>
                 </div>
-                <div class="mb-2">
-                    <small class="text-muted">DM: @(quest.DungeonMaster?.Name ?? "Unknown")</small>
-                </div>
-                <div class="d-flex flex-wrap gap-2">
-                    @* Edit Quest button *@
-                    <a asp-controller="Quest" asp-action="Edit" asp-route-id="@quest.Id" class="btn btn-info btn-sm">
-                        <i class="fas fa-edit me-1"></i>Edit
-                    </a>
-
-                    @* Delete Quest button *@
-                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteQuest(@quest.Id)">
-                        <i class="fas fa-trash"></i>Delete
-                    </button>
-                </div>
+            }
+        }
+        else
+        {
+            <div class="empty-state">
+                <i class="fas fa-scroll empty-state-icon" aria-hidden="true"></i>
+                <h2 class="empty-state-heading">No quests found.</h2>
+                <p class="empty-state-text">Quests appear here once created by a DM.</p>
             </div>
         }
-    }
-    else
-    {
-        <div class="text-center py-5">
-            <i class="fas fa-scroll fa-3x text-muted mb-3"></i>
-            <p class="text-muted">No quests found. Quests appear here once created by a DM.</p>
-        </div>
-    }
+    </div>
 </div>
 
 @section Scripts {
-    <script>
-        function deleteQuest(id) {
-            if (confirm("Are you sure you want to delete this quest? This action cannot be undone.")) {
-                fetch(`/Admin/DeleteQuest/${id}`, {
-                    method: "DELETE",
-                    headers: {
-                        'RequestVerificationToken': '@tokens.RequestToken'
-                    }
-                }).then(res => {
-                    if (res.ok) {
-                        location.reload();
-                    } else {
-                        alert("Delete failed.");
-                    }
-                });
-            }
-        }
-    </script>
+    <script type="module" src="~/js/confirm-submit.js" asp-append-version="true"></script>
 }

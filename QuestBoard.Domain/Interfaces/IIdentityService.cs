@@ -41,8 +41,9 @@ public interface IIdentityService
     Task<IdentityResult> ResetPasswordAsync(int userId, string token, string newPassword);
 
     /// <summary>
-    /// Resets a target user's password on behalf of an admin, without requiring the old password.
-    /// Fails if the calling ClaimsPrincipal is not in the Admin role.
+    /// Resets a target user's password with a freshly issued token, without requiring the old password, after
+    /// confirming that the acting principal resolves to an account. It does not check what the acting account may
+    /// change: deciding whether the target is within the actor's reach is the caller's job.
     /// </summary>
     Task<IdentityResult> AdminResetPasswordAsync(ClaimsPrincipal adminUser, int targetUserId, string newPassword);
 
@@ -101,4 +102,10 @@ public interface IIdentityService
     /// for callers that have no principal for that user, such as a rule about a quest's Dungeon Master.
     /// </summary>
     Task<bool> IsSuperAdminAsync(int userId);
+
+    /// <summary>
+    /// Returns, among the given user ids, those that hold the platform SuperAdmin Identity role. One read for any number
+    /// of ids; an empty input returns an empty set without reading.
+    /// </summary>
+    Task<IReadOnlySet<int>> GetSuperAdminIdsAsync(IReadOnlyCollection<int> userIds, CancellationToken token = default);
 }

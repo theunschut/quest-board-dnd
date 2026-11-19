@@ -697,6 +697,90 @@
     font-size: var(--qb-text-sm);
   }
 
+  /*
+   * The one-line reason beside a refused control: an icon, then the sentence. It is the neutral sibling of the move
+   * control's reason line, which the quest pages keep.
+   */
+  .control-reason {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--qb-space-xs);
+    margin-block: var(--qb-space-xs) 0;
+    font-size: var(--qb-text-sm);
+    font-weight: var(--qb-weight-regular);
+    line-height: var(--qb-leading-body);
+    color: var(--qb-fg-muted);
+  }
+
+  .control-reason > i {
+    flex: none;
+    margin-top: var(--qb-space-xs);
+  }
+
+  /* On paper the muted tone is the ink one. */
+  .table .control-reason {
+    color: var(--qb-ink-muted);
+  }
+
+  /*
+   * One list row on the phone: an opaque slip on the page card. No blur and no shadow beyond the resting one, so a long
+   * list stays smooth and the text never depends on what is behind it.
+   */
+  .mobile-layout .row-slip {
+    display: flex;
+    flex-direction: column;
+    gap: var(--qb-space-sm);
+    padding: var(--qb-space-md);
+    border: 1px solid var(--qb-surface-glass-border);
+    border-radius: var(--qb-radius-md);
+    background-color: var(--qb-surface-overlay);
+    color: var(--qb-fg);
+    box-shadow: var(--qb-shadow-rest);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .mobile-layout .row-slip + .row-slip {
+    margin-top: var(--qb-space-sm);
+  }
+
+  .mobile-layout .row-slip__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+  }
+
+  .mobile-layout .row-slip__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--qb-space-sm);
+  }
+
+  .mobile-layout .row-slip__actions :where(.btn, form) {
+    min-height: var(--qb-hit-min);
+  }
+
+  .mobile-layout .row-slip__actions form {
+    display: flex;
+  }
+
+  .mobile-layout .row-slip__actions .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--qb-hit-min);
+  }
+
+  /*
+   * A Done or Closed badge shares its fill with the opaque slip it sits on, so inside a slip it carries the strong
+   * border to stay visible as a chip. Elsewhere the badge is unchanged.
+   */
+  .mobile-layout .row-slip .badge.bg-dark {
+    border: 1px solid var(--qb-border-strong);
+  }
+
   /* The row of toggle cells that picks which weeks of a recurring event's cycle are on. */
   .cycle-mask-strip {
     display: flex;

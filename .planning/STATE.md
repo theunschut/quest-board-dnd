@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Rolling Improvements
-current_phase: 99
-current_phase_name: Shop and Shop management UI conversion
-status: executing
-stopped_at: Completed 99-24-PLAN.md
-last_updated: "2026-11-17T19:43:24.288Z"
-last_activity: 2026-11-17
-last_activity_desc: "Phase 99: 24/24 plans complete, shop Edit review bypass and cross-keeper Delete fixed (99-24), ready for the v6.4.0 release hand-off"
+current_phase: 101
+current_phase_name: Email templates restyle
+status: planning
+stopped_at: Completed 100-23-PLAN.md
+last_updated: "2026-11-19T09:08:21.992Z"
+last_activity: 2026-11-19
+last_activity_desc: Phase 100 Gate 2 answered (e5 heading fix made); ready for the v6.5.0 release hand-off
 progress:
-  total_phases: 31
-  completed_phases: 26
-  total_plans: 294
-  completed_plans: 285
+  total_phases: 32
+  completed_phases: 27
+  total_plans: 335
+  completed_plans: 308
   percent: 84
 state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 ---
@@ -25,15 +25,15 @@ state_head: 33b56b8461999537961d294feaaf1ba792bcf51e
 See: .planning/PROJECT.md (updated 2026-10-21 — after Phase 93)
 
 **Core value:** The quest board must reliably let DMs post quests and players sign up — everything else enhances that loop.
-**Current focus:** Phase 99 — Shop and Shop management UI conversion
+**Current focus:** Phase 100 — Admin and Platform UI conversion
 
 ## Current Position
 
-Phase: 99 (Shop and Shop management UI conversion) — EXECUTING
-Plan: 24 of 24
-Status: Phase plans complete — Gate 2 approved, the Draft Details access gap closed, the stock, review and availability gaps fixed, and the Edit review bypass and cross-keeper Delete closed; ready for verification and the v6.4.0 release
+Phase: 101 — Email templates restyle
+Plan: Not started
+Status: Ready to plan
 Not complete in this milestone: Phases 78, 79 and 90, and 98 onward.
-Last activity: 2026-11-17 — Phase 99: all 24 plans complete; 99-24 (operator: "Fix first") made an edit never publish a shop item (one shared review rule, ShopItemReview, for Create and Edit; an edit at Rare or above sends a Published or Archived item back to review; the toast says so) and limited a non-admin Dungeon Master's Delete to their own Draft or Denied item, with Admins and SuperAdmins through the AdminOnly policy and both lists offering Delete only where the server accepts it; T-99-87 (publishing one's own edit of another keeper's item) left for the operator's choice; unit 1519 passed, integration 2742 passed, 16 skipped; v6.4.0 hand-off through the operator's pull request; verification steps not run
+Last activity: 2026-11-19 — Phase 100 complete, transitioned to Phase 101
 
 **Phases 96 and 97 complete 2026-11-13.** Shipped as v6.1.0 (PR #170) and v6.2.0 (PR #171); the post-deploy UAT items (96: 7, 97: 5) were confirmed by the operator against production ("i think everything works. so mark as completed").
 
@@ -185,6 +185,13 @@ v8.0's decision log has been archived — see `.planning/PROJECT.md` Key Decisio
 - [Phase 99]: 99-07: Gate 1: merchant placement (a), the floating button in the sticky dock
 - [Phase 99]: 99-07: Gate 1: legendary chip is amber (--qb-warning on --qb-warning-fg), as the signed-off render draws it; D-09's gold not followed
 - [Phase 99]: 99-07: Gate 1: item 20 server quantity validation is fixed in phase 99 by plan 99-21, not deferred
+- [Phase 100]: [100-05] O-1 accept: reach rule is exactly D-02; ordinary account on another board stays reachable (G-02 residual)
+- [Phase 100]: [100-05] O-3: peer Admin, own name and email, and own password reset are reachable and allowed
+- [Phase 100]: [100-05] O-4 toast: limiter before any write; a refusal is a redirect with an Error toast; 429 tests change
+- [Phase 100]: [100-05] O-12 toast: failed Platform Create New User redirects with an Error toast
+- [Phase 100]: [100-05] O-13 dev-setting: EmailStats capture seam is a Development-only ResendBaseUrl setting
+- [Phase 100]: Gate 1 wording: One-Shot (6a yes), Dungeon Master (6b yes), Admin on Admin/Users (6c yes); operator approved all recommendations
+- [Phase 100]: Gate 1 copy changes applied: item 8 Remove sentence, 9 password hint, 19 Reset Password cancel relabelled only, 20 Refresh Email Stats; 16 left-aligned slots, 18 outline yes, header Name
 
 ### Roadmap Evolution
 
@@ -209,6 +216,7 @@ v8.0 shipped exactly as originally roadmapped: 7 phases (65–71), 26 plans, 100
 - Phase 93 added 2026-10-20: Per-Board Page Selection and Home Page -- in the Platform area a super admin chooses which pages each board offers (Shop, Contacts, Players, Characters, Quest Log, Events, Calendar and the like) and which page the board opens on. The quest list stays the default, and at least one board can open on `/calendar`. Raised by the operator. Scoping found that boards have no per-board settings yet, and today's board-type gating lives only in the two layouts' menus: `ShopController` and `PlayersController` have no board-type check, so `/shop` and `/players` still open on a Campaign board when typed. The home page has to reach `HomeController.Index`, the navbar brand in both layouts, and the `Quest/Index` fallbacks in `GroupPickerController` and `MoveController`. Open questions for discuss-phase: which pages can be switched off, how toggles relate to board type, what a switched-off URL returns, links and dependent flows (signup characters, gold) that point into a switched-off page, whether the calendar feed and My Agenda follow the toggles, and whether the home page is per board or shared by a linked set.
 - Phase 94 added 2026-10-30: Whole-App UI Review and Unification -- run the `senior-frontend` skill over every view, desktop and mobile, to fix, unify and where it pays off upgrade the UI. Raised by the operator. Scoping found 133 `.cshtml` files (55 mobile twins), 48 stylesheets of about 8,900 lines with only 18 custom properties against about 615 hex colours and 814 `!important`, 97 inline `style` attributes, 43 views with inline scripts, and no CSP header, which the skill otherwise assumes. Open questions for discuss-phase: unify within today's look or settle a new visual direction first, how to split the work into per-area phases, Bootstrap and Font Awesome (SRI, self-hosting, v4 shim), whether inline scripts and styles move out ahead of a later CSP phase, whether any mobile twins merge into responsive views, and the accessibility bar.
 - Phase 102 added 2026-11-11: Board deletion -- deleting a member-less board currently 500s because quests, characters, events and other board-owned rows have no delete rule; delete what belongs to the board, unlink what must outlive it, keep the no-members guard. Reported by the operator.
+- Phase 103 added 2026-11-18: Themed Error Pages -- serve a themed error page for failed requests with Back, Home (`/`) and Log out buttons; prompted by the plain 404 a member gets when a link points to a board other than the active one. Reported by the operator.
 
 ### Pending Todos
 
@@ -287,8 +295,8 @@ Items acknowledged and carried forward across milestone closes.
 
 ## Session Continuity
 
-Last session: 2026-11-17T19:43:24.245Z
-Stopped at: Completed 99-24-PLAN.md
+Last session: 2026-11-19T09:02:20.399Z
+Stopped at: Completed 100-23-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

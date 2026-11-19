@@ -9,6 +9,7 @@ using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Service.Areas.Platform.Controllers;
 using QuestBoard.Service.ViewModels.PlatformViewModels;
+using System.Threading.RateLimiting;
 
 namespace QuestBoard.UnitTests.Controllers;
 
@@ -24,7 +25,8 @@ public class GroupControllerBoardNameTests
             Substitute.For<IIdentityService>(),
             Substitute.For<IBackgroundJobClient>(),
             settingsService ?? Substitute.For<IBoardPageSettingsService>(),
-            NullLogger<GroupController>.Instance);
+            NullLogger<GroupController>.Instance,
+            PartitionedRateLimiter.Create<int, string>(_ => RateLimitPartition.GetNoLimiter(string.Empty)));
         controller.TempData = new TempDataDictionary(new DefaultHttpContext(), Substitute.For<ITempDataProvider>());
         return controller;
     }

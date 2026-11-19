@@ -240,7 +240,7 @@ public class UsersControllerIntegrationTests : IClassFixture<WebApplicationFacto
         var start = html.IndexOf(userName, StringComparison.Ordinal);
         start.Should().BeGreaterThan(-1, "the seeded user must be listed");
         var end = html.IndexOf("</tr>", start, StringComparison.Ordinal);
-        if (end < 0) end = html.IndexOf("user-card-mobile", start + 1, StringComparison.Ordinal);
+        if (end < 0) end = html.IndexOf("class=\"row-slip\"", start + 1, StringComparison.Ordinal);
         if (end < 0) end = html.Length;
         return html[start..end];
     }
@@ -308,7 +308,8 @@ public class UsersControllerIntegrationTests : IClassFixture<WebApplicationFacto
         var (html, userName) = await RenderUsersPageAsync(MobileUserAgent, "gamma", "Alpha", "beta");
 
         html.Should().Contain("platform-users-boards.mobile.css");
-        html.Should().Contain("platform-users.mobile.css");
+        html.Should().Contain("platform-pages.mobile.css");
+        html.Should().NotContain("platform-users.mobile.css", "the retired phone sheet must not be linked");
 
         var card = RowFor(html, userName);
         card.Should().Contain("<details class=\"user-boards");

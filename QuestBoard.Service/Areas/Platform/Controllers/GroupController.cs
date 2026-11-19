@@ -12,9 +12,11 @@ using QuestBoard.Domain.Models;
 using QuestBoard.Domain.Models.BoardDeletion;
 using QuestBoard.Service.Extensions;
 using QuestBoard.Service.Jobs;
+using QuestBoard.Service.ViewModels.AdminViewModels;
 using QuestBoard.Service.ViewModels.PlatformViewModels;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 
 namespace QuestBoard.Service.Areas.Platform.Controllers;
 
@@ -26,7 +28,8 @@ public class GroupController(
     IIdentityService identityService,
     IBackgroundJobClient jobClient,
     IBoardPageSettingsService boardPageSettingsService,
-    ILogger<GroupController> logger) : Controller
+    ILogger<GroupController> logger,
+    PartitionedRateLimiter<int> emailResendLimiter) : Controller
 {
     private const string ConcurrencyMessage = "Someone else changed this board while you were editing. Reload the page and try again.";
 
@@ -309,6 +312,15 @@ public class GroupController(
         });
     }
 
+    // An added account already exists, so its mail shares that person's hourly budget with the resend and email-change
+    // buttons. A spent budget never refuses the add: the person joins the board, only the mail is skipped, and the
+    // toast says so. A fixed-window permit counts as soon as it is granted, so the lease is released at once.
+    private bool TryTakeAddedMemberMailPermit(int userId)
+    {
+        using var lease = emailResendLimiter.AttemptAcquire(userId);
+        return lease.IsAcquired;
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddMember(int id, AddMemberViewModel model, string? search, string? memberSearch)
@@ -341,6 +353,12 @@ public class GroupController(
         {
             case CreateOrAddToGroupOutcome.AddedToGroup:
                 {
+                    if (!TryTakeAddedMemberMailPermit(result.UserId!.Value))
+                    {
+                        TempData["Success"] = AdminActionMessages.AddedToGroupEmailNotSent(result.Name, model.Role);
+                        return RedirectToAction(nameof(Members), new { id, search, memberSearch });
+                    }
+
                     // Existing user added to a group they weren't in — notify them by email.
                     var loginUrl = Url.Action("Login", "Account", null, Request.Scheme);
                     if (loginUrl == null)
@@ -348,14 +366,20 @@ public class GroupController(
                         // flowing from the newly created account, it carries no PII of its own.
                         logger.LogError("Failed to generate Login callback URL for userId {UserId}", result.UserId);
                     else
-                        jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, model.Role.ToString(), loginUrl, CancellationToken.None));
+                        jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, AdminPlatformDisplay.GroupRoleName(model.Role), loginUrl, CancellationToken.None));
 
-                    TempData["Success"] = $"{result.Name} has been added to the group as {model.Role}. A notification email has been sent.";
+                    TempData["Success"] = AdminActionMessages.AddedToGroup(result.Name, model.Role);
                     return RedirectToAction(nameof(Members), new { id, search, memberSearch });
                 }
 
             case CreateOrAddToGroupOutcome.AddedToGroupStrandedAccount:
                 {
+                    if (!TryTakeAddedMemberMailPermit(result.UserId!.Value))
+                    {
+                        TempData["Success"] = AdminActionMessages.AddedToGroupEmailNotSent(result.Name, model.Role);
+                        return RedirectToAction(nameof(Members), new { id, search, memberSearch });
+                    }
+
                     // Account was never confirmed — send a welcome email with a set-password link instead.
                     var rawToken = await identityService.GeneratePasswordResetTokenForUserAsync(result.UserId!.Value);
                     if (rawToken != null)
@@ -373,7 +397,7 @@ public class GroupController(
                         }
                     }
 
-                    TempData["Success"] = $"{result.Name} has been added to the group as {model.Role}. A notification email has been sent.";
+                    TempData["Success"] = AdminActionMessages.AddedToGroup(result.Name, model.Role);
                     return RedirectToAction(nameof(Members), new { id, search, memberSearch });
                 }
 
@@ -397,19 +421,12 @@ public class GroupController(
         var group = await groupService.GetByIdAsync(id);
         if (group == null) return RedirectToAction(nameof(Index));
 
+        // The dialog closes with the post, so a failed create is answered with a toast on the page the dialog sits on
+        // rather than a re-rendered page whose closed dialog would hold the only message.
         if (!ModelState.IsValid)
         {
-            var invalidMembers = await groupService.GetMembersAsync(id, memberSearch);
-            var invalidAvailableUsers = await userService.GetAvailableUsersAsync(id, search);
-            return View(nameof(Members), new GroupMembersViewModel
-            {
-                Group = group,
-                Members = invalidMembers,
-                AvailableUsers = invalidAvailableUsers,
-                SearchQuery = search,
-                MemberSearchQuery = memberSearch,
-                CreateMember = model
-            });
+            TempData["Error"] = AdminActionMessages.CreateMemberFailed;
+            return RedirectToAction(nameof(Members), new { id, search, memberSearch });
         }
 
         var result = await userService.CreateOrAddToGroupAsync(model.Email, model.Name, id, model.GroupRole);
@@ -437,20 +454,32 @@ public class GroupController(
 
             case CreateOrAddToGroupOutcome.AddedToGroup:
                 {
+                    if (!TryTakeAddedMemberMailPermit(result.UserId!.Value))
+                    {
+                        TempData["Success"] = AdminActionMessages.AddedToGroupEmailNotSent(result.Name, model.GroupRole);
+                        return RedirectToAction(nameof(Members), new { id, search, memberSearch });
+                    }
+
                     var loginUrl = Url.Action("Login", "Account", null, Request.Scheme);
                     if (loginUrl == null)
                         // userId is a database-internal integer identifier, not personal data — despite
                         // flowing from the newly created account, it carries no PII of its own.
                         logger.LogError("Failed to generate Login callback URL for userId {UserId}", result.UserId);
                     else
-                        jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, model.GroupRole.ToString(), loginUrl, CancellationToken.None));
+                        jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, AdminPlatformDisplay.GroupRoleName(model.GroupRole), loginUrl, CancellationToken.None));
 
-                    TempData["Success"] = $"{result.Name} has been added to the group as {model.GroupRole}. A notification email has been sent.";
+                    TempData["Success"] = AdminActionMessages.AddedToGroup(result.Name, model.GroupRole);
                     return RedirectToAction(nameof(Members), new { id, search, memberSearch });
                 }
 
             case CreateOrAddToGroupOutcome.AddedToGroupStrandedAccount:
                 {
+                    if (!TryTakeAddedMemberMailPermit(result.UserId!.Value))
+                    {
+                        TempData["Success"] = AdminActionMessages.AddedToGroupEmailNotSent(result.Name, model.GroupRole);
+                        return RedirectToAction(nameof(Members), new { id, search, memberSearch });
+                    }
+
                     var rawToken = await identityService.GeneratePasswordResetTokenForUserAsync(result.UserId!.Value);
                     if (rawToken != null)
                     {
@@ -467,7 +496,7 @@ public class GroupController(
                         }
                     }
 
-                    TempData["Success"] = $"{result.Name} has been added to the group as {model.GroupRole}. A notification email has been sent.";
+                    TempData["Success"] = AdminActionMessages.AddedToGroup(result.Name, model.GroupRole);
                     return RedirectToAction(nameof(Members), new { id, search, memberSearch });
                 }
 
@@ -477,24 +506,8 @@ public class GroupController(
 
             case CreateOrAddToGroupOutcome.Failed:
             default:
-                {
-                    foreach (var error in result.Errors)
-                    {
-                        ModelState.AddModelError(string.Empty, error);
-                    }
-
-                    var failedMembers = await groupService.GetMembersAsync(id, memberSearch);
-                    var failedAvailableUsers = await userService.GetAvailableUsersAsync(id, search);
-                    return View(nameof(Members), new GroupMembersViewModel
-                    {
-                        Group = group,
-                        Members = failedMembers,
-                        AvailableUsers = failedAvailableUsers,
-                        SearchQuery = search,
-                        MemberSearchQuery = memberSearch,
-                        CreateMember = model
-                    });
-                }
+                TempData["Error"] = AdminActionMessages.CreateMemberFailed;
+                return RedirectToAction(nameof(Members), new { id, search, memberSearch });
         }
     }
 
@@ -502,6 +515,16 @@ public class GroupController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveMember(int id, int userId, string? search, string? memberSearch)
     {
+        // A crafted or stale request can name someone who is not on this board; nothing is removed then, so the page
+        // must not claim a removal. The unguarded removal stays for members: a board can only be deleted once it has
+        // no members, so this page must be able to remove the last Admin too.
+        if (await userService.GetGroupRoleByIdAsync(userId, id) == null)
+        {
+            var person = await userService.GetByIdAsync(userId);
+            TempData["Warning"] = AdminActionMessages.NotAMemberOfGroup(person?.Name ?? "That person");
+            return RedirectToAction(nameof(Members), new { id, search, memberSearch });
+        }
+
         await groupService.RemoveMemberAsync(id, userId);
         TempData["Success"] = "Member removed from the group.";
         return RedirectToAction(nameof(Members), new { id, search, memberSearch });

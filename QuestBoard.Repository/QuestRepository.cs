@@ -29,6 +29,35 @@ internal class QuestRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
     }
 
     /// <inheritdoc/>
+    public override async Task RemoveAsync(Quest model, CancellationToken token = default)
+    {
+        var entity = await DbSet.FindAsync([model.Id], token);
+        if (entity == null) return;
+
+        // Reminder rows and a follow-up quest point at this quest with no cascade, so the database refuses the
+        // delete while they exist. The rows are selected by this quest's id alone, past the board filter: a
+        // follow-up often lives on another board and must keep its place, and the reminder rows follow the quest
+        // wherever it is. Everything here is a tracked change saved together with the quest in one save. The
+        // quest's signups are removed by the caller beforehand in their own saves, so a refusal here leaves them
+        // deleted.
+        var reminderLogs = await DbContext.ReminderLogs
+            .IgnoreQueryFilters()
+            .Where(r => r.QuestId == entity.Id)
+            .ToListAsync(token);
+        DbContext.ReminderLogs.RemoveRange(reminderLogs);
+
+        var followUps = await DbContext.Quests
+            .IgnoreQueryFilters()
+            .Where(q => q.OriginalQuestId == entity.Id)
+            .ToListAsync(token);
+        foreach (var followUp in followUps)
+            followUp.OriginalQuestId = null;
+
+        DbSet.Remove(entity);
+        await DbContext.SaveChangesAsync(token);
+    }
+
+    /// <inheritdoc/>
     public override async Task<IList<Quest>> GetAllAsync(CancellationToken token = default)
     {
         var entities = await DbContext.Quests

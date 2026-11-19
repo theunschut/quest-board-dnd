@@ -1,0 +1,22 @@
+/*
+ * Admin and Platform pages, phone layout: only what differs from the desktop sheet. The phone has three text sizes and
+ * finger-sized controls, and a list row is a slip rather than a table row. It holds one pages layer block and nothing
+ * but design tokens.
+ */
+@layer pages {
+  .mobile-layout .user-slip__name {
+    font-weight: var(--qb-weight-strong);
+    overflow-wrap: anywhere;
+    min-inline-size: 0;
+  }
+
+  .mobile-layout .slip-line {
+    margin: 0;
+    font-size: var(--qb-text-sm);
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-layout .page-bar {
+    align-items: flex-start;
+  }
+}

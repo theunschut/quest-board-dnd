@@ -1416,9 +1416,8 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Admin/Users renders admin-users-card-mobile glass card and links
-    /// admin-users.mobile.css. Requires Admin role authentication.
-    /// Starts RED — Admin/Users.Mobile.cshtml does not exist yet; goes GREEN when Plan 02 lands.
+    /// Mobile UA on /Admin/Users renders the phone list (one row slip per user) and links the
+    /// shared admin phone sheet. Requires Admin role authentication.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_AdminUsers_ReturnsSuccessAndMobileLayout()
@@ -1433,8 +1432,9 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("admin-users-card-mobile");
-        html.Should().Contain("admin-users.mobile.css");
+        html.Should().Contain("row-slip");
+        html.Should().Contain("admin-pages.mobile.css");
+        html.Should().NotContain("admin-users.mobile.css");
     }
 
     // -----------------------------------------------------------------------
@@ -1442,9 +1442,9 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Admin/EditUser?userId={id} renders admin-form-card-mobile glass card
-    /// and links admin-form.mobile.css. Requires Admin role authentication.
-    /// Starts RED — Admin/EditUser.Mobile.cshtml does not exist yet; goes GREEN when Plan 03 lands.
+    /// Mobile UA on /Admin/EditUser?userId={id} renders the phone form card (one title in the card header, the form on
+    /// the shared form page) and links the phone admin page sheet; the old per-page phone sheet is gone. Requires Admin
+    /// role authentication.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_AdminEditUser_ReturnsSuccessAndMobileLayout()
@@ -1468,8 +1468,10 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("admin-form-card-mobile");
-        html.Should().Contain("admin-form.mobile.css");
+        html.Should().Contain("form-page");
+        html.Should().Contain("admin-pages.mobile.css");
+        html.Should().NotContain("admin-form-card-mobile");
+        html.Should().NotContain("admin-form.mobile.css");
     }
 
     // -----------------------------------------------------------------------
@@ -1477,9 +1479,8 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Admin/Quests renders admin-quests-card-mobile glass card and links
-    /// admin-quests.mobile.css. Requires Admin role authentication.
-    /// Starts RED — Admin/Quests.Mobile.cshtml does not exist yet; goes GREEN when Plan 02 lands.
+    /// Mobile UA on /Admin/Quests renders each quest as a phone list slip and links the phone
+    /// admin page sheet. Requires Admin role authentication.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_AdminQuests_ReturnsSuccessAndMobileLayout()
@@ -1495,8 +1496,8 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("admin-quests-card-mobile");
-        html.Should().Contain("admin-quests.mobile.css");
+        html.Should().Contain("row-slip");
+        html.Should().Contain("admin-pages.mobile.css");
     }
 
     // -----------------------------------------------------------------------
@@ -1504,9 +1505,9 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Mobile UA on /Admin/ResetPassword?userId={id} renders admin-form-card-mobile glass
-    /// card and links admin-form.mobile.css. Requires Admin role authentication.
-    /// Starts RED — Admin/ResetPassword.Mobile.cshtml does not exist yet; goes GREEN when Plan 03 lands.
+    /// Mobile UA on /Admin/ResetPassword?userId={id} renders the phone form card (one title in the card header, the form
+    /// on the shared form page) and links the phone admin page sheet; the old per-page phone sheet is gone. Requires
+    /// Admin role authentication.
     /// </summary>
     [Fact]
     public async Task GetMobilePage_AdminResetPassword_ReturnsSuccessAndMobileLayout()
@@ -1530,8 +1531,10 @@ public class MobileViewsTests : IClassFixture<WebApplicationFactoryBase>
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        html.Should().Contain("admin-form-card-mobile");
-        html.Should().Contain("admin-form.mobile.css");
+        html.Should().Contain("form-page");
+        html.Should().Contain("admin-pages.mobile.css");
+        html.Should().NotContain("admin-form-card-mobile");
+        html.Should().NotContain("admin-form.mobile.css");
     }
 
     // -----------------------------------------------------------------------

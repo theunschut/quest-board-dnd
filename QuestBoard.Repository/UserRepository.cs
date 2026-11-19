@@ -118,4 +118,42 @@ internal class UserRepository(QuestBoardContext dbContext, IMapper mapper, IActi
         await DbContext.SaveChangesAsync();
         return ug.Id;
     }
+
+    /// <inheritdoc/>
+    public async Task<bool> UpdateGroupRoleAsync(int userId, int groupId, GroupRole role, CancellationToken token = default)
+    {
+        var ug = await DbContext.UserGroups
+            .FirstOrDefaultAsync(ug => ug.UserId == userId && ug.GroupId == groupId, token);
+        if (ug == null) return false;
+
+        ug.GroupRole = (int)role;
+        try
+        {
+            await DbContext.SaveChangesAsync(token);
+            return true;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // The row was deleted between the read and the save, so the update touched nothing and the person is no
+            // longer a member. The caller answers that and makes no further save in this request.
+            return false;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlySet<int>> GetUserIdsAdministeringOtherGroupsAsync(IReadOnlyCollection<int> userIds, int groupId, CancellationToken token = default)
+    {
+        if (userIds.Count == 0) return new HashSet<int>();
+
+        var ids = userIds.ToList();
+        var administrators = await DbContext.UserGroups
+            .Where(ug => ids.Contains(ug.UserId)
+                      && ug.GroupId != groupId
+                      && ug.GroupRole == (int)GroupRole.Admin)
+            .Select(ug => ug.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken: token);
+
+        return administrators.ToHashSet();
+    }
 }

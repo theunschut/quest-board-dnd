@@ -10,12 +10,14 @@ namespace QuestBoard.IntegrationTests.Controllers;
 /// <summary>
 /// Integration tests for the /platform/Group management endpoints.
 /// Covers groups index, create group, delete group, add member, remove member.
+/// The host's per-recipient mail limiter never refuses: these tests add the same reused account id many times and are
+/// not about the mail budget, which <see cref="AddedMemberMailBudgetTests"/> covers.
 /// </summary>
-public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFactoryBase>
+public class GroupManagementIntegrationTests : IClassFixture<UnlimitedMailBudgetWebApplicationFactory>
 {
-    private readonly WebApplicationFactoryBase _factory;
+    private readonly UnlimitedMailBudgetWebApplicationFactory _factory;
 
-    public GroupManagementIntegrationTests(WebApplicationFactoryBase factory)
+    public GroupManagementIntegrationTests(UnlimitedMailBudgetWebApplicationFactory factory)
     {
         _factory = factory;
     }
@@ -878,6 +880,64 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
         _factory.JobClient.EnqueuedJobs.Count(j => j.Type == typeof(WelcomeEmailJob)).Should().Be(0);
     }
 
+    // The membership email names the role in the same words the pages use, not the enum name
+    [Fact]
+    public async Task AddMember_ExistingConfirmedUser_AsDungeonMaster_EmailNamesTheRoleInDisplayWords()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+
+        var (_, newUser) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "dmaddmember", "dmaddmember@test.com", roles: []);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+            var membership = db.UserGroups.FirstOrDefault(ug => ug.UserId == newUser.Id && ug.GroupId == 1);
+            if (membership != null)
+            {
+                db.UserGroups.Remove(membership);
+                await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+            }
+        }
+
+        _factory.JobClient.Clear();
+
+        var formData = new Dictionary<string, string>
+        {
+            ["UserId"] = newUser.Id.ToString(),
+            ["Role"] = ((int)GroupRole.DungeonMaster).ToString()
+        };
+        var response = await client.PostAsync("/platform/Group/AddMember/1",
+            new FormUrlEncodedContent(formData), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.OK);
+        var job = _factory.JobClient.EnqueuedJobs.Single(j => j.Type == typeof(GroupMembershipAddedEmailJob));
+        (job.Args[3] as string).Should().Be("Dungeon Master");
+    }
+
+    // The email's article follows the display word: "an Admin", "a Dungeon Master"
+    [Theory]
+    [InlineData("Admin", "as an <strong>Admin</strong>")]
+    [InlineData("Dungeon Master", "as a <strong>Dungeon Master</strong>")]
+    [InlineData("Player", "as a <strong>Player</strong>")]
+    public async Task AddedToGroupEmail_RendersTheRoleWithAMatchingArticle(string role, string expected)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var renderer = scope.ServiceProvider.GetRequiredService<IEmailRenderService>();
+
+        var html = await renderer.RenderAsync<QuestBoard.Service.Components.Emails.AddedToGroup>(new Dictionary<string, object?>
+        {
+            ["UserName"] = "P100 Reader",
+            ["GroupName"] = "P100 Board",
+            ["Role"] = role,
+            ["LoginUrl"] = "https://board.example.invalid/login",
+            ["AppUrl"] = "https://board.example.invalid"
+        });
+
+        html.Should().Contain(expected);
+    }
+
     // AddMember on an existing stranded (never-confirmed) user enqueues a welcome/set-password email instead
     [Fact]
     public async Task AddMember_ExistingStrandedUser_ShouldEnqueueWelcomeEmailJob()
@@ -957,5 +1017,122 @@ public class GroupManagementIntegrationTests : IClassFixture<WebApplicationFacto
         response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.OK);
         _factory.JobClient.EnqueuedJobs.Count(j => j.Type == typeof(GroupMembershipAddedEmailJob)).Should().Be(0);
         _factory.JobClient.EnqueuedJobs.Count(j => j.Type == typeof(WelcomeEmailJob)).Should().Be(0);
+    }
+
+    // The Members page may empty a board, because a board can only be deleted once it has no members; that includes
+    // removing the last Admin.
+    [Fact]
+    public async Task RemoveMember_StillRemovesTheLastAdminOfABoard()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var (_, onlyAdmin) = await AuthenticationHelper.CreateAuthenticatedClientWithUserAsync(
+            _factory, "lastadminremove", "lastadminremove@test.com", roles: ["Admin"]);
+
+        var response = await client.PostAsync("/platform/Group/RemoveMember/1",
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["userId"] = onlyAdmin.Id.ToString() }),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        context.UserGroups.Any(ug => ug.UserId == onlyAdmin.Id && ug.GroupId == 1).Should().BeFalse();
+        context.UserGroups.Count(ug => ug.GroupId == 1 && ug.GroupRole == (int)GroupRole.Admin).Should().Be(0);
+    }
+
+    // Removing someone who is not a member removes nothing, so the page answers a Warning that says so and never the
+    // success toast.
+    [Fact]
+    public async Task RemoveMember_ForSomeoneWhoIsNotAMember_AnswersAWarning_AndNoSuccess()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var outsider = await AuthenticationHelper.CreateTestUserAsync(
+            _factory.Services, "notamember", "notamember@test.com", "Test123!", "Not A Member");
+
+        var response = await client.PostAsync("/platform/Group/RemoveMember/1",
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["userId"] = outsider.Id.ToString() }),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        var landed = await client.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
+        var html = WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        html.Contains("Member removed from the group.").Should().BeFalse("nobody was removed, so no page may say a member was");
+        html.Should().Contain("Not A Member was not a member of this group.");
+        System.Text.RegularExpressions.Regex.Matches(html, "<strong class=\"me-auto\">(\\w+)</strong>").Select(m => m.Groups[1].Value)
+            .Should().Contain("Warning");
+    }
+
+    // The field names the Create New User dialog posts, read from the rendered page so a test posts exactly what a
+    // browser would.
+    private async Task<List<string>> DialogFieldNamesAsync(HttpClient client)
+    {
+        var page = await client.GetAsync("/platform/Group/Members/1", TestContext.Current.CancellationToken);
+        var html = await page.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var start = html.IndexOf("id=\"createMemberModal\"", StringComparison.Ordinal);
+        start.Should().BeGreaterThan(-1, "the page carries the Create New User dialog");
+        var dialog = html[start..html.IndexOf("</form>", start, StringComparison.Ordinal)];
+        return System.Text.RegularExpressions.Regex.Matches(dialog, "<(?:input|select)\\b[^>]*\\bname=\"([^\"]+)\"")
+            .Select(match => match.Groups[1].Value)
+            .Where(name => name != "__RequestVerificationToken")
+            .ToList();
+    }
+
+    // A failed Create New User is answered with an Error toast on the Members page, because the dialog closes with the
+    // post and nothing else on a re-rendered page would say why.
+    [Fact]
+    public async Task CreateMember_WhenItFails_AnswersAnErrorToast_AndCreatesNothing()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var fields = await DialogFieldNamesAsync(client);
+        fields.Should().BeEquivalentTo(["Email", "Name", "GroupRole"]);
+
+        var response = await client.PostAsync("/platform/Group/CreateMember/1",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Email"] = "not-an-address",
+                ["Name"] = "Failed Create",
+                ["GroupRole"] = ((int)GroupRole.Player).ToString()
+            }), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        response.Headers.Location!.ToString().Should().Contain("/platform/Group/Members/1");
+        var landed = await client.GetAsync(response.Headers.Location, TestContext.Current.CancellationToken);
+        var html = WebUtility.HtmlDecode(await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        html.Should().Contain("<strong class=\"me-auto\">Error</strong>");
+        html.Should().Contain("The account could not be created. Check the details and try again.");
+
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        context.Users.Any(u => u.Name == "Failed Create").Should().BeFalse();
+    }
+
+    // The dialog's own field names must reach the action: the other tests post names written by hand, so only a post
+    // built from the rendered dialog proves that creating a user from the page works.
+    [Fact]
+    public async Task CreateMember_PostedWithTheFieldNamesTheDialogRenders_CreatesTheAccount()
+    {
+        await TestDataHelper.ClearDatabaseAsync(_factory.Services);
+        var (client, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(_factory);
+        var email = $"dialogcreate{Guid.NewGuid().ToString("N")[..8]}@test.com";
+        var values = new Dictionary<string, string>
+        {
+            ["Email"] = email,
+            ["Name"] = "Dialog Created",
+            ["GroupRole"] = ((int)GroupRole.Player).ToString()
+        };
+        var fields = await DialogFieldNamesAsync(client);
+
+        var response = await client.PostAsync("/platform/Group/CreateMember/1",
+            new FormUrlEncodedContent(fields.Where(values.ContainsKey).ToDictionary(name => name, name => values[name])),
+            TestContext.Current.CancellationToken);
+
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();
+        context.Users.Any(u => u.Email == email).Should().BeTrue(
+            "the dialog's own field names must reach the action, or creating a user from the page can never work");
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        fields.Should().BeEquivalentTo(["Email", "Name", "GroupRole"]);
     }
 }

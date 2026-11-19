@@ -395,7 +395,7 @@ public class BoardPageGateMatrixTests : IClassFixture<WebApplicationFactoryBase>
         await BoardPageSeed.SetAsync(_factory, 1, BoardPageSet.Empty.With(BoardPage.Quests), BoardPage.Quests);
         var (client, _) = await AuthenticationHelper.CreateAuthenticatedAdminClientAsync(_factory);
 
-        await AssertRefusedAsync(client, HttpMethod.Delete, $"/Admin/DeleteQuest/{quest.Id}", "/Calendar", QuestListToast);
+        await AssertRefusedAsync(client, HttpMethod.Post, $"/Admin/DeleteQuest/{quest.Id}", "/Calendar", QuestListToast);
 
         using var scope = _factory.Services.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<QuestBoardContext>();

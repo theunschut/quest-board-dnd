@@ -37,14 +37,7 @@
 <p>You are about to delete <strong>"@Model.Name"</strong>.</p>
 
 <p>
-    @if (Model.BoardType == BoardType.Campaign)
-    {
-        <span class="badge bg-info text-dark"><i class="fas fa-book-open me-1" aria-hidden="true"></i>Campaign</span>
-    }
-    else
-    {
-        <span class="badge bg-primary"><i class="fas fa-dice-d20 me-1" aria-hidden="true"></i>One-Shot</span>
-    }
+    <partial name="_BoardTypeBadge" model="Model.BoardType" />
     &middot; Created @Html.LocalTime(Model.CreatedAt, "date") &middot; No members
 </p>
 
@@ -52,7 +45,7 @@
     <i class="fas fa-triangle-exclamation me-2" aria-hidden="true"></i>This cannot be undone. Nothing on this list can be recovered once you confirm.
 </div>
 
-<h3 class="board-delete-heading">What will be deleted</h3>
+<h2 class="board-delete-heading">What will be deleted</h2>
 @if (Model.HasNothingStored)
 {
     <p><i class="fas fa-circle-info me-2" aria-hidden="true"></i>Nothing is stored on this board. Only the board itself will be deleted.</p>
@@ -64,12 +57,12 @@ else
 
 @if (Model.UnlinkedRows.Count > 0)
 {
-    <h3 class="board-delete-heading">Kept, but unlinked</h3>
+    <h2 class="board-delete-heading">Kept, but unlinked</h2>
     <p>These rows live on other boards. They stay, and only their link to "@Model.Name" is removed.</p>
     RenderRows(Model.UnlinkedRows, "unlinked");
 }
 
-<h3 class="board-delete-heading">Not affected</h3>
+<h2 class="board-delete-heading">Not affected</h2>
 <ul class="board-delete-rows list-unstyled">
     <li class="board-delete-row board-delete-row--kept">
         <div class="board-delete-row-icon">

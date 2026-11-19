@@ -3,6 +3,7 @@ using QuestBoard.Service.Extensions;
 using QuestBoard.Service.Filters;
 using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
+using QuestBoard.Domain.Models;
 using QuestBoard.Repository.Entities;
 using QuestBoard.Repository.Extensions;
 using QuestBoard.Service.Authorization;
@@ -17,6 +18,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Threading.RateLimiting;
@@ -169,12 +171,14 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // Rate-limit the repeatable manual admin email-send buttons (SendConfirmationEmail,
-// EditUser's email-change branch), partitioned per TARGET userId so no single recipient's inbox is
+// EditUser's email-change branch) and the mail sent when an existing account is added to a board (Create User
+// by address, the platform Add Member and Create New User), partitioned per TARGET userId so no single recipient's inbox is
 // spammed regardless of which admin triggers it. This is a singleton PartitionedRateLimiter<int>
 // consumed via AttemptAcquire in AdminController — NOT an AddRateLimiter policy, because userId/Id
 // are POST form fields (not route values) and the policy-factory path runs before MVC model binding.
 // 3 requests / 1 hour per target user, key "email-resend:{userId}".
-// CreateUser's one-shot automated welcome email is explicitly exempt.
+// A spent budget skips only the mail of an add, never the add itself. The welcome email for a brand-new account is
+// exempt from this per-target limiter; CreateUser has its own per-administrator limit below.
 builder.Services.AddSingleton(_ => PartitionedRateLimiter.Create<int, string>(userId =>
     RateLimitPartition.GetFixedWindowLimiter(
         partitionKey: $"email-resend:{userId}",
@@ -185,6 +189,22 @@ builder.Services.AddSingleton(_ => PartitionedRateLimiter.Create<int, string>(us
             QueueLimit = 0,
             AutoReplenishment = true
         })));
+
+// Per-ACTOR limit on CreateUser: one administrator creating accounts faster than 20 per hour is refused, so a
+// misused or scripted session cannot spend the mail relay's quota on welcome emails. Registered under its own key so
+// it never replaces or shares buckets with the per-target limiter above, and partitioned by the signed-in
+// administrator's id (not the new account), so each administrator has an independent budget.
+builder.Services.AddKeyedSingleton<PartitionedRateLimiter<int>>(AdminRateLimitKeys.CreateUser, (_, _) =>
+    PartitionedRateLimiter.Create<int, string>(actorId =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"create-user:{actorId}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(60),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            })));
 
 // Back ASP.NET Core Session with a SQL Server distributed cache so
 // ActiveGroupId (and other session data) survives app restarts, instead of the in-memory
@@ -220,9 +240,15 @@ builder.Services
 
 // Named HttpClient for Resend API stats
 // Authorization header is NOT set here — added per-request in ResendStatsClient.FetchAllRecordsAsync
-builder.Services.AddHttpClient("Resend", client =>
+// The base address is the fixed Resend address everywhere except a Development host that sets
+// EmailSettings:ResendBaseUrl, which lets a local run point the stats page at a canned local server. Production and
+// every other environment ignore the setting, so a stray configuration value can never redirect the key elsewhere.
+builder.Services.AddHttpClient("Resend", (sp, client) =>
 {
-    client.BaseAddress = new Uri("https://api.resend.com/");
+    client.BaseAddress = ResendBaseAddress.Resolve(
+        sp.GetRequiredService<IHostEnvironment>(),
+        sp.GetRequiredService<IOptions<EmailSettings>>().Value.ResendBaseUrl,
+        new Uri("https://api.resend.com/"));
     client.Timeout = TimeSpan.FromSeconds(15);
     client.DefaultRequestHeaders.Add("Accept", "application/json");
 });
@@ -446,4 +472,4 @@ if (app.Environment.IsProduction())
     }
 }
 
-await app.RunAsync();
+await app.RunAsync();

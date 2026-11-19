@@ -1,0 +1,102 @@
+/*
+ * Platform pages, phone layout: only what differs from the desktop sheet. The phone has three text sizes and
+ * finger-sized controls, and a list row is a slip rather than a table row. It holds one pages layer block and nothing
+ * but design tokens. It also holds the Members page's finger-sized search, add and Clear search controls.
+ */
+@layer pages {
+  .mobile-layout .page-bar {
+    align-items: flex-start;
+  }
+
+  .mobile-layout .page-bar__actions .btn {
+    min-height: var(--qb-hit-min);
+  }
+
+  .mobile-layout :is(.board-slip__name, .user-slip__name) {
+    font-weight: var(--qb-weight-strong);
+    overflow-wrap: anywhere;
+    min-inline-size: 0;
+  }
+
+  .mobile-layout .slip-line {
+    margin: 0;
+    font-size: var(--qb-text-sm);
+    overflow-wrap: anywhere;
+  }
+
+  /* A page switch row on the phone is the finger-sized target: the row and its label are at least 44px tall. */
+  .mobile-layout .page-switch {
+    min-height: var(--qb-hit-min);
+  }
+
+  .mobile-layout .page-switch .form-check-label {
+    min-height: var(--qb-hit-min);
+    padding-block: calc((var(--qb-hit-min) - 1.5em) / 2);
+  }
+
+  .mobile-layout .page-switch .form-check-input {
+    margin-top: calc((var(--qb-hit-min) - 1.25em) / 2);
+  }
+
+  /* The address on a phone slip is a finger-sized target, on one line of its own. */
+  .mobile-layout .email-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--qb-hit-min);
+  }
+
+  /* The slip's sentence for an account without an address keeps the slip's own colour. */
+  .mobile-layout .row-slip .email-none {
+    color: inherit;
+  }
+
+  /* A set's own forms and its delete button are finger-sized, and Delete Set spans the card. */
+  .mobile-layout .set-form .form-control,
+  .mobile-layout .set-form .form-select,
+  .mobile-layout .set-form .btn {
+    min-height: var(--qb-hit-min);
+  }
+
+  .mobile-layout .set-delete .btn,
+  .mobile-layout .set-delete form {
+    inline-size: 100%;
+  }
+
+  .mobile-layout .set-delete .btn {
+    min-height: var(--qb-hit-min);
+  }
+
+  .mobile-layout .members-section + .members-section {
+    margin-top: var(--qb-space-lg);
+  }
+
+  /* The search box and its button are finger-sized. */
+  .mobile-layout .members-search .btn,
+  .mobile-layout .members-search .form-control {
+    min-height: var(--qb-hit-min);
+  }
+
+  /* An available user's add form takes the slip's full width: the role select grows, the button keeps its size. */
+  .mobile-layout .add-member-form {
+    display: flex;
+    flex-wrap: wrap;
+    flex: 1 1 100%;
+    gap: var(--qb-space-sm);
+  }
+
+  .mobile-layout .add-member-form .form-select,
+  .mobile-layout .add-member-form .btn {
+    min-height: var(--qb-hit-min);
+  }
+
+  .mobile-layout .add-member-form .form-select {
+    flex: 1 1 auto;
+  }
+
+  /* Clear search is a finger-sized target. */
+  .mobile-layout .clear-search {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--qb-hit-min);
+  }
+}

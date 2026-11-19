@@ -1,40 +1,46 @@
+@using QuestBoard.Service.ViewModels.AdminViewModels
 @model LinkedBoardsIndexViewModel
 @{
     ViewData["Title"] = "Linked Boards";
 }
 
-<div class="card modern-card mb-4">
-    <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
-        <h2 class="mb-0">
-            <i class="fas fa-link text-danger me-2"></i>
-            Linked Boards
-        </h2>
+@section Styles {
+    <link rel="stylesheet" href="~/css/platform-pages.css" asp-append-version="true" />
+}
+
+@section Scripts {
+    <script type="module" src="~/js/confirm-submit.js" asp-append-version="true"></script>
+}
+
+<div class="card modern-card mb-3">
+    <div class="card-header modern-card-header page-bar">
+        <h1 class="mb-0">
+            <i class="fas fa-link me-2" aria-hidden="true"></i>Linked Boards
+        </h1>
         <a asp-controller="Group" asp-action="Index" asp-area="Platform" class="btn btn-secondary">
-            <i class="fas fa-arrow-left me-2"></i>Back to Groups
+            <i class="fas fa-arrow-left me-2" aria-hidden="true"></i>Back to Groups
         </a>
     </div>
     <div class="card-body modern-card-body">
-        <p class="text-muted">Boards in the same set show each other's quests and events on their calendars, read-only. A set links boards of one type, and a board can be in only one set.</p>
-        <form asp-area="Platform" asp-controller="LinkedBoards" asp-action="Create" method="post">
-            <div class="row g-2 align-items-end">
+        <p>Boards in the same set show each other's quests and events on their calendars, read-only. A set links boards of one type, and a board can be in only one set.</p>
+        <form asp-area="Platform" asp-controller="LinkedBoards" asp-action="Create" method="post" class="form-page">
+            <div class="row g-3">
                 <div class="col-md-5">
-                    <label for="create-set-name" class="form-label">Set name</label>
-                    <input id="create-set-name" name="Name" type="text" class="form-control" required maxlength="100" />
+                    <label for="create-set-name" class="form-label">Set name <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span></label>
+                    <input id="create-set-name" name="Name" type="text" class="form-control" required maxlength="100" autocomplete="off" aria-describedby="create-set-help" />
                 </div>
                 <div class="col-md-4">
-                    <label for="create-set-board-type" class="form-label">Board type</label>
-                    <select id="create-set-board-type" name="BoardType" class="form-select" required>
+                    <label for="create-set-board-type" class="form-label">Board type <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span></label>
+                    <select id="create-set-board-type" name="BoardType" asp-items="AdminPlatformDisplay.BoardTypeOptions()" class="form-select" required aria-describedby="create-set-help">
                         <option value="">-- Select Board Type --</option>
-                        <option value="@((int)BoardType.OneShot)">One-Shot</option>
-                        <option value="@((int)BoardType.Campaign)">Campaign</option>
                     </select>
                 </div>
             </div>
-            <div class="form-text mt-2">Every board in the set must be this type. This cannot be changed after creation.</div>
+            <div class="form-text mt-2" id="create-set-help">Every board in the set must be this type. This cannot be changed after creation.</div>
             <hr>
             <div class="d-flex justify-content-end">
-                <button type="submit" class="btn btn-success">
-                    <i class="fas fa-plus me-2"></i>Create Set
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus me-2" aria-hidden="true"></i>Create Set
                 </button>
             </div>
         </form>
@@ -45,10 +51,10 @@
 {
     <div class="card modern-card">
         <div class="card-body modern-card-body">
-            <div class="py-5 text-center">
-                <i class="fas fa-link fa-3x text-muted mb-3"></i>
-                <p class="mb-1"><strong>No linked sets yet.</strong></p>
-                <p class="text-muted">Create a set above, then add boards of the same type to share their calendars.</p>
+            <div class="empty-state">
+                <i class="fas fa-link empty-state-icon" aria-hidden="true"></i>
+                <h2 class="empty-state-heading">No linked sets yet.</h2>
+                <p class="empty-state-text">Create a set above, then add boards of the same type to share their calendars.</p>
             </div>
         </div>
     </div>
@@ -57,80 +63,64 @@ else
 {
     @foreach (var set in Model.Sets)
     {
-        var typeLabel = set.BoardType == BoardType.Campaign ? "Campaign" : "One-Shot";
+        var typeLabel = AdminPlatformDisplay.BoardTypeName(set.BoardType);
         var candidates = Model.UnlinkedBoards.Where(b => b.BoardType == set.BoardType).ToList();
-        // Names are stored text, so each confirm message is serialized to a JavaScript string
-        // literal here and the finished handler is HTML-encoded by Razor when it is written.
-        var deleteSetMessage = $"Delete the set \"{set.Name}\"? Every board in it goes back to showing only its own calendar. Boards, quests and events are not deleted.";
-        var deleteSetHandler = $"return confirm({Json.Serialize(deleteSetMessage)});";
+        var setState = AdminPlatformDisplay.LinkedSetState(set.IsActive);
 
-        <div class="card modern-card mb-3">
-            <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="fas fa-link me-2"></i>@set.Name
-                </h5>
-                <div class="d-flex align-items-center gap-2">
-                    @if (set.BoardType == BoardType.Campaign)
-                    {
-                        <span class="badge bg-info text-dark"><i class="fas fa-book-open me-1"></i>Campaign</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-primary"><i class="fas fa-dice-d20 me-1"></i>One-Shot</span>
-                    }
-                    @if (set.IsActive)
-                    {
-                        <span class="badge bg-success">Active</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-secondary">Inactive</span>
-                    }
+        <section class="card modern-card modern-card--aside mb-3" aria-labelledby="set-title-@set.Id">
+            <div class="card-header modern-card-header page-bar">
+                <h2 class="mb-0" id="set-title-@set.Id">
+                    <i class="fas fa-link me-2" aria-hidden="true"></i>@set.Name
+                </h2>
+                <div class="set-header__badges">
+                    <partial name="_BoardTypeBadge" model="set.BoardType" />
+                    <span class="badge @setState.FillClass"><i class="fas @setState.Icon me-1" aria-hidden="true"></i>@setState.Word</span>
                 </div>
             </div>
             <div class="card-body modern-card-body">
-                <form asp-area="Platform" asp-controller="LinkedBoards" asp-action="Rename" asp-route-id="@set.Id" method="post" class="mb-3">
+                <form asp-area="Platform" asp-controller="LinkedBoards" asp-action="Rename" asp-route-id="@set.Id" method="post" class="set-form">
                     <label for="rename-set-@set.Id" class="form-label">Set name</label>
                     <div class="input-group">
                         <input id="rename-set-@set.Id" name="name" type="text" class="form-control" value="@set.Name" required maxlength="100" />
                         <button type="submit" class="btn btn-warning">
-                            <i class="fas fa-edit me-2"></i>Rename Set
+                            <i class="fas fa-edit me-2" aria-hidden="true"></i>Rename Set
                         </button>
                     </div>
                 </form>
 
                 @if (set.Boards.Count == 0)
                 {
-                    <p class="text-muted">No boards in this set yet.</p>
+                    <p class="set-block">No boards in this set yet.</p>
                 }
                 else
                 {
                     if (!set.IsActive)
                     {
-                        <p class="text-muted">Inactive: add at least one more board to share calendars.</p>
+                        <p class="set-block">Inactive: add at least one more board to share calendars.</p>
                     }
-                    <div class="table-responsive">
+                    <div class="table-responsive set-block">
                         <table class="table table-striped table-hover">
                             <thead>
                                 <tr>
                                     <th scope="col">Board</th>
-                                    <th scope="col" class="text-end">Actions</th>
+                                    <th scope="col" class="th-actions">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach (var board in set.Boards)
                                 {
-                                    var removeBoardMessage = $"Remove \"{board.Name}\" from \"{set.Name}\"? Its calendar stops showing the other boards, and theirs stop showing its entries.";
-                                    var removeBoardHandler = $"return confirm({Json.Serialize(removeBoardMessage)});";
                                     <tr>
-                                        <td>@board.Name</td>
-                                        <td class="text-end">
-                                            <form asp-area="Platform" asp-controller="LinkedBoards" asp-action="RemoveBoard" asp-route-id="@set.Id" method="post" class="d-inline" onsubmit="@removeBoardHandler">
-                                                <input type="hidden" name="groupId" value="@board.Id" />
-                                                <button type="submit" class="btn btn-sm btn-danger">
-                                                    <i class="fas fa-link-slash me-2" aria-hidden="true"></i>Remove Board<span class="visually-hidden"> @board.Name</span>
-                                                </button>
-                                            </form>
+                                        <td class="name-cell">@board.Name</td>
+                                        <td class="actions-cell">
+                                            <div class="row-actions">
+                                                <form asp-area="Platform" asp-controller="LinkedBoards" asp-action="RemoveBoard" asp-route-id="@set.Id" method="post"
+                                                      data-confirm-message="Remove &quot;@board.Name&quot; from &quot;@set.Name&quot;? Its calendar stops showing the other boards, and theirs stop showing its entries.">
+                                                    <input type="hidden" name="groupId" value="@board.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-danger">
+                                                        <i class="fas fa-link-slash me-2" aria-hidden="true"></i>Remove Board<span class="visually-hidden"> @board.Name</span>
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </td>
                                     </tr>
                                 }
@@ -139,10 +129,10 @@ else
                     </div>
                 }
 
-                <form asp-area="Platform" asp-controller="LinkedBoards" asp-action="AddBoard" asp-route-id="@set.Id" method="post">
+                <form asp-area="Platform" asp-controller="LinkedBoards" asp-action="AddBoard" asp-route-id="@set.Id" method="post" class="set-form">
                     <label for="add-board-@set.Id" class="form-label">Add a board</label>
                     <div class="input-group">
-                        <select id="add-board-@set.Id" name="groupId" class="form-select" required disabled="@(candidates.Count == 0)">
+                        <select id="add-board-@set.Id" name="groupId" class="form-select" required disabled="@(candidates.Count == 0)" aria-describedby="@(candidates.Count == 0 ? $"no-candidates-{set.Id}" : null)">
                             <option value="">-- Select a board --</option>
                             @foreach (var candidate in candidates)
                             {
@@ -150,24 +140,25 @@ else
                             }
                         </select>
                         <button type="submit" class="btn btn-success" disabled="@(candidates.Count == 0)">
-                            <i class="fas fa-plus me-2"></i>Add Board
+                            <i class="fas fa-plus me-2" aria-hidden="true"></i>Add Board
                         </button>
                     </div>
                     @if (candidates.Count == 0)
                     {
-                        <div class="form-text">No unlinked @typeLabel boards are available.</div>
+                        <div class="form-text" id="no-candidates-@set.Id">No unlinked @typeLabel boards are available.</div>
                     }
                 </form>
 
                 <hr>
-                <div class="d-flex justify-content-end">
-                    <form asp-area="Platform" asp-controller="LinkedBoards" asp-action="Delete" asp-route-id="@set.Id" method="post" onsubmit="@deleteSetHandler">
+                <div class="set-delete">
+                    <form asp-area="Platform" asp-controller="LinkedBoards" asp-action="Delete" asp-route-id="@set.Id" method="post"
+                          data-confirm-message="Delete the set &quot;@set.Name&quot;? Every board in it goes back to showing only its own calendar. Boards, quests and events are not deleted.">
                         <button type="submit" class="btn btn-danger">
-                            <i class="fas fa-trash me-2"></i>Delete Set
+                            <i class="fas fa-trash me-2" aria-hidden="true"></i>Delete Set
                         </button>
                     </form>
                 </div>
             </div>
-        </div>
+        </section>
     }
 }

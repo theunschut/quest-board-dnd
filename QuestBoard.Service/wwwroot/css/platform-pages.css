@@ -1,0 +1,216 @@
+/*
+ * Platform pages: the sheet for everything on the platform area's pages that has moved onto the shared look. It holds
+ * one pages layer block and nothing but design tokens, so changing a colour is a change to the token file.
+ *
+ * It holds the page title bar with its wrapping action group, the board list's name cell and its left-aligned action
+ * slots, the right-aligned Actions cell of the account and set tables, the empty-state sentence, and what the board
+ * forms add to the shared form look: a titled section, the refusal above the form, and the page switch rows. The
+ * linked set cards and the account email link target are here too, and so are the Members page's two stacked sections with
+ * their search forms, inline add forms and Clear search link. The phone deltas live in platform-pages.mobile.css.
+ */
+@layer pages {
+  /* A page card's header bar: the title and its actions wrap instead of overflowing. */
+  .page-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--qb-space-sm);
+  }
+
+  .page-bar__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--qb-space-sm);
+  }
+
+  .name-cell {
+    font-weight: var(--qb-weight-strong);
+    overflow-wrap: anywhere;
+  }
+
+  /*
+   * A board row's actions sit flush left in fixed slots: Open Board, Members and Edit keep their place whether or not
+   * the row also carries Delete, which only an empty board has and which always comes last.
+   */
+  .board-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: var(--qb-space-sm);
+  }
+
+  .board-actions form {
+    display: flex;
+  }
+
+  /* A button label never breaks across lines; the row wraps between buttons instead. */
+  .board-actions .btn {
+    white-space: nowrap;
+  }
+
+  /* The Actions cell of a table: the row's forms in one wrapping line, flush to the right edge. */
+  .row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--qb-space-sm);
+  }
+
+  .row-actions form {
+    display: flex;
+  }
+
+  .row-actions .btn {
+    white-space: nowrap;
+  }
+
+  .actions-cell,
+  .table .th-actions {
+    text-align: end;
+  }
+
+  /* The reason sits as one compact block flush to the right edge of the cell, icon beside its sentence. */
+  .table .actions-cell .control-reason {
+    max-inline-size: 44ch;
+    margin-inline-start: auto;
+    text-align: start;
+  }
+
+  /*
+   * An account's address links out of a table cell or a phone slip. The padding gives the link a target of at least 24px;
+   * the phone sheet raises it to the finger-sized minimum. The sentence for an account without an address takes the muted
+   * ink of paper.
+   */
+  .email-link {
+    display: inline-block;
+    padding-block: var(--qb-space-xs);
+    overflow-wrap: anywhere;
+  }
+
+  .email-none {
+    color: var(--qb-ink-muted);
+    font-style: italic;
+  }
+
+  /* A linked set: its two badges sit together on the right of the title band. */
+  .set-header__badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--qb-space-sm);
+  }
+
+  .set-form,
+  .set-block {
+    margin-bottom: var(--qb-space-md);
+  }
+
+  .set-delete {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  /*
+   * The empty-state sentence sits straight on the page card's glass, where the muted tone measures 4.25:1 over the
+   * lightest board pixel; here it takes the card's own colour instead.
+   */
+  .modern-card .empty-state-text {
+    color: inherit;
+  }
+
+  /* A titled section inside a form card, such as the Pages section on the board form. */
+  .form-section-title {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--qb-space-sm);
+  }
+
+  /*
+   * The sentence that says why a form was refused sits above the form. The danger text holds 4.5:1 only on the opaque
+   * overlay surface, not on the card's glass, so the line carries that surface and a stripe, like the validation summary.
+   */
+  .modern-card-body > .refusal-line {
+    margin-bottom: var(--qb-space-md);
+    padding: var(--qb-space-sm) var(--qb-space-md);
+    border-left: 4px solid var(--qb-danger-text);
+    border-radius: var(--qb-radius-md);
+    background-color: var(--qb-surface-overlay);
+  }
+
+  /*
+   * One page switch: the label covers the whole row, so the row is the target, and the row is at least 32px tall. The
+   * checked state is the gold the reserved list allows for switches. A locked row keeps its label at full strength and
+   * says why in a line under it; the reason takes the card's colour because the muted tone falls under 4.5:1 on glass.
+   */
+  .page-switch {
+    min-height: var(--qb-space-xl);
+  }
+
+  .page-switch .form-check-label {
+    display: block;
+    min-height: var(--qb-space-xl);
+    padding-block: calc((var(--qb-space-xl) - 1.5em) / 2);
+  }
+
+  /* The shared checkbox rule squares the box; a switch is a pill twice as wide as it is tall. */
+  .page-switch .form-check-input {
+    width: 2em;
+    margin-top: calc((var(--qb-space-xl) - 1.25em) / 2);
+    accent-color: var(--qb-accent);
+  }
+
+  .page-switch .form-check-input:checked {
+    background-color: var(--qb-accent);
+  }
+
+  .page-switch .form-check-input:disabled ~ .form-check-label {
+    opacity: 1;
+  }
+
+  .page-switch .control-reason {
+    margin-block-end: var(--qb-space-sm);
+    color: inherit;
+  }
+
+  /*
+   * The Members page: two full-width sections one above the other with a hairline between them, each opening with its own
+   * heading and search form.
+   */
+  .members-section + .members-section {
+    margin-top: var(--qb-space-lg);
+    padding-top: var(--qb-space-lg);
+    border-top: 1px solid var(--qb-surface-glass-border);
+  }
+
+  .members-section__title {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--qb-space-md);
+  }
+
+  .members-search {
+    margin-bottom: var(--qb-space-md);
+  }
+
+  /* The role select and Add button of an available user sit together on one line. */
+  .add-member-form {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--qb-space-sm);
+  }
+
+  .add-member-form .form-select {
+    inline-size: auto;
+  }
+
+  .email-cell {
+    overflow-wrap: anywhere;
+  }
+
+  /* The link that undoes a search: the padding makes it a target of at least 24px. */
+  .clear-search {
+    display: inline-block;
+    padding-block: var(--qb-space-xs);
+  }
+}

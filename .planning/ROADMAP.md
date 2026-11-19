@@ -2189,7 +2189,7 @@ Plans:
 **Goal:** Convert the admin pages and the Platform area on top of the foundation's Platform layouts. Convert the admin and Platform pages to the foundation with their approved relayouts and readable badges, tables and mailto links, keeping the three Platform Group twins.
 **Requirements**: TBD
 **Depends on:** Phase 94 (the foundation's Platform layouts, which this phase verifies)
-**Plans:** 0 plans
+**Plans:** 23/23 plans complete
 
 **Scope:**
 
@@ -2227,7 +2227,7 @@ Plans:
 6. Before and after screenshots stored outside the repository; relaid-out pages signed off.
 7. Mobile checks listed in the phase UAT and run under a mobile User-Agent.
 8. Static guard tests that read the area's files are rewritten to pin the same intent; none is deleted.
-9. `Html.LocalTime` and `Html.WallClock` untouched; nothing writes to `Events` or `Quests`.
+9. `Html.LocalTime` and `Html.WallClock` untouched; the conversion adds no writes beyond the audited server fixes registered in 100-SECURITY.md, all through the change tracker.
 10. At merge, every page still works and reads.
 
 Plus, specific to this phase: a configured provider key (or a seeded stub) so `Admin/EmailStats` tile contrast is measured, not read; the Campaign status mapping (A-admin-016) is answered with the Quests owner's knowledge before it is fixed; the stale note about `_Layout.Platform.Mobile` being dead code is already corrected (PROJECT.md says the Platform mobile layout is live)
@@ -2236,14 +2236,106 @@ Plus, specific to this phase: a configured provider key (or a seeded stub) so `A
 
 - No user-facing flow is removed or broken; every page stays usable at every merge.
 - Mobile checks run under a mobile User-Agent with touch.
-- Dates render through `Html.LocalTime` (real instants) and `Html.WallClock` (wall-clock values) only; nothing writes to `Events` or `Quests`, and the calendar feed files are untouched.
+- Dates render through `Html.LocalTime` (real instants) and `Html.WallClock` (wall-clock values) only; the conversion adds no writes beyond the audited server fixes registered in 100-SECURITY.md, all through the change tracker, and the calendar feed files are untouched.
 - Before and after screenshots are kept outside the repository.
 - No planning references (requirement, phase or plan ids, planning document names) in CSS or source comments.
 - Release as usual through the existing draft-release `deploy` approval gate, with deployment timing left to the operator; nothing new is built for release. Caveat: `docker-publish.yml` publishes the GHCR image on every tag push regardless of the draft-release approval, so holding a release holds the production deployment only, not the public container image; self-hosters pulling `latest` receive each tagged phase immediately.
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase to break down)
+Scope drift recorded at planning (research, re-measured by 100-01): the area is 26 view files (Phase 102 added the Group/Delete partial `_BoardDeleteBody`) and nine sheets (the six above plus Phase 102's `platform-group-delete.css`, `platform-group-delete.mobile.css` and `platform-users-boards.mobile.css`), and `modern-card.css` and `site.css` no longer exist; the plans use the measured counts.
+
+**Wave 1**
+
+- [x] 100-01-PLAN.md — Opening operator checkpoint (SQL Server at 1433 brought up by the operator, ports 8340/8341, p100 fixtures approved, SuperAdmin-as-member yes or no, SQL suites yes or no), Linux scratch setup from the Phase 99 tools with email suppression forced, Platform capture tracer, measured scope and drift, begin-phase
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 100-02-PLAN.md — p100 fixtures through the app's forms as the reused SuperAdmin (five P100 boards, six p100 accounts, two linked sets, quests in every reachable status, empty-state reachability), nothing existing changed
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 100-03-PLAN.md — Frozen baseline on 8341, route manifest, BEFORE of every row under both User-Agents (Q-126's first populated BEFORE), owned findings' BEFORE values and the finding-owner table, starting test inventory, all before any source change
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 100-04-PLAN.md — Server-rules audit re-verified: reproduction facts for each gap (run red, committed skipped), allowed-path pins, the DeleteQuest board-scope pin, live proofs on p100 fixtures, 100-SECURITY.md draft with the gap table and questions, deferred-items rows, the area guard scaffold
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 100-05-PLAN.md — Audit checkpoint (operator): approve, adjust or accept as residual each gap, answer O-1 to O-13 (D-02 and D-03 not re-asked), and approve the new refusal, toast and result sentences the server fixes write; audit-answers.json
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [x] 100-06-PLAN.md — Account reach rule: a board Admin can no longer reset or edit a SuperAdmin or another board's Admin (Domain rule, service-level refusal, controller GET and POST refusals with the approved toast, O-1 and O-3 as answered), reach facts enabled, live check
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [x] 100-07-PLAN.md — Email limiters taken after the checks and before any write, refusal contract per O-4, CreateUser limit per O-5; EmailStats statistics branch rendered through the real client with a canned handler, capture seam per O-13
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [x] 100-08-PLAN.md — Remove from Group and Delete Quest as POST forms with native confirms and the approved toasts on both layouts (inline fetch scripts gone), quest delete cleaning up reminder logs and an other-board follow-up through the change tracker (O-11, registered in 100-SECURITY.md), rewritten verb tests, SQL-backed fact
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [x] 100-09-PLAN.md — Role-change guard: self and last-Admin refusals on the four role buttons judged on the resulting role in the Domain (count query, ChangeMemberRoleAsync), approved toasts, O-7, live check
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [x] 100-10-PLAN.md — Removal guard and honest answers: Remove from Group refuses self and last-Admin removal (TryRemoveMemberAsync), stale-page toasts, Platform non-member removal Warning, O-2 as answered, live check
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
+- [x] 100-11-PLAN.md — Gate 1 package A: Admin/Users with the Q-126 AFTER, Group/Index, EditUser and CreateUser with the Q-124 AFTER, Group/Delete, Members with the Q-125 AFTER and the opaque modal, the refused-control look for every refusal kind with the approved sentences; look-checked, real data masked
+
+**Wave 12** *(blocked on Wave 11 completion)*
+
+- [x] 100-12-PLAN.md — Gate 1 package B (look check per page type with the Quests status and EmailStats tiles, every look and copy proposal), the local sheet with items 1 to 20 (sentence items shown as settled at 100-05), Gate 1 (operator; items 2 to 6c have no default; redraw loop)
+
+**Wave 13** *(blocked on Wave 12 completion)*
+
+- [x] 100-13-PLAN.md — Shared display mapping and status partial, .control-reason and .row-slip, admin page sheets, the area guard scanners and render tests, Admin/Quests converted on both layouts (one status mapping, Q-87), admin-quests.mobile.css retired
+
+**Wave 14** *(blocked on Wave 13 completion)*
+
+- [x] 100-14-PLAN.md — Admin/Users on both layouts: Q-126 desktop table, phone slips with the resend form (Q-85), role badge partial, the D-02 and D-03 refusals as disabled controls with visible reasons from server flags, the Remove from Group sentence per Gate 1 item 8, admin-users.mobile.css retired
+
+**Wave 15** *(blocked on Wave 14 completion)*
+
+- [x] 100-15-PLAN.md — CreateUser, EditUser and ResetPassword on both layouts: one page title (Q-124), Password Management on the phone (Q-92), the name in the ResetPassword title (Q-93), new-password inputs, Gate 1 copy items, admin-form.mobile.css retired
+
+**Wave 16** *(blocked on Wave 15 completion)*
+
+- [x] 100-16-PLAN.md — Platform Group/Index on both layouts (wrapping header, fixed action slots, shared board-type badge, the 320 overflow closed), the Group/Delete pair aligned, Platform page sheets; Q-91 and Q-109 recorded as kept
+
+**Wave 17** *(blocked on Wave 16 completion)*
+
+- [x] 100-17-PLAN.md — Platform Group/Create and Group/Edit on both layouts: the form contract, the mapped board-type select, readable Pages switches, locked-row reasons
+
+**Wave 18** *(blocked on Wave 17 completion)*
+
+- [x] 100-18-PLAN.md — Platform Users and LinkedBoards on both layouts: attribute confirmations instead of Razor-built handler strings, the refused own Disable, 44px email links, set cards, platform-users and platform-linked-boards phone sheets retired
+
+**Wave 19** *(blocked on Wave 18 completion)*
+
+- [x] 100-19-PLAN.md — Platform Members on both layouts: stacked sections (Q-125), Current Members on the phone (Q-88), the opaque named modal with a visible failed create (O-12), Remove Member on the shared confirm, platform-group.mobile.css retired
+
+**Wave 20** *(blocked on Wave 19 completion)*
+
+- [x] 100-20-PLAN.md — EmailStats converted with tiles measured on the rendered page through the stub, and the two Platform layouts verified on all seven Platform pages under both User-Agents (fixed only where a probe fails)
+
+**Wave 21** *(blocked on Wave 20 completion)*
+
+- [x] 100-21-PLAN.md — Cleanup and guards: zero census with the A-admin-038 and A-admin-043 results, every view converted, six phone sheets gone, no skipped reproduction fact, no test deleted, no planning reference, untouched paths, and the added writes checked against the list registered in 100-SECURITY.md
+
+**Wave 22** *(blocked on Wave 21 completion)*
+
+- [x] 100-22-PLAN.md — Closing sweep: full AFTER against BEFORE, the accessibility bar, click-throughs of every destructive form, live proof of every refusal, Platform layouts, SQL suites on the operator's yes, every finding-owner row traced, final 100-SECURITY.md and deferred items
+
+**Wave 23** *(blocked on Wave 22 completion)*
+
+- [x] 100-23-PLAN.md — Gate 2 local sheet with every pair, exception, text change, finding, inherited question (Q-91 and Q-109 kept) and the server-rules outcome, Gate 2 (operator, gap-closure loop), v6.5.0 release hand-off (the operator opens the PR; no PR, tag or push by any plan)
 
 ### Phase 101: Email templates restyle
 
@@ -2356,3 +2448,86 @@ Unsequenced ideas parked outside the phase sequence. Promote with `/gsd-review-b
 Plans:
 
 - [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 103: Themed Error Pages
+
+**Goal:** A failed request (404, 403, 500 and other status codes) shows an error page styled in the existing theme instead of the bare default, with three actions: go back, go to the home page (`/`), and log out and return to the login page. Prompted by the operator: following a link to something on a board other than the active one currently ends on a plain 404 (see the phase 99 deferred cross-board link switch).
+**Requirements**: TBD
+**Depends on:** Phase 102; executes only after Phase 100 has finished in this checkout (103-01 checks it)
+**Plans:** 18 plans
+
+Plans:
+
+Planning record: no requirement IDs are mapped, so CONTEXT decisions D-01..D-19 serve as each plan's requirements; the plans form a strict serial chain (one plan per wave) because the tracking commands run in this checkout and most plans share files. Research corrections carried: the registry has 18 routes, the resolver has a second caller (the picker skip), and the 500 Reference is findable in the log only with console scopes on (asked at 103-01).
+
+**Wave 1**
+
+- [ ] 103-01-PLAN.md — Opening operator checkpoint: phase 100 finished in this checkout, SQL Server at 1433 up, ports 8350/8351, p103 fixtures approved, server-rule answers (page gate, Contacts toggle, AccessDenied status) and the logging choice; scratch root from the phase 100 tools with email suppression forced; anonymous capture tracer; overlap anchors re-read; begin-phase
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 103-02-PLAN.md — p103 fixtures through the app's forms (three P103 boards, four p103 accounts, hidden and visible records on the target board), nothing existing changed
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 103-03-PLAN.md — Frozen baseline on 8351, error-row manifest, BEFORE of every bare 404/403/400/409/429/500 under both User-Agents, the deep-link leak proven live and as red facts committed skipped, switch pins, starting test inventory
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 103-04-PLAN.md — Tracer: status-code re-execute for every environment, the navigation gate, the error endpoint for /Error and /Error/{code}, the copy map, a structural page in a minimal layout, the parity fact rewritten, the phase guard scaffold
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 103-05-PLAN.md — Actions: Go back (same-site Referer), Home, Log out ending on login (Logout toLogin), Log in with a local return URL, Switch board for two or more boards; HEAD, POST, no-store, no active board, 409; the comparison helper
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 103-06-PLAN.md — Exception handler fixed with a fresh scope, the themed 500 with its Reference and nothing from the exception, the Reference in the log scope per the operator's choice, the themed 429, the page rendering when its helpers throw
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 103-07-PLAN.md — Board-aware resolver through both callers: an access level and page per registry route (still 18), role and page narrowing with the SuperAdmin flag, the leak's board-level facts enabled, the facts that break rewritten in the same commit
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 103-08-PLAN.md — Resolver pins: every route's access level and page (with a drift guard against the controllers' page attributes), both route parsers, every narrowing rule at unit level, and the board-level refusals proven live on p103 data
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [ ] 103-09-PLAN.md — Record-level visibility in the cross-board query (shop status and window shared with Shop/Details, quest ownership and completion, character ownership, hidden contacts), parity facts, every reproduction fact enabled, the phase 99 leak closed live
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [ ] 103-10-PLAN.md — Agreement matrix over route, role and record state judged by each real page, themed parity pairs per kind, picker pairs, hidden and missing 404 bodies identical live
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
+- [ ] 103-11-PLAN.md — Gate 1 mockups M1 to M11 on desktop and phone (Directions A and B, every variant and viewer, stress and focus frames, look-check tables, proposals), copy read from the structural build, fixture data only
+
+**Wave 12** *(blocked on Wave 11 completion)*
+
+- [ ] 103-12-PLAN.md — Gate 1 local sheet with items 1 to 14 (1, 2, 3 and 12 have no default), settled answers, deviations and assumptions; Gate 1 (operator; redraw loop)
+
+**Wave 13** *(blocked on Wave 12 completion)*
+
+- [ ] 103-13-PLAN.md — Desktop look as approved: the minimal layout's brand-only chrome, error.css, error-actions.js, the final view for every variant and viewer, the phase scanners with self-tests
+
+**Wave 14** *(blocked on Wave 13 completion)*
+
+- [ ] 103-14-PLAN.md — Phone twin as approved: _Layout.Error.Mobile, ErrorPage.Mobile, error.mobile.css (no media query), phone order, content equivalence with the desktop view, 44px targets
+
+**Wave 15** *(blocked on Wave 14 completion)*
+
+- [ ] 103-15-PLAN.md — AccessDenied folded into the shared page as its 403 variant (URL and cookie path unchanged, today's words, status per the operator, scripts keep today's status), the old view deleted, account guards rewritten to the same intent
+
+**Wave 16** *(blocked on Wave 15 completion)*
+
+- [ ] 103-16-PLAN.md — Closing guards: zero census, the phase file list free of planning references, no reproduction fact skipped, no test deleted, untouched shared files, seams, no writes and no new logging
+
+**Wave 17** *(blocked on Wave 16 completion)*
+
+- [ ] 103-17-PLAN.md — Closing sweep: final AFTER against BEFORE under both User-Agents, the accessibility bar, every action clicked through, script callers unchanged, the leak closed live, deferred items, phase 99's leak row resolved
+
+**Wave 18** *(blocked on Wave 17 completion)*
+
+- [ ] 103-18-PLAN.md — Gate 2 local sheet with every pair, exception, text change and deviation, Gate 2 (operator, gap-closure loop), minor release hand-off (provisionally v6.6.0; the operator opens the PR; no PR, tag or push by any plan)

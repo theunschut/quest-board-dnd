@@ -50,6 +50,10 @@ internal class GroupRepository(QuestBoardContext dbContext, IMapper mapper, IBoa
         => await DbContext.UserGroups.AnyAsync(ug => ug.GroupId == groupId, token);
 
     /// <inheritdoc/>
+    public async Task<int> CountMembersWithRoleAsync(int groupId, GroupRole role, CancellationToken token = default)
+        => await DbContext.UserGroups.CountAsync(ug => ug.GroupId == groupId && ug.GroupRole == (int)role, token);
+
+    /// <inheritdoc/>
     public async Task AddMemberAsync(int groupId, int userId, GroupRole groupRole, CancellationToken token = default)
     {
         // Check existence first — UserGroups has unique composite index on (UserId, GroupId)

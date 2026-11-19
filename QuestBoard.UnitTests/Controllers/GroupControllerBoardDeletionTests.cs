@@ -13,6 +13,7 @@ using QuestBoard.Domain.Models.BoardDeletion;
 using QuestBoard.Service.Areas.Platform.Controllers;
 using QuestBoard.Service.Constants;
 using QuestBoard.Service.ViewModels.PlatformViewModels;
+using System.Threading.RateLimiting;
 
 namespace QuestBoard.UnitTests.Controllers;
 
@@ -31,7 +32,8 @@ public class GroupControllerBoardDeletionTests
             Substitute.For<IIdentityService>(),
             Substitute.For<IBackgroundJobClient>(),
             Substitute.For<IBoardPageSettingsService>(),
-            log);
+            log,
+            PartitionedRateLimiter.Create<int, string>(_ => RateLimitPartition.GetNoLimiter(string.Empty)));
 
         var session = new FakeSession { FailLoad = failSessionLoad };
         var httpContext = new DefaultHttpContext

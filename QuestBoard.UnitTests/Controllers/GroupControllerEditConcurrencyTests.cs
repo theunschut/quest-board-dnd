@@ -11,6 +11,7 @@ using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
 using QuestBoard.Service.Areas.Platform.Controllers;
 using QuestBoard.Service.ViewModels.PlatformViewModels;
+using System.Threading.RateLimiting;
 
 namespace QuestBoard.UnitTests.Controllers;
 
@@ -40,7 +41,8 @@ public class GroupControllerEditConcurrencyTests
             Substitute.For<IIdentityService>(),
             Substitute.For<IBackgroundJobClient>(),
             settingsService,
-            NullLogger<GroupController>.Instance);
+            NullLogger<GroupController>.Instance,
+            PartitionedRateLimiter.Create<int, string>(_ => RateLimitPartition.GetNoLimiter(string.Empty)));
 
         var result = await controller.Edit(new GroupEditViewModel { Id = 7, Name = "New Name" });
 
@@ -55,7 +57,8 @@ public class GroupControllerEditConcurrencyTests
         Substitute.For<IIdentityService>(),
         Substitute.For<IBackgroundJobClient>(),
         settingsService,
-        NullLogger<GroupController>.Instance);
+        NullLogger<GroupController>.Instance,
+        PartitionedRateLimiter.Create<int, string>(_ => RateLimitPartition.GetNoLimiter(string.Empty)));
 
     [Fact]
     public async Task Edit_WhenThePageSettingsChangedSinceTheFormWasRendered_RefusesWithoutSavingAndShowsTheStoredSettings()

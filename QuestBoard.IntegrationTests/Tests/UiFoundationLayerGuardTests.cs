@@ -100,11 +100,15 @@ public class UiFoundationLayerGuardTests
         ("shop-pages.css", "pages"),
         ("shop-pages.mobile.css", "pages"),
         ("shop-form.css", "pages"),
+        ("admin-pages.css", "pages"),
+        ("admin-pages.mobile.css", "pages"),
+        ("platform-pages.css", "pages"),
+        ("platform-pages.mobile.css", "pages"),
     ];
 
     // The layered files that may hold no colour literal: every one except the token file.
     private static readonly string[] NoLiteralFiles = ["base.css", "components.css", "shell.css", "shell.mobile.css", "group-picker.css",
-        "quests.css", "quest-details.css", "quest-vote.css", "quests.mobile.css", "home.mobile.css", "quest-form.css", "dm-create.mobile.css", "quest-manage.css", "dm-manage.mobile.css", "quest-log.css", "quest-log.mobile.css", "move-entry.css", "markdown-content.css", "markdown-editor.css", "account.css", "events-overview.css", "events-overview.mobile.css", "agenda.css", "agenda.mobile.css", "calendar.mobile.css", "calendar.css", "image-crop.css", "character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css", "characters.mobile.css", "contacts.css", "contacts.mobile.css", "dm-profile.css", "dm-profile.mobile.css", "players.css", "players.mobile.css", "shop-pages.css", "shop-pages.mobile.css", "shop-form.css"];
+        "quests.css", "quest-details.css", "quest-vote.css", "quests.mobile.css", "home.mobile.css", "quest-form.css", "dm-create.mobile.css", "quest-manage.css", "dm-manage.mobile.css", "quest-log.css", "quest-log.mobile.css", "move-entry.css", "markdown-content.css", "markdown-editor.css", "account.css", "events-overview.css", "events-overview.mobile.css", "agenda.css", "agenda.mobile.css", "calendar.mobile.css", "calendar.css", "image-crop.css", "character-detail.css", "character-form.css", "contact-form.css", "contact-detail.css", "dm-profile-form.css", "contact-categories.css", "contact-categories.mobile.css", "member-cards.css", "characters.css", "characters.mobile.css", "contacts.css", "contacts.mobile.css", "dm-profile.css", "dm-profile.mobile.css", "players.css", "players.mobile.css", "shop-pages.css", "shop-pages.mobile.css", "shop-form.css", "admin-pages.css", "admin-pages.mobile.css", "platform-pages.css", "platform-pages.mobile.css"];
 
     private static readonly Regex LocalStylesheetHref = new(
         @"<link\b[^>]*\brel=""stylesheet""[^>]*\bhref=""~/css/(?<name>[\w.\-]+)\.css""[^>]*>",
@@ -330,6 +334,31 @@ public class UiFoundationLayerGuardTests
             "legacy-pages.css stays unlayered so its one rule keeps beating the vendor layer without a flag");
         File.Exists(ResolveRepoFile((CssRoot + "/site.css").Split('/'))).Should().BeFalse(
             "the global sheet was renamed, so no file by the old name may remain");
+    }
+
+    // The four page sheets of the Admin and Platform pages are scanned for a layer and for colour literals, and none of
+    // the old phone sheets those pages replaced stays on either list.
+    [Fact]
+    public void LayeredAndNoLiteralFiles_HoldTheAdminAndPlatformSheets_AndNoRetiredPhoneSheet()
+    {
+        string[] pageSheets = ["admin-pages.css", "admin-pages.mobile.css", "platform-pages.css", "platform-pages.mobile.css"];
+        string[] retired =
+        [
+            "admin-form.mobile.css", "admin-quests.mobile.css", "admin-users.mobile.css",
+            "platform-group.mobile.css", "platform-linked-boards.mobile.css", "platform-users.mobile.css",
+        ];
+
+        foreach (var sheet in pageSheets)
+        {
+            LayeredFiles.Should().Contain(l => l.File == sheet && l.Layer == "pages", $"{sheet} opens the pages layer");
+            NoLiteralFiles.Should().Contain(sheet, $"{sheet} holds no colour literal");
+        }
+
+        foreach (var sheet in retired)
+        {
+            LayeredFiles.Should().NotContain(l => l.File == sheet, $"{sheet} was retired");
+            NoLiteralFiles.Should().NotContain(sheet, $"{sheet} was retired");
+        }
     }
 
     [Fact]

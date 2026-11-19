@@ -22,6 +22,11 @@ public interface IGroupRepository : IBaseRepository<Group>
     Task<bool> HasMembersAsync(int groupId, CancellationToken token = default);
 
     /// <summary>
+    /// Returns how many members of the group hold the given role.
+    /// </summary>
+    Task<int> CountMembersWithRoleAsync(int groupId, GroupRole role, CancellationToken token = default);
+
+    /// <summary>
     /// Adds a user to a group with the given role.
     /// Throws InvalidOperationException if the user is already a member of the group (enforced ahead of the DB's unique composite index).
     /// </summary>

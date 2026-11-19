@@ -10,16 +10,18 @@ using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 
 namespace QuestBoard.Service.Controllers.Admin;
 
 [Authorize(Policy = "AdminOnly")]
-public class AdminController(IUserService userService, IQuestService questService, IGroupService groupService, IIdentityService identityService, IBackgroundJobClient jobClient, IOptions<EmailSettings> emailOptions, IMemoryCache cache, IActiveGroupContext activeGroupContext, ILogger<AdminController> logger, PartitionedRateLimiter<int> emailResendLimiter, ResendStatsClient resendStatsClient, IBoardTypeResolver boardTypeResolver, IBoardClock boardClock) : Controller
+public class AdminController(IUserService userService, IQuestService questService, IGroupService groupService, IIdentityService identityService, IBackgroundJobClient jobClient, IOptions<EmailSettings> emailOptions, IMemoryCache cache, IActiveGroupContext activeGroupContext, ILogger<AdminController> logger, PartitionedRateLimiter<int> emailResendLimiter, [FromKeyedServices(AdminRateLimitKeys.CreateUser)] PartitionedRateLimiter<int> createUserLimiter, ResendStatsClient resendStatsClient, IBoardTypeResolver boardTypeResolver, IBoardClock boardClock) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Users()
@@ -30,6 +32,12 @@ public class AdminController(IUserService userService, IQuestService questServic
         var allUsers = await userService.GetAllGroupMembersAsync(groupId.Value);
         var userViewModels = new List<UserManagementViewModel>();
 
+        // The page shows what the server will accept, so each row's refusals come from the same rules that refuse a
+        // crafted request: one reach question for every row and one count of the board's Admins.
+        var actorId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var reach = await userService.GetAccountReachAsync(User, groupId.Value, allUsers.Select(u => u.Id).ToList());
+        var adminCount = await groupService.CountMembersWithRoleAsync(groupId.Value, GroupRole.Admin);
+
         foreach (var user in allUsers)
         {
             GroupRole? groupRole = await userService.GetGroupRoleByIdAsync(user.Id, groupId.Value);
@@ -37,10 +45,14 @@ public class AdminController(IUserService userService, IQuestService questServic
             userViewModels.Add(new UserManagementViewModel
             {
                 User = user,
+                Role = groupRole,
                 IsAdmin = groupRole == GroupRole.Admin,
                 IsDungeonMaster = groupRole == GroupRole.DungeonMaster,
                 IsPlayer = groupRole == GroupRole.Player,
-                EmailConfirmed = user.EmailConfirmed
+                EmailConfirmed = user.EmailConfirmed,
+                IsSelf = user.Id == actorId,
+                IsLastAdmin = groupRole == GroupRole.Admin && adminCount <= 1,
+                Reach = reach.GetValueOrDefault(user.Id, AccountReach.Reachable)
             });
         }
 
@@ -55,54 +67,36 @@ public class AdminController(IUserService userService, IQuestService questServic
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> PromoteToAdmin(int userId)
-    {
-        var groupId = activeGroupContext.ActiveGroupId;
-        if (groupId == null) return RedirectToAction(nameof(Users));
-        // Guard against a crafted POST for a user outside the active group
-        var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
-        if (targetRole == null) return RedirectToAction(nameof(Users));
-        await userService.SetGroupRoleAsync(userId, groupId.Value, GroupRole.Admin);
-        return RedirectToAction(nameof(Users));
-    }
+    public Task<IActionResult> PromoteToAdmin(int userId) => ChangeRoleAsync(userId, GroupRole.Admin);
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DemoteFromAdmin(int userId)
-    {
-        var groupId = activeGroupContext.ActiveGroupId;
-        if (groupId == null) return RedirectToAction(nameof(Users));
-        // Guard against a crafted POST for a user outside the active group
-        var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
-        if (targetRole == null) return RedirectToAction(nameof(Users));
-        await userService.SetGroupRoleAsync(userId, groupId.Value, GroupRole.Player);
-        return RedirectToAction(nameof(Users));
-    }
+    public Task<IActionResult> DemoteFromAdmin(int userId) => ChangeRoleAsync(userId, GroupRole.DungeonMaster);
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> PromoteToDM(int userId)
-    {
-        var groupId = activeGroupContext.ActiveGroupId;
-        if (groupId == null) return RedirectToAction(nameof(Users));
-        // Guard against a crafted POST for a user outside the active group
-        var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
-        if (targetRole == null) return RedirectToAction(nameof(Users));
-        await userService.SetGroupRoleAsync(userId, groupId.Value, GroupRole.DungeonMaster);
-        return RedirectToAction(nameof(Users));
-    }
+    public Task<IActionResult> PromoteToDM(int userId) => ChangeRoleAsync(userId, GroupRole.DungeonMaster);
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DemoteToPlayer(int userId)
+    public Task<IActionResult> DemoteToPlayer(int userId) => ChangeRoleAsync(userId, GroupRole.Player);
+
+    // All four role buttons end here. The Domain judges the change on the role the person would end up with, so a
+    // request that names the wrong button cannot get past the self and last-Admin rules.
+    private async Task<IActionResult> ChangeRoleAsync(int userId, GroupRole newRole)
     {
         var groupId = activeGroupContext.ActiveGroupId;
         if (groupId == null) return RedirectToAction(nameof(Users));
-        // Guard against a crafted POST for a user outside the active group
-        var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
-        if (targetRole == null) return RedirectToAction(nameof(Users));
-        await userService.SetGroupRoleAsync(userId, groupId.Value, GroupRole.Player);
-        return RedirectToAction(nameof(Users));
+
+        var actorId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var outcome = await userService.ChangeMemberRoleAsync(groupId.Value, actorId, userId, newRole);
+        return outcome switch
+        {
+            MemberChangeOutcome.NotAMember => this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale),
+            MemberChangeOutcome.Self => this.RedirectWithError(nameof(Users), AdminActionMessages.SelfRefused),
+            MemberChangeOutcome.LastAdmin => this.RedirectWithError(nameof(Users), AdminActionMessages.LastAdminRefused),
+            _ => RedirectToAction(nameof(Users))
+        };
     }
 
     [HttpGet]
@@ -122,6 +116,13 @@ public class AdminController(IUserService userService, IQuestService questServic
 
         var groupId = activeGroupContext.ActiveGroupId;
         if (groupId == null) return RedirectToAction("Index", "GroupPicker");
+
+        // Each administrator has their own hourly budget for creating accounts. It is spent only by a request that
+        // passed validation, and it is asked before any account work so a refused request creates nothing.
+        var actorId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        using var createLease = createUserLimiter.AttemptAcquire(actorId);
+        if (!createLease.IsAcquired)
+            return this.RedirectWithError(nameof(Users), AdminActionMessages.CreateLimited);
 
         var result = await userService.CreateOrAddToGroupAsync(model.Email, model.Name, groupId.Value, model.GroupRole);
 
@@ -147,6 +148,9 @@ public class AdminController(IUserService userService, IQuestService questServic
 
             case CreateOrAddToGroupOutcome.AddedToGroup:
                 {
+                    if (!TryTakeAddedMemberMailPermit(result.UserId!.Value))
+                        return this.RedirectWithSuccess(nameof(Users), AdminActionMessages.AddedToGroupEmailNotSent(result.Name, model.GroupRole));
+
                     var group = await groupService.GetByIdAsync(groupId.Value);
                     var loginUrl = Url.Action("Login", "Account", null, Request.Scheme);
                     if (loginUrl == null || group == null)
@@ -154,14 +158,17 @@ public class AdminController(IUserService userService, IQuestService questServic
                         // flowing from the newly created account, it carries no PII of its own.
                         logger.LogError("Failed to generate Login callback URL or resolve group for userId {UserId}", result.UserId);
                     else
-                        jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, model.GroupRole.ToString(), loginUrl, CancellationToken.None));
+                        jobClient.Enqueue<GroupMembershipAddedEmailJob>(j => j.ExecuteAsync(result.Email, result.Name, group.Name, AdminPlatformDisplay.GroupRoleName(model.GroupRole), loginUrl, CancellationToken.None));
 
-                    return this.RedirectWithSuccess(nameof(Users), $"{result.Name} has been added to the group as {model.GroupRole}. A notification email has been sent.");
+                    return this.RedirectWithSuccess(nameof(Users), AdminActionMessages.AddedToGroup(result.Name, model.GroupRole));
                 }
 
             case CreateOrAddToGroupOutcome.AddedToGroupStrandedAccount:
                 {
-                    var rawToken = await identityService.GeneratePasswordResetTokenForUserAsync(result.UserId!.Value);
+                    if (!TryTakeAddedMemberMailPermit(result.UserId!.Value))
+                        return this.RedirectWithSuccess(nameof(Users), AdminActionMessages.AddedToGroupEmailNotSent(result.Name, model.GroupRole));
+
+                    var rawToken = await identityService.GeneratePasswordResetTokenForUserAsync(result.UserId.Value);
                     if (rawToken != null)
                     {
                         var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(rawToken));
@@ -177,7 +184,7 @@ public class AdminController(IUserService userService, IQuestService questServic
                         }
                     }
 
-                    return this.RedirectWithSuccess(nameof(Users), $"{result.Name} has been added to the group as {model.GroupRole}. A notification email has been sent.");
+                    return this.RedirectWithSuccess(nameof(Users), AdminActionMessages.AddedToGroup(result.Name, model.GroupRole));
                 }
 
             case CreateOrAddToGroupOutcome.AlreadyMember:
@@ -194,6 +201,15 @@ public class AdminController(IUserService userService, IQuestService questServic
         }
     }
 
+    // An added account already exists, so its mail shares that person's hourly budget with the resend and email-change
+    // buttons. A spent budget never refuses the add: the person joins the board, only the mail is skipped, and the
+    // toast says so. A fixed-window permit counts as soon as it is granted, so the lease is released at once.
+    private bool TryTakeAddedMemberMailPermit(int userId)
+    {
+        using var lease = emailResendLimiter.AttemptAcquire(userId);
+        return lease.IsAcquired;
+    }
+
     [HttpGet]
     public async Task<IActionResult> EditUser(int userId)
     {
@@ -201,12 +217,15 @@ public class AdminController(IUserService userService, IQuestService questServic
         if (groupId == null) return RedirectToAction(nameof(Users));
         // Guard against a crafted request for a user outside the active group
         var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
-        if (targetRole == null) return RedirectToAction(nameof(Users));
+        if (targetRole == null) return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
+
+        if (!await IsWithinReachAsync(groupId.Value, userId))
+            return this.RedirectWithError(nameof(Users), AdminActionMessages.ReachRefused);
 
         var user = await userService.GetByIdAsync(userId);
         if (user == null)
         {
-            return RedirectToAction(nameof(Users));
+            return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
         }
 
         var model = new EditUserViewModel
@@ -230,15 +249,25 @@ public class AdminController(IUserService userService, IQuestService questServic
             if (groupId == null) return RedirectToAction(nameof(Users));
             // Guard against a crafted POST for a user outside the active group
             var targetRole = await userService.GetGroupRoleByIdAsync(model.Id, groupId.Value);
-            if (targetRole == null) return RedirectToAction(nameof(Users));
+            if (targetRole == null) return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
+
+            if (!await IsWithinReachAsync(groupId.Value, model.Id))
+                return this.RedirectWithError(nameof(Users), AdminActionMessages.ReachRefused);
 
             var user = await userService.GetByIdAsync(model.Id);
             if (user == null)
             {
-                return RedirectToAction(nameof(Users));
+                return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
             }
 
             var emailChanged = !string.Equals(user.Email, model.Email, StringComparison.OrdinalIgnoreCase);
+            var newEmail = emailChanged && !string.IsNullOrEmpty(model.Email) ? model.Email : null;
+
+            // Rate-limited on the same per-target-user budget as SendConfirmationEmail — only email-changing saves
+            // are counted. Asked before anything is saved, so a refused change leaves the account exactly as it was.
+            using var lease = newEmail != null ? emailResendLimiter.AttemptAcquire(model.Id) : null;
+            if (lease is { IsAcquired: false })
+                return this.RedirectWithError(nameof(Users), AdminActionMessages.EmailRateLimited);
 
             user.Name = model.Name;
             user.HasKey = model.HasKey;
@@ -249,31 +278,22 @@ public class AdminController(IUserService userService, IQuestService questServic
 
             await userService.UpdateAsync(user);
 
-            if (emailChanged && !string.IsNullOrEmpty(model.Email))
+            if (newEmail != null)
             {
-                // Rate-limited on the same per-target-user budget as
-                // SendConfirmationEmail — only email-changing saves are counted.
-                using var lease = emailResendLimiter.AttemptAcquire(model.Id);
-                if (!lease.IsAcquired)
-                {
-                    Response.StatusCode = StatusCodes.Status429TooManyRequests;
-                    return Content("Too many requests. Please try again later.");
-                }
-
-                var rawToken = await identityService.GenerateChangeEmailTokenAsync(user.Id, model.Email);
+                var rawToken = await identityService.GenerateChangeEmailTokenAsync(user.Id, newEmail);
                 if (rawToken != null)
                 {
                     var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(rawToken));
                     var callbackUrl = Url.Action("ConfirmEmailChange", "Account",
-                        new { userId = user.Id, newEmail = model.Email, token = encodedToken }, Request.Scheme);
+                        new { userId = user.Id, newEmail, token = encodedToken }, Request.Scheme);
                     if (callbackUrl == null)
                     {
                         logger.LogError("Failed to generate ConfirmEmailChange callback URL for userId {UserId}", user.Id);
-                        return this.RedirectWithError(nameof(Users), $"Failed to send confirmation email to {model.Email} for {user.Name}. Please try again.");
+                        return this.RedirectWithError(nameof(Users), $"Failed to send confirmation email to {newEmail} for {user.Name}. Please try again.");
                     }
 
-                    jobClient.Enqueue<ChangeEmailConfirmationJob>(j => j.ExecuteAsync(model.Email, user.Name, callbackUrl, CancellationToken.None));
-                    return this.RedirectWithSuccess(nameof(Users), $"A confirmation email has been sent to {model.Email} for {user.Name}. The address will update once confirmed.");
+                    jobClient.Enqueue<ChangeEmailConfirmationJob>(j => j.ExecuteAsync(newEmail, user.Name, callbackUrl, CancellationToken.None));
+                    return this.RedirectWithSuccess(nameof(Users), $"A confirmation email has been sent to {newEmail} for {user.Name}. The address will update once confirmed.");
                 }
             }
 
@@ -290,12 +310,15 @@ public class AdminController(IUserService userService, IQuestService questServic
         if (groupId == null) return RedirectToAction(nameof(Users));
         // Guard against a crafted request for a user outside the active group
         var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
-        if (targetRole == null) return RedirectToAction(nameof(Users));
+        if (targetRole == null) return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
+
+        if (!await IsWithinReachAsync(groupId.Value, userId))
+            return this.RedirectWithError(nameof(Users), AdminActionMessages.ReachRefused);
 
         var user = await userService.GetByIdAsync(userId);
         if (user == null)
         {
-            return RedirectToAction(nameof(Users));
+            return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
         }
 
         var model = new ResetPasswordViewModel
@@ -317,19 +340,22 @@ public class AdminController(IUserService userService, IQuestService questServic
             if (groupId == null) return RedirectToAction(nameof(Users));
             // Guard against a crafted POST for a user outside the active group
             var targetRole = await userService.GetGroupRoleByIdAsync(model.UserId, groupId.Value);
-            if (targetRole == null) return RedirectToAction(nameof(Users));
+            if (targetRole == null) return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
+
+            if (!await IsWithinReachAsync(groupId.Value, model.UserId))
+                return this.RedirectWithError(nameof(Users), AdminActionMessages.ReachRefused);
 
             var user = await userService.GetByIdAsync(model.UserId);
             if (user == null)
             {
-                return RedirectToAction(nameof(Users));
+                return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
             }
 
-            var result = await userService.ResetPasswordAsync(User, user, model.NewPassword);
+            var result = await userService.ResetPasswordAsync(User, groupId.Value, user, model.NewPassword);
 
             if (result.Succeeded)
             {
-                return this.RedirectWithMessage(nameof(Users), "SuccessMessage", $"Password reset successfully for {user.Name}!");
+                return this.RedirectWithSuccess(nameof(Users), AdminActionMessages.PasswordReset(user.Name));
             }
 
             foreach (var error in result.Errors)
@@ -341,56 +367,62 @@ public class AdminController(IUserService userService, IQuestService questServic
         return View(model);
     }
 
-    [HttpDelete]
+    [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteUser(int id)
     {
         var groupId = activeGroupContext.ActiveGroupId;
-        if (groupId == null) return NotFound();
-
-        // Guard against a crafted request for a user outside the active group
-        var targetRole = await userService.GetGroupRoleByIdAsync(id, groupId.Value);
-        if (targetRole == null) return NotFound();
+        if (groupId == null) return RedirectToAction(nameof(Users));
 
         var user = await userService.GetByIdAsync(id);
         if (user == null)
         {
-            return NotFound();
+            return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
         }
 
-        await groupService.RemoveMemberAsync(groupId.Value, id);
-        return Ok();
+        // The Domain refuses the removal of the acting user and of the board's only Admin, and answers NotAMember for
+        // a crafted request that names someone outside the active group.
+        var actorId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var outcome = await userService.TryRemoveMemberAsync(groupId.Value, actorId, id);
+        return outcome switch
+        {
+            MemberChangeOutcome.NotAMember => this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale),
+            MemberChangeOutcome.Self => this.RedirectWithError(nameof(Users), AdminActionMessages.SelfRefused),
+            MemberChangeOutcome.LastAdmin => this.RedirectWithError(nameof(Users), AdminActionMessages.LastAdminRefused),
+            _ => this.RedirectWithSuccess(nameof(Users), AdminActionMessages.MemberRemoved(user.Name))
+        };
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SendConfirmationEmail(int userId)
     {
-        // Repeatable manual resend button, rate-limited per target user (3/hour)
-        // to protect the Resend relay's 100/day quota from accidental button-mashing.
-        using var lease = emailResendLimiter.AttemptAcquire(userId);
-        if (!lease.IsAcquired)
-        {
-            Response.StatusCode = StatusCodes.Status429TooManyRequests;
-            return Content("Too many requests. Please try again later.");
-        }
-
         var groupId = activeGroupContext.ActiveGroupId;
         if (groupId == null) return RedirectToAction(nameof(Users));
         // Guard against a crafted POST for a user outside the active group
         var targetRole = await userService.GetGroupRoleByIdAsync(userId, groupId.Value);
-        if (targetRole == null) return RedirectToAction(nameof(Users));
+        if (targetRole == null) return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
+
+        if (!await IsWithinReachAsync(groupId.Value, userId))
+            return this.RedirectWithError(nameof(Users), AdminActionMessages.ReachRefused);
 
         var user = await userService.GetByIdAsync(userId);
         if (user == null)
         {
-            return RedirectToAction(nameof(Users));
+            return this.RedirectWithError(nameof(Users), AdminActionMessages.MemberStale);
         }
 
         if (user.EmailConfirmed)
         {
             return this.RedirectWithError(nameof(Users), $"{user.Name} has already confirmed their account.");
         }
+
+        // Repeatable manual resend button, rate-limited per target user (3/hour) to protect the Resend relay's
+        // 100/day quota from accidental button-mashing. The permit is taken only once every check above has passed,
+        // so a request that is refused, out of board or pointless never spends the account's own budget.
+        using var lease = emailResendLimiter.AttemptAcquire(userId);
+        if (!lease.IsAcquired)
+            return this.RedirectWithError(nameof(Users), AdminActionMessages.EmailRateLimited);
 
         var rawToken = await identityService.GeneratePasswordResetTokenForUserAsync(userId);
         if (rawToken == null || string.IsNullOrEmpty(user.Email))
@@ -433,19 +465,28 @@ public class AdminController(IUserService userService, IQuestService questServic
         return View(sortedQuests);
     }
 
-    [HttpDelete]
+    [HttpPost]
     [ValidateAntiForgeryToken]
     [BoardPage(BoardPage.Quests)]
     public async Task<IActionResult> DeleteQuest(int id)
     {
+        // The board scope is applied by the quest query itself, so an id of another board reads as missing.
         var quest = await questService.GetByIdAsync(id);
         if (quest == null)
         {
-            return NotFound();
+            return this.RedirectWithError(nameof(Quests), AdminActionMessages.QuestMissing);
         }
 
-        await questService.RemoveAsync(quest);
-        return Ok();
+        try
+        {
+            await questService.RemoveAsync(quest);
+        }
+        catch (DbUpdateException)
+        {
+            return this.RedirectWithError(nameof(Quests), AdminActionMessages.QuestRefused);
+        }
+
+        return this.RedirectWithSuccess(nameof(Quests), AdminActionMessages.QuestDeleted);
     }
 
     // Requires SuperAdmin in addition to the class-level AdminOnly policy — an Admin who is
@@ -475,6 +516,14 @@ public class AdminController(IUserService userService, IQuestService questServic
             new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) });
 
         return View(viewModel);
+    }
+
+    // Whether the signed-in account may change the given account from the active board. Asked before any read of the
+    // account's form and before any write, so a refused account is never touched.
+    private async Task<bool> IsWithinReachAsync(int groupId, int targetUserId)
+    {
+        var reach = await userService.GetAccountReachAsync(User, groupId, [targetUserId]);
+        return reach[targetUserId] == AccountReach.Reachable;
     }
 
     private async Task<(EmailStatsViewModel stats, bool error)> GetResendStatsAsync(

@@ -32,7 +32,7 @@
                     <tr style="height:100%;">
                         <td style="padding:24px 20%;vertical-align:top;height:100%;">
                             <p style="font-size:15px;font-family:Georgia,serif;color:#1a0f08;line-height:1.6;text-shadow:2px 2px 4px rgba(255,255,255,0.9),1px 1px 6px rgba(0,0,0,0.5);margin:0;">
-                                You've been added to <strong>@GroupName</strong> as a <strong>@Role</strong>. Your existing account and password
+                                You've been added to <strong>@GroupName</strong> as @RoleArticle <strong>@Role</strong>. Your existing account and password
                                 already work here — click the seal below to log in and see what quests await.
                             </p>
                             <p style="font-size:13px;font-family:Georgia,serif;color:#5a4030;line-height:1.5;font-style:italic;text-shadow:1px 1px 3px rgba(255,255,255,0.8);margin:16px 0 0 0;">
@@ -78,6 +78,9 @@
     [Parameter, EditorRequired] public string UserName { get; set; } = string.Empty;
     [Parameter, EditorRequired] public string GroupName { get; set; } = string.Empty;
     [Parameter, EditorRequired] public string Role { get; set; } = string.Empty;
+
+    // "an Admin" but "a Player" / "a Dungeon Master": the article follows the display word
+    private string RoleArticle => Role.Length > 0 && "AEIOU".Contains(char.ToUpperInvariant(Role[0])) ? "an" : "a";
     [Parameter, EditorRequired] public string LoginUrl { get; set; } = string.Empty;
     [Parameter, EditorRequired] public string AppUrl { get; set; } = string.Empty;
 }
