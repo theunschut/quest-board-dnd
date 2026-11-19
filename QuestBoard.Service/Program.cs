@@ -176,7 +176,7 @@ builder.Services.AddRateLimiter(options =>
 // consumed via AttemptAcquire in AdminController — NOT an AddRateLimiter policy, because userId/Id
 // are POST form fields (not route values) and the policy-factory path runs before MVC model binding.
 // 3 requests / 1 hour per target user, key "email-resend:{userId}".
-// CreateUser's one-shot automated welcome email is explicitly exempt.
+// CreateUser's welcome email is exempt from this per-target limiter; it has its own per-administrator limit below.
 builder.Services.AddSingleton(_ => PartitionedRateLimiter.Create<int, string>(userId =>
     RateLimitPartition.GetFixedWindowLimiter(
         partitionKey: $"email-resend:{userId}",
