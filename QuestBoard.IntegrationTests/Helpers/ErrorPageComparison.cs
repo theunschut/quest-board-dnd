@@ -70,6 +70,33 @@ public static class ErrorPageComparison
         ComparableHeaders(first).Should().BeEquivalentTo(ComparableHeaders(second));
     }
 
+    /// <summary>
+    /// The same comparison for two requests that name different ids. An access-denied redirect carries the
+    /// caller's own request path in its return URL, so the two locations can only agree once each response's
+    /// own id is replaced by a fixed marker; everything else is compared exactly as above.
+    /// </summary>
+    public static async Task AssertIndistinguishableAsync(
+        HttpResponseMessage first, HttpResponseMessage second, string firstRequestedId, string secondRequestedId)
+    {
+        first.StatusCode.Should().Be(second.StatusCode);
+        MaskRequestedId(first.Headers.Location?.ToString(), firstRequestedId)
+            .Should().Be(MaskRequestedId(second.Headers.Location?.ToString(), secondRequestedId));
+
+        var firstBody = MaskToken(await first.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        var secondBody = MaskToken(await second.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        firstBody.Should().Be(secondBody);
+
+        var firstHeaders = ComparableHeaders(first);
+        var secondHeaders = ComparableHeaders(second);
+        firstHeaders.Remove("Location");
+        secondHeaders.Remove("Location");
+        firstHeaders.Should().BeEquivalentTo(secondHeaders);
+    }
+
+    private static string? MaskRequestedId(string? location, string id) =>
+        location?.Replace($"%2F{id}", "%2F[requested-id]", StringComparison.Ordinal)
+            .Replace($"/{id}", "/[requested-id]", StringComparison.Ordinal);
+
     /// <summary>The same comparison for bodies already read as strings.</summary>
     public static void AssertSameBody(string first, string second) =>
         MaskToken(first).Should().Be(MaskToken(second));
