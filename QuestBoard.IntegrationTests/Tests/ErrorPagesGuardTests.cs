@@ -85,6 +85,9 @@ public class ErrorPagesGuardTests
         "QuestBoard.Service/Controllers/Shop/ShopController.cs",
         "QuestBoard.UnitTests/Repository/CrossBoardLinkVisibilityTests.cs",
         "QuestBoard.UnitTests/Models/ShopItemAvailabilityTests.cs",
+        "QuestBoard.IntegrationTests/Helpers/CrossBoardMatrixSeeder.cs",
+        "QuestBoard.IntegrationTests/Security/CrossBoardVisibilityMatrixTests.cs",
+        "QuestBoard.IntegrationTests/Controllers/CrossBoardPickerSkipTests.cs",
         "docs/server-setup.md",
     ];
 

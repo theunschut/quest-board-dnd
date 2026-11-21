@@ -202,6 +202,115 @@ public class CrossBoardPickerSkipTests(CrossBoardWebApplicationFactory factory)
         nonMemberBody.Should().Be(nonexistentBody);
     }
 
+    // A record on the second board, one the viewer's page would refuse and one it would open, for each kind where the
+    // record itself decides. The viewer is a plain Player of both boards.
+    public static IEnumerable<object[]> HiddenAndOpenableRecords()
+    {
+        yield return ["Shop", "/Shop/Details/{0}"];
+        yield return ["Contact", "/Contacts/Details/{0}"];
+        yield return ["QuestLog", "/QuestLog/Details/{0}"];
+    }
+
+    private async Task<(int HiddenId, int OpenableId)> AddHiddenAndOpenableRecordsAsync(string kind, int boardBId, string suffix)
+    {
+        var creator = await AuthenticationHelper.CreateTestUserAsync(
+            factory.Services, $"pickerskipcreator{suffix}", $"pickerskipcreator{suffix}@example.com");
+
+        switch (kind)
+        {
+            case "Shop":
+            {
+                await using var ctx = factory.Database.CreateContext();
+                ShopItemEntity Item(ItemStatus status) => new()
+                {
+                    Name = $"PickerSkipShopItem{status}{suffix}",
+                    Description = "A shop item seeded for the picker facts.",
+                    Type = 0,
+                    Rarity = 0,
+                    Price = 10m,
+                    Quantity = 1,
+                    Status = (int)status,
+                    CreatedByDmId = creator.Id,
+                    GroupId = boardBId,
+                    CreatedAt = DateTime.UtcNow
+                };
+                var hidden = Item(ItemStatus.Draft);
+                var openable = Item(ItemStatus.Published);
+                ctx.ShopItems.AddRange(hidden, openable);
+                await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+                return (hidden.Id, openable.Id);
+            }
+
+            case "Contact":
+            {
+                var hidden = await TestDataHelper.CreateTestContactAsync(
+                    factory.Services, creator.Id, name: $"PickerSkipHiddenContact{suffix}", isRevealed: false, groupId: boardBId);
+                var openable = await TestDataHelper.CreateTestContactAsync(
+                    factory.Services, creator.Id, name: $"PickerSkipRevealedContact{suffix}", isRevealed: true, groupId: boardBId);
+                return (hidden.Id, openable.Id);
+            }
+
+            default:
+            {
+                var hidden = await TestDataHelper.CreateTestQuestAsync(
+                    factory.Services, creator.Id, title: $"PickerSkipOpenQuest{suffix}", groupId: boardBId);
+                var openable = await TestDataHelper.CreateTestQuestAsync(
+                    factory.Services, creator.Id, title: $"PickerSkipPlayedQuest{suffix}", groupId: boardBId,
+                    isFinalized: true, finalizedDate: DateTime.UtcNow.AddDays(-3));
+                return (hidden.Id, openable.Id);
+            }
+        }
+    }
+
+    // The picker is a second way into the same lookup, so a return URL that names a record the viewer's page would
+    // refuse must get today's picker, exactly the one a return URL naming an id that does not exist gets.
+    [Theory]
+    [MemberData(nameof(HiddenAndOpenableRecords))]
+    public async Task HiddenRecordReturnUrl_AndNonexistentReturnUrl_ProduceIndistinguishablePickerResponses(
+        string kind, string urlTemplate)
+    {
+        var suffix = $"hid{kind}";
+        var (client, _, _, boardBId) = await SeedTwoBoardViewerAsync(suffix);
+        var (hiddenId, _) = await AddHiddenAndOpenableRecordsAsync(kind, boardBId, suffix);
+
+        var hiddenResponse = await client.GetAsync(
+            $"/GroupPicker/Index?returnUrl={Uri.EscapeDataString(string.Format(urlTemplate, hiddenId))}", TestContext.Current.CancellationToken);
+        var nonexistentResponse = await client.GetAsync(
+            $"/GroupPicker/Index?returnUrl={Uri.EscapeDataString(string.Format(urlTemplate, int.MaxValue))}", TestContext.Current.CancellationToken);
+
+        hiddenResponse.StatusCode.Should().Be(HttpStatusCode.OK, "a hidden record never skips the picker");
+        hiddenResponse.StatusCode.Should().Be(nonexistentResponse.StatusCode);
+        hiddenResponse.Headers.Location.Should().Be(nonexistentResponse.Headers.Location);
+        hiddenResponse.Content.Headers.ContentType.Should().BeEquivalentTo(nonexistentResponse.Content.Headers.ContentType);
+
+        var hiddenBody = NormalizeVolatileFields(await hiddenResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        var nonexistentBody = NormalizeVolatileFields(await nonexistentResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        hiddenBody.Should().Contain("Select Your Group");
+        hiddenBody.Should().Be(nonexistentBody);
+    }
+
+    [Theory]
+    [MemberData(nameof(HiddenAndOpenableRecords))]
+    public async Task OpenableRecordReturnUrl_StillSkipsThePickerOntoItsBoard(
+        string kind, string urlTemplate)
+    {
+        var suffix = $"opn{kind}";
+        var (client, _, _, boardBId) = await SeedTwoBoardViewerAsync(suffix);
+        var (_, openableId) = await AddHiddenAndOpenableRecordsAsync(kind, boardBId, suffix);
+        var returnUrl = string.Format(urlTemplate, openableId);
+
+        var response = await client.GetAsync(
+            $"/GroupPicker/Index?returnUrl={Uri.EscapeDataString(returnUrl)}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
+        (response.Headers.Location?.ToString() ?? string.Empty).Should().Be(returnUrl);
+
+        var landed = await client.GetAsync(returnUrl, TestContext.Current.CancellationToken);
+        landed.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await landed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain($"PickerSkipBoardB{suffix}", "the page the viewer may open lands on the board it belongs to");
+    }
+
     private static string NormalizeVolatileFields(string html)
     {
         html = Regex.Replace(html, "(name=\"__RequestVerificationToken\" type=\"hidden\" value=\")[^\"]*(\")", "$1$2");

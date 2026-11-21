@@ -45,11 +45,37 @@ public static class CrossBoardMatrixSeeder
 
     private static readonly string[] ShopStates = ["Draft", "Denied", "Scheduled", "Published", "Archived"];
 
+    private static readonly string[] QuestStates = ["Own", "Another"];
+
+    private static readonly string[] QuestLogStates = ["Open", "FinalizedPast", "Closed"];
+
+    private static readonly string[] CharacterStates = ["Own", "Another"];
+
+    private static readonly string[] ContactStates = ["Revealed", "Hidden", "Own"];
+
+    private static readonly string[] PresentOnly = ["Present"];
+
     /// <summary>Every route the matrix covers. A registry route missing from this list fails the coverage fact.</summary>
     public static readonly MatrixRoute[] Routes =
     [
+        new("/Quest/Details", "Quest", QuestStates, "Own"),
+        new("/Quest/Edit", "Quest", QuestStates, "Own"),
+        new("/Quest/Manage", "Quest", QuestStates, "Own"),
+        new("/Quest/CreateFollowUp", "Quest", QuestStates, "Own"),
+        new("/QuestLog/Details", "QuestLog", QuestLogStates, "FinalizedPast"),
+        new("/QuestLog/EditRecap", "QuestLog", QuestLogStates, "FinalizedPast"),
+        new("/Events/Details", "Event", PresentOnly, "Present"),
+        new("/Events/Edit", "Event", PresentOnly, "Present"),
+        new("/Characters/Details", "Character", CharacterStates, "Own"),
+        new("/Characters/Edit", "Character", CharacterStates, "Own"),
+        new("/Contacts/Details", "Contact", ContactStates, "Revealed"),
+        new("/Contacts/Edit", "Contact", ContactStates, "Revealed"),
         new("/Shop/Details", "ShopItem", ShopStates, "Published"),
         new("/ShopManagement/Edit", "ShopItem", ShopStates, "Published"),
+        new("/Series/Details", "EventSeries", PresentOnly, "Present"),
+        new("/ContactCategoryManagement/Edit", "ContactCategory", PresentOnly, "Present"),
+        new("/DungeonMaster/Profile", "BoardMember", PresentOnly, "Present"),
+        new("/DungeonMaster/EditProfile", "BoardMember", PresentOnly, "Present"),
     ];
 
     /// <summary>Every row of the matrix: each route with each role and each of its states, plus the page-off board.</summary>
@@ -63,6 +89,9 @@ public static class CrossBoardMatrixSeeder
                 {
                     yield return new MatrixRow(route.Key, role, state);
                 }
+
+                // A board that does not offer the route's page, with the record in its plainly openable state.
+                yield return new MatrixRow(route.Key, role, PageOffState);
             }
         }
     }
@@ -189,23 +218,63 @@ public static class CrossBoardMatrixSeeder
 
         var recordId = await SeedRecordAsync(factory, route, state, suffix, targetBoardId, viewer.Id, other.Id);
 
+        // Whether a Dungeon Master sees an unrevealed contact is the page's own show-hidden switch, a per-board
+        // session setting the lookup never reads. Both sessions turn it on for the target board so the page is
+        // asked the same question from either side (it has no effect for anyone the page does not offer it to).
+        var showHidden = route.Family == "Contact";
+
         var oracle = factory.CreateCookieClient();
         oracle.DefaultRequestHeaders.Authorization = client.DefaultRequestHeaders.Authorization;
         await SelectBoardAsync(oracle, targetBoardId);
-        if (route.Family == "Contact")
+        if (showHidden)
         {
-            // Whether a Dungeon Master sees an unrevealed contact is the page's own show-hidden switch, which the
-            // lookup never reads; the oracle turns it on (it has no effect for anyone the page does not offer it to).
             await oracle.PostAsync("/Contacts/ToggleShowHidden", new FormUrlEncodedContent([]), TestContext.Current.CancellationToken);
         }
 
         var control = factory.CreateCookieClient();
         control.DefaultRequestHeaders.Authorization = client.DefaultRequestHeaders.Authorization;
         await SelectBoardAsync(control, 1);
+
+        if (showHidden)
+        {
+            await SelectBoardAsync(client, targetBoardId);
+            await client.PostAsync("/Contacts/ToggleShowHidden", new FormUrlEncodedContent([]), TestContext.Current.CancellationToken);
+        }
+
         await SelectBoardAsync(client, 1);
 
         return new MatrixScenario(
             client, oracle, control, $"{route.Key}/{recordId}", $"{route.Key}/{int.MaxValue}", recordId, targetName, page);
+    }
+
+    /// <summary>The one sentence every themed 404 carries, whichever record or viewer it answers.</summary>
+    public const string NotFoundSentence = "It may have been removed, or it may belong to a board you're not viewing right now.";
+
+    /// <summary>
+    /// A refused link: the answer equals a nonexistent id's from a session on the same board, the 404 body
+    /// carries the one fixed sentence, the viewer is still on the board they were on, and no switch notice follows.
+    /// </summary>
+    public static async Task AssertRefusedLikeANonexistentIdAsync(MatrixScenario scenario, string description)
+    {
+        await ErrorPageComparison.PrimeAsync(scenario.DeepLinkClient, scenario.ControlClient);
+
+        using var missing = await GetAsync(scenario.ControlClient, scenario.MissingUrl);
+        using var response = await GetAsync(scenario.DeepLinkClient, scenario.Url);
+
+        await ErrorPageComparison.AssertIndistinguishableAsync(
+            response, missing, scenario.RecordId.ToString(), int.MaxValue.ToString());
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            var notFoundBody = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+            notFoundBody.Should().Contain(NotFoundSentence, $"every 404 carries the same sentence, including {description}");
+        }
+
+        using var followUp = await GetAsync(scenario.DeepLinkClient, "/quests");
+        var body = await followUp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain(ActiveBoardName, $"a refused {description} must leave the board as it was");
+        body.Should().NotContain(scenario.TargetBoardName);
+        body.Should().NotContain("board-switch-toast", "no switch notice may follow a refused link");
     }
 
     public static Task<HttpResponseMessage> SelectBoardAsync(HttpClient client, int boardId) =>
@@ -217,10 +286,94 @@ public static class CrossBoardMatrixSeeder
     private static async Task<int> SeedRecordAsync(
         CrossBoardWebApplicationFactory factory, MatrixRoute route, string state, string suffix, int boardId, int viewerId, int otherId)
     {
+        var services = factory.Services;
         switch (route.Family)
         {
             case "ShopItem":
                 return await SeedShopItemAsync(factory, state, suffix, boardId, otherId);
+
+            case "Quest":
+            {
+                var quest = await TestDataHelper.CreateTestQuestAsync(
+                    services, state == "Own" ? viewerId : otherId, title: $"MatrixQuest{suffix}", groupId: boardId);
+                return quest.Id;
+            }
+
+            case "QuestLog":
+            {
+                var quest = await TestDataHelper.CreateTestQuestAsync(
+                    services, otherId, title: $"MatrixQuestLog{suffix}", groupId: boardId,
+                    isFinalized: state == "FinalizedPast",
+                    finalizedDate: state == "FinalizedPast" ? DateTime.UtcNow.AddDays(-3) : null,
+                    isClosed: state == "Closed",
+                    closedDate: state == "Closed" ? DateTime.UtcNow.AddDays(-1) : null);
+                return quest.Id;
+            }
+
+            case "Character":
+            {
+                var character = await TestDataHelper.CreateTestCharacterAsync(
+                    services, state == "Own" ? viewerId : otherId, name: $"MatrixCharacter{suffix}", groupId: boardId);
+                return character.Id;
+            }
+
+            case "Contact":
+            {
+                var contact = await TestDataHelper.CreateTestContactAsync(
+                    services, state == "Own" ? viewerId : otherId, name: $"MatrixContact{suffix}",
+                    isRevealed: state == "Revealed", groupId: boardId);
+                return contact.Id;
+            }
+
+            case "ContactCategory":
+            {
+                var category = await TestDataHelper.CreateTestContactCategoryAsync(
+                    services, name: $"MatrixCategory{suffix}", groupId: boardId);
+                return category.Id;
+            }
+
+            case "Event":
+            {
+                await using var ctx = factory.Database.CreateContext();
+                var newEvent = new EventEntity
+                {
+                    Title = $"MatrixEvent{suffix}",
+                    GroupId = boardId,
+                    Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7)),
+                    CreatedAt = DateTime.UtcNow
+                };
+                ctx.Events.Add(newEvent);
+                await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+                return newEvent.Id;
+            }
+
+            case "EventSeries":
+            {
+                await using var ctx = factory.Database.CreateContext();
+                var series = new EventSeriesEntity
+                {
+                    Title = $"MatrixSeries{suffix}",
+                    AnchorDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                    IntervalWeeks = 1,
+                    WeekDay = (int)DateTime.UtcNow.DayOfWeek,
+                    CycleMask = "1",
+                    GroupId = boardId,
+                    CreatedAt = DateTime.UtcNow
+                };
+                ctx.EventSeries.Add(series);
+                await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+                return series.Id;
+            }
+
+            case "BoardMember":
+            {
+                // The target shares exactly the target board with the viewer, so the link has one board it can mean.
+                await using var ctx = factory.Database.CreateContext();
+                ctx.UserGroups.Add(new UserGroupEntity { UserId = otherId, GroupId = boardId, GroupRole = (int)GroupRole.DungeonMaster });
+                await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+                return otherId;
+            }
+
             default:
                 throw new InvalidOperationException($"No seeding for the {route.Family} family.");
         }

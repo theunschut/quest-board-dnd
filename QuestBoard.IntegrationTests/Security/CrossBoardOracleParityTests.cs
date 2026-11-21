@@ -146,6 +146,14 @@ public class CrossBoardOracleParityTests(CrossBoardWebApplicationFactory factory
         return request;
     }
 
+    // A real browser navigation also asks for HTML, which is what makes the answer the themed page rather than the bare status.
+    private static HttpRequestMessage DocumentNavigationGet(string url)
+    {
+        var request = NavigationGet(url);
+        request.Headers.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+        return request;
+    }
+
     // One route per family -- the registry's 18 routes reduce to 8 distinct lookup kinds, and a
     // pair per kind covers every code path a pair per route would, per this plan's own recorded
     // scoping decision. ContactCategory and BoardMember have no separate "Details" route, so their
@@ -250,5 +258,84 @@ public class CrossBoardOracleParityTests(CrossBoardWebApplicationFactory factory
         navigationBody.Should().Contain("It may have been removed, or it may belong to a board you're not viewing right now.");
         navigationBody.Should().NotContain(int.MaxValue.ToString());
         navigationBody.Should().NotContain("/Quest/Details");
+    }
+
+    [Theory]
+    [MemberData(nameof(EntityFamilyRoutes))]
+    public async Task CrossBoardOracleParity_EntityFamily_DocumentNavigation_NonMemberAndNonexistentGetTheSameThemedPage(string family, string urlTemplate)
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var (client, ids) = await SeedViewerOnBoardsAAndBWithEntitiesOnBoardCAsync(suffix);
+        var id = ids[family];
+
+        await ErrorPageComparison.PrimeAsync(client);
+        var nonMemberResponse = await client.SendAsync(
+            DocumentNavigationGet(string.Format(urlTemplate, id)), TestContext.Current.CancellationToken);
+        var nonexistentResponse = await client.SendAsync(
+            DocumentNavigationGet(string.Format(urlTemplate, int.MaxValue)), TestContext.Current.CancellationToken);
+
+        await ErrorPageComparison.AssertIndistinguishableAsync(nonMemberResponse, nonexistentResponse);
+
+        nonMemberResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var body = WebUtility.HtmlDecode(await nonMemberResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        body.Should().Contain(CrossBoardMatrixSeeder.NotFoundSentence);
+    }
+
+    [Fact]
+    public async Task CrossBoardOracleParity_SuperAdmin_DocumentNavigation_NonMemberAndNonexistentGetTheSameThemedPage()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var (_, ids) = await SeedViewerOnBoardsAAndBWithEntitiesOnBoardCAsync(suffix);
+        var questId = ids["Quest"];
+
+        var (superAdminClient, _) = await AuthenticationHelper.CreateAuthenticatedSuperAdminClientAsync(
+            factory, $"paritysuperadmindoc{suffix}", $"paritysuperadmindoc{suffix}@example.com");
+        var selectBoardAForm = new Dictionary<string, string> { ["groupId"] = "1" };
+        await superAdminClient.PostAsync("/GroupPicker/SelectGroup", new FormUrlEncodedContent(selectBoardAForm), TestContext.Current.CancellationToken);
+
+        await ErrorPageComparison.PrimeAsync(superAdminClient);
+        var nonMemberResponse = await superAdminClient.SendAsync(
+            DocumentNavigationGet($"/Quest/Details/{questId}"), TestContext.Current.CancellationToken);
+        var nonexistentResponse = await superAdminClient.SendAsync(
+            DocumentNavigationGet($"/Quest/Details/{int.MaxValue}"), TestContext.Current.CancellationToken);
+
+        await ErrorPageComparison.AssertIndistinguishableAsync(nonMemberResponse, nonexistentResponse);
+    }
+
+    // One hidden record per lookup kind, on a board the viewer does belong to: the link must look exactly like a link
+    // to an id that does not exist. The record is hidden by the page itself, which the first assertion shows by
+    // asking the page directly, so the pair cannot pass for a record that was never hidden in the first place.
+    public static IEnumerable<object[]> HiddenRecordPerKind()
+    {
+        yield return ["Quest", "/QuestLog/Details", "Player", "Open"];
+        yield return ["Event", "/Events/Edit", "Player", "Present"];
+        yield return ["Character", "/Characters/Edit", "Player", "Another"];
+        yield return ["Contact", "/Contacts/Details", "Player", "Hidden"];
+        yield return ["ShopItem", "/Shop/Details", "Player", "Draft"];
+        yield return ["EventSeries", "/Series/Details", "Player", CrossBoardMatrixSeeder.PageOffState];
+        yield return ["ContactCategory", "/ContactCategoryManagement/Edit", "Player", "Present"];
+        yield return ["BoardMember", "/DungeonMaster/EditProfile", "Player", "Present"];
+    }
+
+    [Theory]
+    [MemberData(nameof(HiddenRecordPerKind))]
+    public async Task CrossBoardOracleParity_HiddenRecordOnAMemberBoard_AndNonexistentIdAreIndistinguishable(
+        string kind, string route, string role, string state)
+    {
+        var scenario = await CrossBoardMatrixSeeder.SeedAsync(factory, new MatrixRow(route, role, state));
+
+        using var oracle = await CrossBoardMatrixSeeder.GetAsync(scenario.OracleClient, scenario.Url);
+        (await CrossBoardMatrixSeeder.IsServedAsync(scenario.OracleClient, oracle, scenario.Page))
+            .Should().BeFalse($"the {kind} record is one the page refuses this viewer");
+
+        await CrossBoardMatrixSeeder.AssertRefusedLikeANonexistentIdAsync(scenario, $"hidden {kind}");
+    }
+
+    [Fact]
+    public void CrossBoardOracleParity_HiddenRecordPairs_CoverEveryLookupKind()
+    {
+        // The registry's routes reduce to eight lookup kinds; the quest log shares the quest kind.
+        HiddenRecordPerKind().Select(row => (string)row[0]).Should().BeEquivalentTo(
+            ["Quest", "Event", "Character", "Contact", "ShopItem", "EventSeries", "ContactCategory", "BoardMember"]);
     }
 }

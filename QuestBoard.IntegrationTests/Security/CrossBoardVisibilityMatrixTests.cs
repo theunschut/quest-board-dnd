@@ -10,19 +10,57 @@ namespace QuestBoard.IntegrationTests.Security;
 /// unchanged with a response indistinguishable from a nonexistent id's. Nothing about who may open
 /// what is restated here, so a later change to a page's own rule shows up as a failing row instead of a
 /// reopened existence leak.
+///
+/// A target board that does not offer the route's page is part of the matrix: the page gate sends every
+/// role elsewhere, so the link must never switch to such a board.
 /// </summary>
 public class CrossBoardVisibilityMatrixTests(CrossBoardWebApplicationFactory factory)
     : IClassFixture<CrossBoardWebApplicationFactory>
 {
-    public static IEnumerable<object[]> ShopRows() =>
-        CrossBoardMatrixSeeder.Rows()
-            .Where(row => CrossBoardMatrixSeeder.RouteOf(row.Route).Family == "ShopItem")
-            .Select(row => new object[] { row.Route, row.Role, row.State });
+    public static IEnumerable<object[]> AllRows() =>
+        CrossBoardMatrixSeeder.Rows().Select(row => new object[] { row.Route, row.Role, row.State });
+
+    public static IEnumerable<object[]> AllRoutes() =>
+        CrossBoardMatrixSeeder.Routes.Select(route => new object[] { route.Key });
 
     [Theory]
-    [MemberData(nameof(ShopRows))]
-    public async Task ShopRoute_DeepLinkAgreesWithThePage(string route, string role, string state) =>
+    [MemberData(nameof(AllRows))]
+    public async Task DeepLink_AgreesWithThePage(string route, string role, string state) =>
         await AssertAgreesWithThePageAsync(new MatrixRow(route, role, state));
+
+    // Without this a seeding slip that made the page refuse every row would leave the whole matrix agreeing on
+    // refusals alone. The page must serve an Admin of the board on every route for the record's plainly
+    // openable state, so the served half of every route is exercised.
+    [Theory]
+    [MemberData(nameof(AllRoutes))]
+    public async Task Page_ServesAnAdminOfTheBoard_ForTheOpenableStateOfEveryRoute(string routeKey)
+    {
+        var route = CrossBoardMatrixSeeder.RouteOf(routeKey);
+        var scenario = await CrossBoardMatrixSeeder.SeedAsync(factory, new MatrixRow(route.Key, "Admin", route.PresentState));
+
+        using var response = await CrossBoardMatrixSeeder.GetAsync(scenario.OracleClient, scenario.Url);
+
+        (await CrossBoardMatrixSeeder.IsServedAsync(scenario.OracleClient, response, scenario.Page))
+            .Should().BeTrue($"{route.Key} must serve an Admin of the board once a record is in its openable state");
+    }
+
+    [Fact]
+    public void EveryRegisteredRoute_HasMatrixRows()
+    {
+        var registered = CrossBoardMatrixSeeder.RegisteredRoutes();
+        registered.Should().HaveCount(18, "the switch reaches exactly the routes the registry holds");
+
+        var covered = CrossBoardMatrixSeeder.Rows().Select(row => row.Route).Distinct().ToList();
+        covered.Should().BeEquivalentTo(registered, "a route added to the registry needs matrix rows before it can ship");
+
+        foreach (var route in registered)
+        {
+            var rows = CrossBoardMatrixSeeder.Rows().Where(row => row.Route == route).ToList();
+            rows.Select(row => row.Role).Distinct().Should().BeEquivalentTo(CrossBoardMatrixSeeder.Roles, $"{route} is tried with every role");
+            rows.Should().Contain(row => row.State == CrossBoardMatrixSeeder.PageOffState, $"{route} is tried on a board that does not offer its page");
+            rows.Should().Contain(row => row.State != CrossBoardMatrixSeeder.PageOffState, $"{route} is tried with at least one record state");
+        }
+    }
 
     private async Task AssertAgreesWithThePageAsync(MatrixRow row)
     {
@@ -43,7 +81,7 @@ public class CrossBoardVisibilityMatrixTests(CrossBoardWebApplicationFactory fac
         }
         else
         {
-            await AssertRefusedLikeANonexistentIdAsync(scenario, row);
+            await CrossBoardMatrixSeeder.AssertRefusedLikeANonexistentIdAsync(scenario, Describe(row));
         }
     }
 
@@ -61,23 +99,6 @@ public class CrossBoardVisibilityMatrixTests(CrossBoardWebApplicationFactory fac
         var body = await settled.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         body.Should().Contain(scenario.TargetBoardName, $"{Describe(row)} is on the target board, which stays switched to");
         body.Should().NotContain(CrossBoardMatrixSeeder.ActiveBoardName);
-    }
-
-    private static async Task AssertRefusedLikeANonexistentIdAsync(MatrixScenario scenario, MatrixRow row)
-    {
-        await ErrorPageComparison.PrimeAsync(scenario.DeepLinkClient, scenario.ControlClient);
-
-        using var missing = await CrossBoardMatrixSeeder.GetAsync(scenario.ControlClient, scenario.MissingUrl);
-        using var response = await CrossBoardMatrixSeeder.GetAsync(scenario.DeepLinkClient, scenario.Url);
-
-        await ErrorPageComparison.AssertIndistinguishableAsync(
-            response, missing, scenario.RecordId.ToString(), int.MaxValue.ToString());
-
-        using var followUp = await CrossBoardMatrixSeeder.GetAsync(scenario.DeepLinkClient, "/quests");
-        var body = await followUp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        body.Should().Contain(CrossBoardMatrixSeeder.ActiveBoardName, $"a refused {Describe(row)} must leave the board as it was");
-        body.Should().NotContain(scenario.TargetBoardName);
-        body.Should().NotContain("board-switch-toast", "no switch notice may follow a refused link");
     }
 
     private static string Describe(MatrixRow row) => $"{row.Route} for a {row.Role} with the record {row.State}";
