@@ -79,7 +79,7 @@ public class ShopController(
         // the board's Dungeon Masters and Admins. Anyone else gets the same not-found answer as an id that does not
         // exist, so a guessed id reveals nothing. Archived items and items whose sale has ended stay open: they were on
         // sale once, and a purchase refused because the item was just taken off sale lands on this page.
-        if (item == null || (IsUnreleased(item, boardNow) && !await MayReviewUnreleasedItemsAsync()))
+        if (item == null || (!ShopItemAvailability.IsVisibleToMembers(item, boardNow) && !await MayReviewUnreleasedItemsAsync()))
         {
             return NotFound();
         }
@@ -95,9 +95,6 @@ public class ShopController(
 
         return View(viewModel);
     }
-
-    private static bool IsUnreleased(ShopItem item, DateTime boardNow) =>
-        item.Status == ItemStatus.Draft || item.Status == ItemStatus.Denied || !ShopItemAvailability.HasOpened(item, boardNow);
 
     private async Task<bool> MayReviewUnreleasedItemsAsync() =>
         (await authorizationService.AuthorizeAsync(User, "DungeonMasterOnly")).Succeeded;

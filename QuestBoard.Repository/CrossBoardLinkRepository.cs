@@ -37,15 +37,17 @@ internal sealed class CrossBoardLinkRepository(QuestBoardContext dbContext) : IC
     }
 
     /// <inheritdoc/>
-    public async Task<int?> ResolveBoardIdAsync(CrossBoardLookupKind kind, int id, IReadOnlyCollection<int> memberGroupIds, CancellationToken token = default)
+    public async Task<int?> ResolveBoardIdAsync(CrossBoardLookupKind kind, CrossBoardAccess access, int id, CrossBoardVisibilityScope scope, CancellationToken token = default)
     {
+        var memberGroupIds = scope.CandidateGroupIds;
+
         return kind switch
         {
             CrossBoardLookupKind.Quest => await ResolveQuestBoardIdAsync(id, memberGroupIds, token),
             CrossBoardLookupKind.Event => await ResolveEventBoardIdAsync(id, memberGroupIds, token),
             CrossBoardLookupKind.Character => await ResolveCharacterBoardIdAsync(id, memberGroupIds, token),
             CrossBoardLookupKind.Contact => await ResolveContactBoardIdAsync(id, memberGroupIds, token),
-            CrossBoardLookupKind.ShopItem => await ResolveShopItemBoardIdAsync(id, memberGroupIds, token),
+            CrossBoardLookupKind.ShopItem => await ResolveShopItemBoardIdAsync(access, id, scope, token),
             CrossBoardLookupKind.EventSeries => await ResolveEventSeriesBoardIdAsync(id, memberGroupIds, token),
             CrossBoardLookupKind.ContactCategory => await ResolveContactCategoryBoardIdAsync(id, memberGroupIds, token),
             // BoardMember has a different answer shape -- the id is a target user, not an
@@ -124,11 +126,30 @@ internal sealed class CrossBoardLinkRepository(QuestBoardContext dbContext) : IC
             .FirstOrDefaultAsync(token);
     }
 
-    private async Task<int?> ResolveShopItemBoardIdAsync(int shopItemId, IReadOnlyCollection<int> memberGroupIds, CancellationToken token)
+    // A shop item's page shows it to members only once it is Published or Archived and its sale
+    // has started; a Dungeon Master, an Admin or a SuperAdmin member of the board sees every
+    // status. The second half is the query form of ShopItemAvailability.IsVisibleToMembers, and a
+    // unit fact keeps the two in agreement. The rule sits inside the one query, so a hidden item
+    // ends in the same null as an id that does not exist.
+    private async Task<int?> ResolveShopItemBoardIdAsync(CrossBoardAccess access, int shopItemId, CrossBoardVisibilityScope scope, CancellationToken token)
     {
-        return await dbContext.ShopItems
+        var memberGroupIds = scope.CandidateGroupIds;
+
+        var query = dbContext.ShopItems
             .IgnoreQueryFilters()
-            .Where(s => s.Id == shopItemId && memberGroupIds.Contains(s.GroupId))
+            .Where(s => s.Id == shopItemId && memberGroupIds.Contains(s.GroupId));
+
+        if (access == CrossBoardAccess.ShopItemVisible)
+        {
+            var tierGroupIds = scope.DungeonMasterTierGroupIds;
+            var boardNow = scope.BoardNow;
+            query = query.Where(s =>
+                tierGroupIds.Contains(s.GroupId)
+                || ((s.Status == (int)ItemStatus.Published || s.Status == (int)ItemStatus.Archived)
+                    && (s.AvailableFrom == null || s.AvailableFrom <= boardNow)));
+        }
+
+        return await query
             .Select(s => (int?)s.GroupId)
             .FirstOrDefaultAsync(token);
     }

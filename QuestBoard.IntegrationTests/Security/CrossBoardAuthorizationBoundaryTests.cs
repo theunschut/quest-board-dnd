@@ -10,9 +10,10 @@ namespace QuestBoard.IntegrationTests.Security;
 /// authorization precisely so this is true; these facts are what make that pipeline position a
 /// tested contract rather than a comment in Program.cs. Two directional facts pin both halves --
 /// the role that must now pass, and the role that must never be switched there at all, because the
-/// resolver only offers a board where the viewer's role can open the page. Two further facts prove
-/// that rules which depend on the record itself, not the board, are still left to the landed page:
-/// an entity such a page refuses to serve still resolves and still switches the board.
+/// resolver only offers a board where the viewer's role can open the page. Further facts
+/// cover the rules that depend on the record itself: a Draft shop item is not switched to for a
+/// Player of its board and is for a Dungeon Master of it, while an entity kind with no record rule
+/// (a cancelled event) still resolves and leaves the landed page to decide.
 /// </summary>
 public class CrossBoardAuthorizationBoundaryTests(CrossBoardWebApplicationFactory factory)
     : IClassFixture<CrossBoardWebApplicationFactory>
@@ -215,7 +216,7 @@ public class CrossBoardAuthorizationBoundaryTests(CrossBoardWebApplicationFactor
             boardBId = boardB.Id;
 
             // A Draft: the shop page shows it only to the board's Dungeon Masters and Admins, and the
-            // resolver still switches the board without consulting that rule.
+            // resolver applies that same rule before it switches the board.
             var draftItem = new ShopItemEntity
             {
                 Name = $"BoundaryDraftItem{suffix}",
@@ -244,27 +245,26 @@ public class CrossBoardAuthorizationBoundaryTests(CrossBoardWebApplicationFactor
     }
 
     [Fact]
-    public async Task ResolvedDraftShopItem_SwitchesTheBoardAndLetsThePageDecideForItself()
+    public async Task ResolvedDraftShopItem_ForAPlayerOfThatBoard_IsNotSwitchedAndGetsTheAnswerANonexistentIdGets()
     {
         var suffix = Guid.NewGuid().ToString("N")[..8];
         var (client, shopItemId) = await SeedViewerAndDraftShopItemOnTargetBoardAsync(suffix, GroupRole.Player);
+        await ErrorPageComparison.PrimeAsync(client);
 
-        var response = await client.SendAsync(NavigationGet($"/Shop/Details/{shopItemId}"), TestContext.Current.CancellationToken);
+        // A Draft is shown only to the board's Dungeon Masters and Admins, so the link is answered exactly as a
+        // link to an id that does not exist, and the active board stays where it was. The nonexistent id goes
+        // first so the second request starts from the same state.
+        var nonexistent = await client.SendAsync(NavigationGet($"/Shop/Details/{int.MaxValue}"), TestContext.Current.CancellationToken);
+        var refused = await client.SendAsync(NavigationGet($"/Shop/Details/{shopItemId}"), TestContext.Current.CancellationToken);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound, because: "the shop page, not the resolver, refuses a Draft to a Player of the board it lives on");
-        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        await ErrorPageComparison.AssertIndistinguishableAsync(refused, nonexistent);
+        var body = await refused.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         body.Should().NotContain($"BoundaryDraftItem{suffix}");
 
-        // The refusal renders no page, so the one-shot switch notice, with its link back to Board A, shows on the
-        // next page instead. That page proves the switch outlived the refusal; the one after it, with the notice
-        // spent, proves the board did not stay on Board A.
         var followUp = await client.SendAsync(NavigationGet("/quests"), TestContext.Current.CancellationToken);
         var followUpBody = await followUp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        followUpBody.Should().Contain($"BoundaryShopBoardB{suffix}", because: "the switch made before the refusal still holds");
-
-        var settled = await client.SendAsync(NavigationGet("/quests"), TestContext.Current.CancellationToken);
-        var settledBody = await settled.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        settledBody.Should().NotContain("EuphoriaInn", because: "the board must not have half-switched back to Board A");
+        followUpBody.Should().NotContain($"BoundaryShopBoardB{suffix}", because: "the board must not have switched to a board whose Draft the viewer may not see");
+        followUpBody.Should().NotContain("board-switch-toast");
     }
 
     [Fact]

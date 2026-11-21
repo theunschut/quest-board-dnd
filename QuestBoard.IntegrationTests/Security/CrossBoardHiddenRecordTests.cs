@@ -130,7 +130,7 @@ public class CrossBoardHiddenRecordTests(CrossBoardWebApplicationFactory factory
 
     // ---- Reproduction facts: the hidden record must look like a nonexistent id. Each one fails today. ----
 
-    [Fact(Skip = "Fails until the cross-board resolver applies the target page's own visibility rule: a Draft shop item is shown only to the board's Dungeon Masters and Admins.")]
+    [Fact]
     public async Task HiddenRecord_DraftShopItem_ForAPlayerOfTheTargetBoard_LooksLikeANonexistentId()
     {
         var scenario = await SeedAsync(Guid.NewGuid().ToString("N")[..8], GroupRole.Player, GroupRole.Player);
@@ -139,7 +139,7 @@ public class CrossBoardHiddenRecordTests(CrossBoardWebApplicationFactory factory
         await AssertLooksLikeANonexistentIdAsync(scenario, $"/Shop/Details/{itemId}", $"/Shop/Details/{int.MaxValue}");
     }
 
-    [Fact(Skip = "Fails until the cross-board resolver applies the target page's own visibility rule: a Denied shop item is shown only to the board's Dungeon Masters and Admins.")]
+    [Fact]
     public async Task HiddenRecord_DeniedShopItem_ForAPlayerOfTheTargetBoard_LooksLikeANonexistentId()
     {
         var scenario = await SeedAsync(Guid.NewGuid().ToString("N")[..8], GroupRole.Player, GroupRole.Player);
@@ -148,7 +148,7 @@ public class CrossBoardHiddenRecordTests(CrossBoardWebApplicationFactory factory
         await AssertLooksLikeANonexistentIdAsync(scenario, $"/Shop/Details/{itemId}", $"/Shop/Details/{int.MaxValue}");
     }
 
-    [Fact(Skip = "Fails until the cross-board resolver applies the target page's own visibility rule: a shop item whose sale has not started is shown only to the board's Dungeon Masters and Admins.")]
+    [Fact]
     public async Task HiddenRecord_ScheduledShopItem_ForAPlayerOfTheTargetBoard_LooksLikeANonexistentId()
     {
         var scenario = await SeedAsync(Guid.NewGuid().ToString("N")[..8], GroupRole.Player, GroupRole.Player);

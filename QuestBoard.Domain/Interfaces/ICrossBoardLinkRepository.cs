@@ -20,10 +20,12 @@ public interface ICrossBoardLinkRepository
 
     /// <summary>
     /// Resolves the board an entity of the given kind and id lives on, restricted to the
-    /// caller's own membership set. Returns null if the id does not exist, or exists on a board
-    /// the caller is not a member of -- the two cases are indistinguishable on purpose.
+    /// scope's candidate boards, and only when the viewer could open that record there under the
+    /// rule the access level names. Returns null if the id does not exist, exists on a board the
+    /// caller is not a member of, or exists but may not be opened by the viewer -- the cases are
+    /// indistinguishable on purpose, and there is no separate answer for the last one.
     /// </summary>
-    Task<int?> ResolveBoardIdAsync(CrossBoardLookupKind kind, int id, IReadOnlyCollection<int> memberGroupIds, CancellationToken token = default);
+    Task<int?> ResolveBoardIdAsync(CrossBoardLookupKind kind, CrossBoardAccess access, int id, CrossBoardVisibilityScope scope, CancellationToken token = default);
 
     /// <summary>
     /// Resolves every board a target user and the caller both belong to, restricted to the

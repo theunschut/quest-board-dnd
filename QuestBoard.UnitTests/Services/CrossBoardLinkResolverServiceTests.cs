@@ -17,16 +17,21 @@ public class CrossBoardLinkResolverServiceTests
 
     private readonly IGroupService _groupService = Substitute.For<IGroupService>();
     private readonly ICrossBoardLinkRepository _repository = Substitute.For<ICrossBoardLinkRepository>();
+    private readonly IBoardClock _boardClock = Substitute.For<IBoardClock>();
     private readonly CrossBoardLinkResolverService _sut;
+
+    private static readonly DateTime BoardNow = new(2026, 9, 6, 0, 30, 0);
 
     public CrossBoardLinkResolverServiceTests()
     {
-        _sut = new CrossBoardLinkResolverService(_groupService, _repository);
+        _boardClock.Now.Returns(BoardNow);
+        _boardClock.Today.Returns(DateOnly.FromDateTime(BoardNow));
+        _sut = new CrossBoardLinkResolverService(_groupService, _repository, _boardClock);
 
         // The lookup answers with the first board it was offered, so the returned target also
         // shows which of the offered boards was chosen.
-        _repository.ResolveBoardIdAsync(Arg.Any<CrossBoardLookupKind>(), Arg.Any<int>(), Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>())
-            .Returns(call => (int?)call.ArgAt<IReadOnlyCollection<int>>(2).First());
+        _repository.ResolveBoardIdAsync(Arg.Any<CrossBoardLookupKind>(), Arg.Any<CrossBoardAccess>(), Arg.Any<int>(), Arg.Any<CrossBoardVisibilityScope>(), Arg.Any<CancellationToken>())
+            .Returns(call => (int?)call.ArgAt<CrossBoardVisibilityScope>(3).CandidateGroupIds.First());
     }
 
     private void GivenViewerBoards(params CrossBoardViewerBoard[] boards)
@@ -46,13 +51,23 @@ public class CrossBoardLinkResolverServiceTests
     private void ThenLookupReceivedBoards(CrossBoardLookupKind kind, params int[] expected)
         => _repository.Received(1).ResolveBoardIdAsync(
             kind,
+            Arg.Any<CrossBoardAccess>(),
             5,
-            Arg.Is<IReadOnlyCollection<int>>(ids => ids.OrderBy(i => i).SequenceEqual(expected.OrderBy(i => i))),
+            Arg.Is<CrossBoardVisibilityScope>(scope => scope.CandidateGroupIds.OrderBy(i => i).SequenceEqual(expected.OrderBy(i => i))),
             Arg.Any<CancellationToken>());
+
+    private CrossBoardVisibilityScope TheScopeOfTheLookup()
+    {
+        var calls = _repository.ReceivedCalls()
+            .Where(call => call.GetMethodInfo().Name == nameof(ICrossBoardLinkRepository.ResolveBoardIdAsync))
+            .ToList();
+        calls.Should().ContainSingle("exactly one record lookup was made");
+        return (CrossBoardVisibilityScope)calls[0].GetArguments()[3]!;
+    }
 
     private void ThenNoLookupWasMade()
     {
-        _repository.DidNotReceiveWithAnyArgs().ResolveBoardIdAsync(default, default, default!, default);
+        _repository.DidNotReceiveWithAnyArgs().ResolveBoardIdAsync(default, default, default, default!, default);
         _repository.DidNotReceiveWithAnyArgs().ResolveSharedBoardIdsForUserAsync(default, default!, default);
     }
 
@@ -237,7 +252,7 @@ public class CrossBoardLinkResolverServiceTests
     public async Task LookupFindingNothing_ResolvesToNothing()
     {
         GivenViewerBoards(Board(BoardB, GroupRole.Admin));
-        _repository.ResolveBoardIdAsync(Arg.Any<CrossBoardLookupKind>(), Arg.Any<int>(), Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>())
+        _repository.ResolveBoardIdAsync(Arg.Any<CrossBoardLookupKind>(), Arg.Any<CrossBoardAccess>(), Arg.Any<int>(), Arg.Any<CrossBoardVisibilityScope>(), Arg.Any<CancellationToken>())
             .Returns((int?)null);
 
         var target = await ResolveAsync(CrossBoardAccess.Member, BoardPage.Quests);
@@ -309,6 +324,69 @@ public class CrossBoardLinkResolverServiceTests
         var target = await ResolveAsync(CrossBoardAccess.Member, BoardPage.DungeonMasterProfile, CrossBoardLookupKind.BoardMember);
 
         target.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Scope_CarriesTheViewerTheOfferedBoardsAndTheBoardClock()
+    {
+        GivenViewerBoards(Board(BoardB, GroupRole.Player), Board(BoardC, GroupRole.DungeonMaster));
+
+        await ResolveAsync(CrossBoardAccess.ShopItemVisible, BoardPage.Shop, CrossBoardLookupKind.ShopItem);
+
+        var scope = TheScopeOfTheLookup();
+        scope.ViewerId.Should().Be(ViewerId);
+        scope.CandidateGroupIds.Should().BeEquivalentTo(new[] { BoardB, BoardC });
+        scope.BoardNow.Should().Be(BoardNow);
+        scope.BoardTodayStart.Should().Be(new DateTime(2026, 9, 6, 0, 0, 0), "the start of the board's own today, not of a UTC day");
+    }
+
+    [Fact]
+    public async Task Scope_AdminOnlyBoard_IsInTheDungeonMasterTierAndTheAdminSets()
+    {
+        GivenViewerBoards(Board(BoardB, GroupRole.Admin), Board(BoardC, GroupRole.Player));
+
+        await ResolveAsync(CrossBoardAccess.ShopItemVisible, BoardPage.Shop, CrossBoardLookupKind.ShopItem);
+
+        var scope = TheScopeOfTheLookup();
+        scope.DungeonMasterTierGroupIds.Should().BeEquivalentTo(new[] { BoardB });
+        scope.AdminGroupIds.Should().BeEquivalentTo(new[] { BoardB });
+    }
+
+    [Fact]
+    public async Task Scope_DungeonMasterBoard_IsInTheDungeonMasterTierButNotTheAdminSet()
+    {
+        GivenViewerBoards(Board(BoardB, GroupRole.DungeonMaster), Board(BoardC, GroupRole.Player));
+
+        await ResolveAsync(CrossBoardAccess.ShopItemVisible, BoardPage.Shop, CrossBoardLookupKind.ShopItem);
+
+        var scope = TheScopeOfTheLookup();
+        scope.DungeonMasterTierGroupIds.Should().BeEquivalentTo(new[] { BoardB });
+        scope.AdminGroupIds.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Scope_SuperAdminWhoIsAPlayerMember_HasThatBoardInBothSets()
+    {
+        GivenViewerBoards(Board(BoardB, GroupRole.Player));
+
+        await ResolveAsync(CrossBoardAccess.ShopItemVisible, BoardPage.Shop, CrossBoardLookupKind.ShopItem, superAdmin: true);
+
+        var scope = TheScopeOfTheLookup();
+        scope.DungeonMasterTierGroupIds.Should().BeEquivalentTo(new[] { BoardB });
+        scope.AdminGroupIds.Should().BeEquivalentTo(new[] { BoardB });
+    }
+
+    [Fact]
+    public async Task Scope_PlainPlayerBoard_IsInNeitherElevatedSet()
+    {
+        GivenViewerBoards(Board(BoardB, GroupRole.Player));
+
+        await ResolveAsync(CrossBoardAccess.ShopItemVisible, BoardPage.Shop, CrossBoardLookupKind.ShopItem);
+
+        var scope = TheScopeOfTheLookup();
+        scope.CandidateGroupIds.Should().BeEquivalentTo(new[] { BoardB });
+        scope.DungeonMasterTierGroupIds.Should().BeEmpty();
+        scope.AdminGroupIds.Should().BeEmpty();
     }
 
     // The target user's boards that are among the offered ones, as the repository would answer.

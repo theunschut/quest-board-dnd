@@ -11,8 +11,10 @@ namespace QuestBoard.Domain.Services;
 // separate answer for a record that exists but may not be opened: it ends in the same null as an
 // id that does not exist, so the answer can never be used to learn that something is there.
 // Rules that depend on the record itself (whose quest it is, whether a shop item is on sale) are
-// not decided here. Keeping the whole tenancy bypass in one place is what keeps it auditable.
-internal sealed class CrossBoardLinkResolverService(IGroupService groupService, ICrossBoardLinkRepository repository) : ICrossBoardLinkResolver
+// applied by the repository inside its one lookup, from the scope built here: the viewer, the
+// boards the viewer may review everything on, and the board's own time. Keeping the whole tenancy
+// bypass in one place is what keeps it auditable.
+internal sealed class CrossBoardLinkResolverService(IGroupService groupService, ICrossBoardLinkRepository repository, IBoardClock boardClock) : ICrossBoardLinkResolver
 {
     /// <inheritdoc/>
     // The SuperAdmin flag only raises the viewer's role on boards they are already a member of.
@@ -38,11 +40,11 @@ internal sealed class CrossBoardLinkResolverService(IGroupService groupService, 
         var memberGroupIds = memberships.Select(g => g.Id).ToList();
 
         var viewerBoards = await repository.GetViewerBoardsAsync(userId, memberGroupIds, token);
-        var eligibleGroupIds = viewerBoards
+        var eligibleBoards = viewerBoards
             .Where(board => BoardPagePolicy.IsAvailable(board.BoardType, board.DisabledPages, page)
                 && RoleMeetsAccess(board.Role, access, viewerIsSuperAdmin))
-            .Select(board => board.GroupId)
             .ToList();
+        var eligibleGroupIds = eligibleBoards.Select(board => board.GroupId).ToList();
 
         if (eligibleGroupIds.Count == 0)
         {
@@ -54,7 +56,15 @@ internal sealed class CrossBoardLinkResolverService(IGroupService groupService, 
             return await ResolveBoardMemberAsync(id, memberships, eligibleGroupIds, token);
         }
 
-        var resolvedGroupId = await repository.ResolveBoardIdAsync(kind, id, eligibleGroupIds, token);
+        var scope = new CrossBoardVisibilityScope(
+            userId,
+            eligibleGroupIds,
+            eligibleBoards.Where(board => EffectiveRole(board.Role, viewerIsSuperAdmin) >= GroupRole.DungeonMaster).Select(board => board.GroupId).ToList(),
+            eligibleBoards.Where(board => EffectiveRole(board.Role, viewerIsSuperAdmin) == GroupRole.Admin).Select(board => board.GroupId).ToList(),
+            boardClock.Now,
+            boardClock.Today.ToDateTime(TimeOnly.MinValue));
+
+        var resolvedGroupId = await repository.ResolveBoardIdAsync(kind, access, id, scope, token);
         if (resolvedGroupId is not { } targetGroupId)
         {
             return null;
@@ -64,12 +74,15 @@ internal sealed class CrossBoardLinkResolverService(IGroupService groupService, 
         return new CrossBoardTarget(targetMembership.Id, targetMembership.Name);
     }
 
+    private static GroupRole EffectiveRole(GroupRole role, bool viewerIsSuperAdmin) =>
+        viewerIsSuperAdmin ? GroupRole.Admin : role;
+
     // What the viewer's role on a board has to be for the page behind the link to open at all. A
     // SuperAdmin counts as an Admin on boards they belong to. Access levels that turn on the
     // record rather than the role leave the role open here.
     private static bool RoleMeetsAccess(GroupRole role, CrossBoardAccess access, bool viewerIsSuperAdmin)
     {
-        var effectiveRole = viewerIsSuperAdmin ? GroupRole.Admin : role;
+        var effectiveRole = EffectiveRole(role, viewerIsSuperAdmin);
 
         return access switch
         {

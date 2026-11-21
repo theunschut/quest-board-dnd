@@ -88,4 +88,42 @@ public class ShopItemAvailabilityTests
 
         ShopItemAvailability.IsOnSale(item, new DateTime(year, month, day, hour, minute, 0)).Should().BeFalse();
     }
+
+    [Theory]
+    [InlineData(ItemStatus.Published, true)]
+    [InlineData(ItemStatus.Archived, true)]
+    [InlineData(ItemStatus.Draft, false)]
+    [InlineData(ItemStatus.Denied, false)]
+    public void VisibleToMembers_WithNoWindow_DependsOnlyOnTheStatus(ItemStatus status, bool expected)
+    {
+        ShopItemAvailability.IsVisibleToMembers(Item(status), BoardNow).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(ItemStatus.Published)]
+    [InlineData(ItemStatus.Archived)]
+    public void VisibleToMembers_AStartAtOrBeforeNow_IsVisible(ItemStatus status)
+    {
+        ShopItemAvailability.IsVisibleToMembers(Item(status, from: BoardNow), BoardNow).Should().BeTrue("the start counts as inside the window");
+        ShopItemAvailability.IsVisibleToMembers(Item(status, from: BoardNow.AddMinutes(-1)), BoardNow).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(ItemStatus.Published)]
+    [InlineData(ItemStatus.Archived)]
+    [InlineData(ItemStatus.Draft)]
+    [InlineData(ItemStatus.Denied)]
+    public void VisibleToMembers_AStartAhead_IsNeverVisible(ItemStatus status)
+    {
+        ShopItemAvailability.IsVisibleToMembers(Item(status, from: BoardNow.AddMinutes(1)), BoardNow).Should().BeFalse();
+    }
+
+    [Fact]
+    public void VisibleToMembers_APublishedItemWhoseSaleEnded_StaysVisible()
+    {
+        var item = Item(from: new DateTime(2026, 9, 1), until: new DateTime(2026, 9, 5));
+
+        ShopItemAvailability.IsOnSale(item, BoardNow).Should().BeFalse();
+        ShopItemAvailability.IsVisibleToMembers(item, BoardNow).Should().BeTrue("it was on sale once, and a purchase refused at the last moment lands on its page");
+    }
 }

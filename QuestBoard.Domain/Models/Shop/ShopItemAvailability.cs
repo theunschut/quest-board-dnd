@@ -22,6 +22,16 @@ public static class ShopItemAvailability
         item.AvailableFrom == null || item.AvailableFrom <= boardNow;
 
     /// <summary>
+    /// True when a member of the board may open the item's page at <paramref name="boardNow"/>: it is Published or
+    /// Archived and its sale has started. Archived items stay open because they were on sale once, and an item whose
+    /// sale has ended stays open for the same reason. A Draft, a Denied item and one whose sale has not started are
+    /// shown only to the board's Dungeon Masters and Admins.
+    /// </summary>
+    public static bool IsVisibleToMembers(ShopItem item, DateTime boardNow) =>
+        (item.Status == ItemStatus.Published || item.Status == ItemStatus.Archived)
+        && HasOpened(item, boardNow);
+
+    /// <summary>
     /// True when the item can be bought or sold to the shop at <paramref name="boardNow"/>, the board's local time:
     /// it is Published, its sale has started, and it has no end or its end is at or after that time.
     /// </summary>
