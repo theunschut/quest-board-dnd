@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using QuestBoard.Domain.Enums;
+using QuestBoard.Domain.Extensions;
 using QuestBoard.Domain.Interfaces;
 using QuestBoard.Domain.Models;
+using QuestBoard.Domain.Models.QuestBoard;
 using QuestBoard.Domain.Models.Shop;
 using QuestBoard.Repository;
 using QuestBoard.Repository.Entities;
@@ -213,6 +215,245 @@ public class CrossBoardLinkVisibilityTests
 
         (await ResolveAsync(context, CrossBoardLookupKind.ShopItem, CrossBoardAccess.DungeonMasterTier, 8, scope)).Should().Be(BoardOne);
         (await ResolveAsync(context, CrossBoardLookupKind.ShopItem, CrossBoardAccess.DungeonMasterTier, 999, scope)).Should().BeNull();
+    }
+
+    // ---- Quests ----
+
+    private static QuestEntity QuestRow(int id, int dungeonMasterId, int groupId = BoardOne, bool finalized = false, DateTime? finalizedDate = null, bool closed = false, bool dungeonMasterSession = false)
+        => new()
+        {
+            Id = id,
+            Title = $"Quest {id}",
+            Description = "A quest for the visibility rule",
+            DungeonMasterId = dungeonMasterId,
+            GroupId = groupId,
+            IsFinalized = finalized,
+            FinalizedDate = finalizedDate,
+            IsClosed = closed,
+            DungeonMasterSession = dungeonMasterSession
+        };
+
+    [Fact]
+    public async Task QuestOwnerOrAdmin_ResolvesForTheQuestsOwnDungeonMaster()
+    {
+        await using var context = CreateContext(DatabaseName(nameof(QuestOwnerOrAdmin_ResolvesForTheQuestsOwnDungeonMaster)));
+        await SeedBoardsAndUsersAsync(context);
+        context.Quests.Add(QuestRow(1, dungeonMasterId: ViewerId));
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var scope = Scope([BoardOne], dungeonMasterTier: [BoardOne]);
+
+        (await ResolveAsync(context, CrossBoardLookupKind.Quest, CrossBoardAccess.QuestOwnerOrAdmin, 1, scope)).Should().Be(BoardOne);
+    }
+
+    [Fact]
+    public async Task QuestOwnerOrAdmin_DoesNotResolveForAnotherDungeonMaster()
+    {
+        await using var context = CreateContext(DatabaseName(nameof(QuestOwnerOrAdmin_DoesNotResolveForAnotherDungeonMaster)));
+        await SeedBoardsAndUsersAsync(context);
+        context.Quests.Add(QuestRow(1, dungeonMasterId: OtherUserId));
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var scope = Scope([BoardOne], dungeonMasterTier: [BoardOne]);
+
+        (await ResolveAsync(context, CrossBoardLookupKind.Quest, CrossBoardAccess.QuestOwnerOrAdmin, 1, scope)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task QuestOwnerOrAdmin_ResolvesForAnAdminOrSuperAdminMemberOfTheBoard()
+    {
+        await using var context = CreateContext(DatabaseName(nameof(QuestOwnerOrAdmin_ResolvesForAnAdminOrSuperAdminMemberOfTheBoard)));
+        await SeedBoardsAndUsersAsync(context);
+        context.Quests.Add(QuestRow(1, dungeonMasterId: OtherUserId));
+        context.Quests.Add(QuestRow(2, dungeonMasterId: OtherUserId, groupId: BoardTwo));
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Admin on board one only: the quest on board two belongs to another Dungeon Master there.
+        var scope = Scope([BoardOne, BoardTwo], dungeonMasterTier: [BoardOne, BoardTwo], admin: [BoardOne]);
+
+        (await ResolveAsync(context, CrossBoardLookupKind.Quest, CrossBoardAccess.QuestOwnerOrAdmin, 1, scope)).Should().Be(BoardOne);
+        (await ResolveAsync(context, CrossBoardLookupKind.Quest, CrossBoardAccess.QuestOwnerOrAdmin, 2, scope)).Should().BeNull("the viewer is only a Dungeon Master there, and the quest is another's");
+    }
+
+    [Fact]
+    public async Task QuestWithNoRecordRule_ResolvesForAnyCandidateBoard()
+    {
+        await using var context = CreateContext(DatabaseName(nameof(QuestWithNoRecordRule_ResolvesForAnyCandidateBoard)));
+        await SeedBoardsAndUsersAsync(context);
+        context.Quests.Add(QuestRow(1, dungeonMasterId: OtherUserId));
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var scope = Scope([BoardOne]);
+
+        (await ResolveAsync(context, CrossBoardLookupKind.Quest, CrossBoardAccess.Member, 1, scope)).Should().Be(BoardOne);
+        (await ResolveAsync(context, CrossBoardLookupKind.Quest, CrossBoardAccess.DungeonMasterTier, 1, scope)).Should().Be(BoardOne);
+    }
+
+    [Fact]
+    public async Task CompletedQuest_ResolvesForAFinalizedQuestBeforeTodayAndForAClosedQuest_NotForTheRest()
+    {
+        await using var context = CreateContext(DatabaseName(nameof(CompletedQuest_ResolvesForAFinalizedQuestBeforeTodayAndForAClosedQuest_NotForTheRest)));
+        await SeedBoardsAndUsersAsync(context);
+        context.Quests.Add(QuestRow(1, OtherUserId, finalized: true, finalizedDate: BoardTodayStart.AddDays(-1)));
+        context.Quests.Add(QuestRow(2, OtherUserId, closed: true));
+        context.Quests.Add(QuestRow(3, OtherUserId));
+        context.Quests.Add(QuestRow(4, OtherUserId, finalized: true, finalizedDate: BoardTodayStart.AddHours(20)));
+        context.Quests.Add(QuestRow(5, OtherUserId, finalized: true, finalizedDate: BoardTodayStart.AddDays(30)));
+        context.Quests.Add(QuestRow(6, OtherUserId, finalized: true, finalizedDate: BoardTodayStart.AddDays(-1), dungeonMasterSession: true));
+        context.Quests.Add(QuestRow(7, OtherUserId, closed: true, dungeonMasterSession: true));
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var scope = Scope([BoardOne]);
+
+        (await ResolveAsync(context, CrossBoardLookupKind.Quest, CrossBoardAccess.CompletedQuest, 1, scope)).Should().Be(BoardOne, "played yesterday");
+        (await ResolveAsync(context, CrossBoardLookupKind.Quest, CrossBoardAccess.CompletedQuest, 2, scope)).Should().Be(BoardOne, "a closed quest is in the log");
+        (await ResolveAsync(context, CrossBoardLookupKind.Quest, CrossBoardAccess.CompletedQuest, 3, scope)).Should().BeNull("an open quest is not in the log");
+        (await ResolveAsync(context, CrossBoardLookupKind.Quest, CrossBoardAccess.CompletedQuest, 4, scope)).Should().BeNull("a game night later today has not been played");
+        (await ResolveAsync(context, CrossBoardLookupKind.Quest, CrossBoardAccess.CompletedQuest, 5, scope)).Should().BeNull("a game night in the future has not been played");
+        (await ResolveAsync(context, CrossBoardLookupKind.Quest, CrossBoardAccess.CompletedQuest, 6, scope)).Should().BeNull("a Dungeon Master session is not shown in the log");
+        (await ResolveAsync(context, CrossBoardLookupKind.Quest, CrossBoardAccess.CompletedQuest, 7, scope)).Should().Be(BoardOne, "a closed quest is shown even when it was a Dungeon Master session");
+    }
+
+    // Finalized dates either side of every boundary of the board's today, with the finalized flag on and off.
+    public static TheoryData<int> FinalizedDateOffsetsInMinutes => new()
+    {
+        -3 * 24 * 60,
+        -24 * 60,
+        -24 * 60 + 1,
+        -1,
+        0,
+        1,
+        12 * 60,
+        24 * 60 - 1,
+        24 * 60,
+        7 * 24 * 60,
+    };
+
+    [Theory]
+    [MemberData(nameof(FinalizedDateOffsetsInMinutes))]
+    public async Task CompletedQuest_AgreesWithHasBeenPlayedForOneShots(int offsetMinutes)
+    {
+        await using var context = CreateContext(DatabaseName($"{nameof(CompletedQuest_AgreesWithHasBeenPlayedForOneShots)}_{offsetMinutes}"));
+        await SeedBoardsAndUsersAsync(context);
+        var finalizedDate = BoardTodayStart.AddMinutes(offsetMinutes);
+        context.Quests.Add(QuestRow(1, OtherUserId, finalized: true, finalizedDate: finalizedDate));
+        context.Quests.Add(QuestRow(2, OtherUserId, finalized: false, finalizedDate: finalizedDate));
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var boardToday = DateOnly.FromDateTime(BoardTodayStart);
+        var finalizedModel = new Quest { Id = 1, IsFinalized = true, FinalizedDate = finalizedDate };
+        var unfinalizedModel = new Quest { Id = 2, IsFinalized = false, FinalizedDate = finalizedDate };
+        var scope = Scope([BoardOne]);
+
+        var finalizedResolves = await ResolveAsync(context, CrossBoardLookupKind.Quest, CrossBoardAccess.CompletedQuest, 1, scope) is not null;
+        var unfinalizedResolves = await ResolveAsync(context, CrossBoardLookupKind.Quest, CrossBoardAccess.CompletedQuest, 2, scope) is not null;
+
+        finalizedResolves.Should().Be(finalizedModel.HasBeenPlayed(boardToday), "the log and the switch apply one definition of played");
+        unfinalizedResolves.Should().Be(unfinalizedModel.HasBeenPlayed(boardToday));
+    }
+
+    // ---- Characters ----
+
+    private static async Task SeedCharactersAsync(QuestBoardContext context)
+    {
+        await SeedBoardsAndUsersAsync(context);
+        context.Characters.Add(new CharacterEntity { Id = 1, Name = "Mine", OwnerId = ViewerId, GroupId = BoardOne });
+        context.Characters.Add(new CharacterEntity { Id = 2, Name = "Theirs", OwnerId = OtherUserId, GroupId = BoardOne });
+        context.Characters.Add(new CharacterEntity { Id = 3, Name = "Theirs elsewhere", OwnerId = OtherUserId, GroupId = BoardTwo });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task CharacterOwnerOrAdmin_ResolvesForTheOwner_NotForAnotherPlayer()
+    {
+        await using var context = CreateContext(DatabaseName(nameof(CharacterOwnerOrAdmin_ResolvesForTheOwner_NotForAnotherPlayer)));
+        await SeedCharactersAsync(context);
+        var scope = Scope([BoardOne]);
+
+        (await ResolveAsync(context, CrossBoardLookupKind.Character, CrossBoardAccess.CharacterOwnerOrAdmin, 1, scope)).Should().Be(BoardOne);
+        (await ResolveAsync(context, CrossBoardLookupKind.Character, CrossBoardAccess.CharacterOwnerOrAdmin, 2, scope)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CharacterOwnerOrAdmin_ResolvesForAnAdminOrSuperAdminMemberOfTheBoardOnly()
+    {
+        await using var context = CreateContext(DatabaseName(nameof(CharacterOwnerOrAdmin_ResolvesForAnAdminOrSuperAdminMemberOfTheBoardOnly)));
+        await SeedCharactersAsync(context);
+        var scope = Scope([BoardOne, BoardTwo], dungeonMasterTier: [BoardOne], admin: [BoardOne]);
+
+        (await ResolveAsync(context, CrossBoardLookupKind.Character, CrossBoardAccess.CharacterOwnerOrAdmin, 2, scope)).Should().Be(BoardOne);
+        (await ResolveAsync(context, CrossBoardLookupKind.Character, CrossBoardAccess.CharacterOwnerOrAdmin, 3, scope)).Should().BeNull("the viewer is not an Admin of that board");
+    }
+
+    [Fact]
+    public async Task CharacterDetails_AnyMemberResolves()
+    {
+        await using var context = CreateContext(DatabaseName(nameof(CharacterDetails_AnyMemberResolves)));
+        await SeedCharactersAsync(context);
+
+        (await ResolveAsync(context, CrossBoardLookupKind.Character, CrossBoardAccess.Member, 2, Scope([BoardOne]))).Should().Be(BoardOne);
+    }
+
+    // ---- Contacts ----
+
+    private static async Task SeedContactsAsync(QuestBoardContext context)
+    {
+        await SeedBoardsAndUsersAsync(context);
+        context.Contacts.Add(new ContactEntity { Id = 1, Name = "Revealed", IsRevealed = true, CreatedByUserId = OtherUserId, GroupId = BoardOne });
+        context.Contacts.Add(new ContactEntity { Id = 2, Name = "Hidden", IsRevealed = false, CreatedByUserId = OtherUserId, GroupId = BoardOne });
+        context.Contacts.Add(new ContactEntity { Id = 3, Name = "Hidden mine", IsRevealed = false, CreatedByUserId = ViewerId, GroupId = BoardOne });
+        context.Contacts.Add(new ContactEntity { Id = 4, Name = "Hidden elsewhere", IsRevealed = false, CreatedByUserId = OtherUserId, GroupId = BoardTwo });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task ContactVisible_ForAPlayer_ResolvesRevealedAndOwnContactsOnly()
+    {
+        await using var context = CreateContext(DatabaseName(nameof(ContactVisible_ForAPlayer_ResolvesRevealedAndOwnContactsOnly)));
+        await SeedContactsAsync(context);
+        var scope = Scope([BoardOne]);
+
+        (await ResolveAsync(context, CrossBoardLookupKind.Contact, CrossBoardAccess.ContactVisible, 1, scope)).Should().Be(BoardOne, "revealed");
+        (await ResolveAsync(context, CrossBoardLookupKind.Contact, CrossBoardAccess.ContactVisible, 3, scope)).Should().Be(BoardOne, "the viewer created it");
+        (await ResolveAsync(context, CrossBoardLookupKind.Contact, CrossBoardAccess.ContactVisible, 2, scope)).Should().BeNull("hidden and created by someone else");
+    }
+
+    [Fact]
+    public async Task ContactVisible_ForADungeonMasterTierViewer_ResolvesHiddenContactsOnThatBoardOnly()
+    {
+        await using var context = CreateContext(DatabaseName(nameof(ContactVisible_ForADungeonMasterTierViewer_ResolvesHiddenContactsOnThatBoardOnly)));
+        await SeedContactsAsync(context);
+        var scope = Scope([BoardOne, BoardTwo], dungeonMasterTier: [BoardOne]);
+
+        (await ResolveAsync(context, CrossBoardLookupKind.Contact, CrossBoardAccess.ContactVisible, 2, scope)).Should().Be(BoardOne);
+        (await ResolveAsync(context, CrossBoardLookupKind.Contact, CrossBoardAccess.ContactVisible, 4, scope)).Should().BeNull("the viewer is only a Player on that board");
+    }
+
+    [Fact]
+    public async Task ContactEdit_KeepsOnlyTheMembershipPin()
+    {
+        await using var context = CreateContext(DatabaseName(nameof(ContactEdit_KeepsOnlyTheMembershipPin)));
+        await SeedContactsAsync(context);
+
+        (await ResolveAsync(context, CrossBoardLookupKind.Contact, CrossBoardAccess.DungeonMasterTier, 2, Scope([BoardOne], dungeonMasterTier: [BoardOne]))).Should().Be(BoardOne);
+        (await ResolveAsync(context, CrossBoardLookupKind.Contact, CrossBoardAccess.DungeonMasterTier, 4, Scope([BoardOne], dungeonMasterTier: [BoardOne]))).Should().BeNull("board two is not among the candidates");
+    }
+
+    // ---- Kinds checked and left as they are ----
+
+    [Fact]
+    public async Task EventAndEventSeries_ResolveForAnyCandidateBoardWithNoRecordRule()
+    {
+        await using var context = CreateContext(DatabaseName(nameof(EventAndEventSeries_ResolveForAnyCandidateBoardWithNoRecordRule)));
+        await SeedBoardsAndUsersAsync(context);
+        context.Events.Add(new EventEntity { Id = 1, Title = "Cancelled", Description = "An event", Date = DateOnly.FromDateTime(BoardTodayStart.AddDays(3)), StartTime = new TimeOnly(19, 0), CancelledAt = BoardTodayStart, GroupId = BoardOne });
+        context.EventSeries.Add(new EventSeriesEntity { Id = 1, Title = "Series", GroupId = BoardOne });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var scope = Scope([BoardOne]);
+
+        (await ResolveAsync(context, CrossBoardLookupKind.Event, CrossBoardAccess.Member, 1, scope)).Should().Be(BoardOne);
+        (await ResolveAsync(context, CrossBoardLookupKind.EventSeries, CrossBoardAccess.Member, 1, scope)).Should().Be(BoardOne);
+        (await ResolveAsync(context, CrossBoardLookupKind.Event, CrossBoardAccess.Member, 1, Scope([BoardTwo]))).Should().BeNull("the membership pin still applies");
     }
 
     private sealed class BoardOneGroupContext : IActiveGroupContext

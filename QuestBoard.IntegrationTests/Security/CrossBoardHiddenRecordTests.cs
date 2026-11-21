@@ -8,11 +8,11 @@ namespace QuestBoard.IntegrationTests.Security;
 /// A deep link into a record the viewer is not allowed to see must look exactly like a link to an
 /// id that does not exist: the same status, the same headers and body, no move of the active board
 /// and no "Switched board" notice on the next page. Otherwise a member could learn that a hidden
-/// record exists, and on which of their boards. The resolver already withholds the switch where the
-/// board does not offer the page or the viewer's role there could not open it; those facts run. The
-/// facts that turn on the record itself (a draft shop item, an unrevealed contact, an unfinished
-/// quest) stay skipped until the resolver applies each page's own visibility rule. The pins keep
-/// what must keep working: a record the viewer may see switches the board and opens.
+/// record exists, and on which of their boards. The resolver withholds the switch where the board
+/// does not offer the page, where the viewer's role there could not open it, and where the record
+/// itself is one the page would refuse the viewer (a draft, denied or scheduled shop item, an
+/// unrevealed contact, an unfinished quest on the quest log). The pins keep what must keep working:
+/// a record the viewer may see switches the board and opens.
 ///
 /// Every navigation carries the headers of a real top-level browser navigation, including
 /// Accept: text/html, so the facts stay valid once error responses become rendered pages.
@@ -157,7 +157,7 @@ public class CrossBoardHiddenRecordTests(CrossBoardWebApplicationFactory factory
         await AssertLooksLikeANonexistentIdAsync(scenario, $"/Shop/Details/{itemId}", $"/Shop/Details/{int.MaxValue}");
     }
 
-    [Fact(Skip = "Fails until the cross-board resolver applies the target page's own visibility rule: a contact that is not revealed is shown only to its creator and to the board's Dungeon Masters and Admins.")]
+    [Fact]
     public async Task HiddenRecord_UnrevealedContactTheViewerDidNotCreate_LooksLikeANonexistentId()
     {
         var scenario = await SeedAsync(Guid.NewGuid().ToString("N")[..8], GroupRole.Player, GroupRole.Player);
@@ -167,12 +167,23 @@ public class CrossBoardHiddenRecordTests(CrossBoardWebApplicationFactory factory
         await AssertLooksLikeANonexistentIdAsync(scenario, $"/Contacts/Details/{contact.Id}", $"/Contacts/Details/{int.MaxValue}");
     }
 
-    [Fact(Skip = "Fails until the cross-board resolver applies the target page's own visibility rule: the quest log shows only quests that have been played or closed.")]
+    [Fact]
     public async Task HiddenRecord_OpenQuestOnTheQuestLog_LooksLikeANonexistentId()
     {
         var scenario = await SeedAsync(Guid.NewGuid().ToString("N")[..8], GroupRole.Player, GroupRole.Player);
         var quest = await TestDataHelper.CreateTestQuestAsync(
             factory.Services, scenario.OwnerId, title: $"HiddenOpenQuest{scenario.Suffix}", groupId: scenario.TargetBoardId);
+
+        await AssertLooksLikeANonexistentIdAsync(scenario, $"/QuestLog/Details/{quest.Id}", $"/QuestLog/Details/{int.MaxValue}");
+    }
+
+    [Fact]
+    public async Task HiddenRecord_QuestFinalizedForALaterDayOnTheQuestLog_LooksLikeANonexistentId()
+    {
+        var scenario = await SeedAsync(Guid.NewGuid().ToString("N")[..8], GroupRole.Player, GroupRole.Player);
+        var quest = await TestDataHelper.CreateTestQuestAsync(
+            factory.Services, scenario.OwnerId, title: $"HiddenFutureQuest{scenario.Suffix}", isFinalized: true,
+            finalizedDate: DateTime.UtcNow.AddDays(30), groupId: scenario.TargetBoardId);
 
         await AssertLooksLikeANonexistentIdAsync(scenario, $"/QuestLog/Details/{quest.Id}", $"/QuestLog/Details/{int.MaxValue}");
     }
@@ -278,5 +289,45 @@ public class CrossBoardHiddenRecordTests(CrossBoardWebApplicationFactory factory
         var followUp = await scenario.Client.SendAsync(NavigationGet("/quests"), TestContext.Current.CancellationToken);
         var followUpBody = await followUp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         followUpBody.Should().NotContain(ActiveBoardName);
+    }
+
+    [Fact]
+    public async Task VisibleRecord_PlayedQuestOnTheQuestLog_ForAMemberOfTheTargetBoard_SwitchesTheBoardAndOpens()
+    {
+        var scenario = await SeedAsync(Guid.NewGuid().ToString("N")[..8], GroupRole.Player, GroupRole.Player);
+        var quest = await TestDataHelper.CreateTestQuestAsync(
+            factory.Services, scenario.OwnerId, title: $"VisiblePlayedQuest{scenario.Suffix}", isFinalized: true,
+            finalizedDate: DateTime.UtcNow.AddDays(-30), groupId: scenario.TargetBoardId);
+
+        var response = await scenario.Client.SendAsync(NavigationGet($"/QuestLog/Details/{quest.Id}"), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain($"VisiblePlayedQuest{scenario.Suffix}");
+        body.Should().Contain(scenario.TargetBoardName);
+
+        var followUp = await scenario.Client.SendAsync(NavigationGet("/quests"), TestContext.Current.CancellationToken);
+        var followUpBody = await followUp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        followUpBody.Should().NotContain(ActiveBoardName);
+    }
+
+    // The page lets a Dungeon Master see unrevealed contacts only once the show-hidden toggle is on, and the switch
+    // never reads that session state, so a Dungeon Master of the board is switched and the page then decides.
+    [Fact]
+    public async Task VisibleRecord_UnrevealedContact_ForADungeonMasterOfTheTargetBoard_SwitchesTheBoard()
+    {
+        var scenario = await SeedAsync(Guid.NewGuid().ToString("N")[..8], GroupRole.Player, GroupRole.DungeonMaster);
+        var contact = await TestDataHelper.CreateTestContactAsync(
+            factory.Services, scenario.OwnerId, name: $"DmVisibleContact{scenario.Suffix}", isRevealed: false, groupId: scenario.TargetBoardId);
+
+        await scenario.Client.SendAsync(NavigationGet($"/Contacts/Details/{contact.Id}"), TestContext.Current.CancellationToken);
+
+        var followUp = await scenario.Client.SendAsync(NavigationGet("/quests"), TestContext.Current.CancellationToken);
+        var followUpBody = await followUp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        followUpBody.Should().Contain(scenario.TargetBoardName, because: "a Dungeon Master of the board is taken to it, and the next page announces the switch");
+
+        var settled = await scenario.Client.SendAsync(NavigationGet("/quests"), TestContext.Current.CancellationToken);
+        var settledBody = await settled.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        settledBody.Should().NotContain(ActiveBoardName, because: "the board stays switched once the notice is spent");
     }
 }

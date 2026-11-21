@@ -15,6 +15,11 @@ namespace QuestBoard.Repository;
 // nothing here ever selects entity data. The viewer's own boards are read here too: their ids,
 // the viewer's role, the board type and the switched-off pages, which is what a link needs to
 // know before it may take the viewer anywhere.
+//
+// A lookup also applies the rule the target page applies to the record itself (whose it is,
+// whether it is on sale, whether the quest has been played), from the scope the caller built.
+// The rule sits inside the one query for the kind, so a record the viewer may not open ends in
+// the same null as an id that does not exist.
 internal sealed class CrossBoardLinkRepository(QuestBoardContext dbContext) : ICrossBoardLinkRepository
 {
     /// <inheritdoc/>
@@ -43,10 +48,13 @@ internal sealed class CrossBoardLinkRepository(QuestBoardContext dbContext) : IC
 
         return kind switch
         {
-            CrossBoardLookupKind.Quest => await ResolveQuestBoardIdAsync(id, memberGroupIds, token),
+            CrossBoardLookupKind.Quest => await ResolveQuestBoardIdAsync(access, id, scope, token),
+            // Event, event series, contact category, and the Member, DungeonMasterTier and
+            // AdminForOtherUser rows of the kinds above were checked against their pages and have
+            // no rule that turns on the record itself, so only the membership pin applies.
             CrossBoardLookupKind.Event => await ResolveEventBoardIdAsync(id, memberGroupIds, token),
-            CrossBoardLookupKind.Character => await ResolveCharacterBoardIdAsync(id, memberGroupIds, token),
-            CrossBoardLookupKind.Contact => await ResolveContactBoardIdAsync(id, memberGroupIds, token),
+            CrossBoardLookupKind.Character => await ResolveCharacterBoardIdAsync(access, id, scope, token),
+            CrossBoardLookupKind.Contact => await ResolveContactBoardIdAsync(access, id, scope, token),
             CrossBoardLookupKind.ShopItem => await ResolveShopItemBoardIdAsync(access, id, scope, token),
             CrossBoardLookupKind.EventSeries => await ResolveEventSeriesBoardIdAsync(id, memberGroupIds, token),
             CrossBoardLookupKind.ContactCategory => await ResolveContactCategoryBoardIdAsync(id, memberGroupIds, token),
@@ -88,13 +96,41 @@ internal sealed class CrossBoardLinkRepository(QuestBoardContext dbContext) : IC
     // The caller's membership set is pinned inside the predicate, so the query can only ever
     // answer with a board the caller already belongs to. The projection selects only GroupId --
     // no entity, no title, no navigation property, ever.
-    private async Task<int?> ResolveQuestBoardIdAsync(int questId, IReadOnlyCollection<int> memberGroupIds, CancellationToken token)
+    //
+    // A record the viewer could not open on its own page ends in the same null as an id that does
+    // not exist, because the page's rule is part of the one query and there is no second lookup
+    // for a record that exists but is refused.
+    private async Task<int?> ResolveQuestBoardIdAsync(CrossBoardAccess access, int questId, CrossBoardVisibilityScope scope, CancellationToken token)
     {
         // Also serves the quest log's routes -- the quest log has no table of its own, and
         // QuestLogController resolves everything through the quest service.
-        return await dbContext.Quests
+        var memberGroupIds = scope.CandidateGroupIds;
+
+        var query = dbContext.Quests
             .IgnoreQueryFilters()
-            .Where(q => q.Id == questId && memberGroupIds.Contains(q.GroupId))
+            .Where(q => q.Id == questId && memberGroupIds.Contains(q.GroupId));
+
+        if (access == CrossBoardAccess.QuestOwnerOrAdmin)
+        {
+            // The edit and follow-up pages are for the quest's own Dungeon Master, or an Admin of
+            // the board it lives on (a SuperAdmin member counts as one).
+            var viewerId = scope.ViewerId;
+            var adminGroupIds = scope.AdminGroupIds;
+            query = query.Where(q => q.DungeonMasterId == viewerId || adminGroupIds.Contains(q.GroupId));
+        }
+        else if (access == CrossBoardAccess.CompletedQuest)
+        {
+            // The quest log shows a closed quest, or a finalized one-shot whose game night is
+            // before the start of the board's own today and that is not a Dungeon Master session.
+            // This is the query form of QuestExtensions.HasBeenPlayed, and a unit fact keeps the
+            // two in agreement.
+            var todayStart = scope.BoardTodayStart;
+            query = query.Where(q =>
+                q.IsClosed
+                || (q.IsFinalized && q.FinalizedDate != null && q.FinalizedDate < todayStart && !q.DungeonMasterSession));
+        }
+
+        return await query
             .Select(q => (int?)q.GroupId)
             .FirstOrDefaultAsync(token);
     }
@@ -108,20 +144,48 @@ internal sealed class CrossBoardLinkRepository(QuestBoardContext dbContext) : IC
             .FirstOrDefaultAsync(token);
     }
 
-    private async Task<int?> ResolveCharacterBoardIdAsync(int characterId, IReadOnlyCollection<int> memberGroupIds, CancellationToken token)
+    private async Task<int?> ResolveCharacterBoardIdAsync(CrossBoardAccess access, int characterId, CrossBoardVisibilityScope scope, CancellationToken token)
     {
-        return await dbContext.Characters
+        var memberGroupIds = scope.CandidateGroupIds;
+
+        var query = dbContext.Characters
             .IgnoreQueryFilters()
-            .Where(c => c.Id == characterId && memberGroupIds.Contains(c.GroupId))
+            .Where(c => c.Id == characterId && memberGroupIds.Contains(c.GroupId));
+
+        if (access == CrossBoardAccess.CharacterOwnerOrAdmin)
+        {
+            // The edit page is for the character's owner, or an Admin of the board it lives on
+            // (a SuperAdmin member counts as one).
+            var viewerId = scope.ViewerId;
+            var adminGroupIds = scope.AdminGroupIds;
+            query = query.Where(c => c.OwnerId == viewerId || adminGroupIds.Contains(c.GroupId));
+        }
+
+        return await query
             .Select(c => (int?)c.GroupId)
             .FirstOrDefaultAsync(token);
     }
 
-    private async Task<int?> ResolveContactBoardIdAsync(int contactId, IReadOnlyCollection<int> memberGroupIds, CancellationToken token)
+    private async Task<int?> ResolveContactBoardIdAsync(CrossBoardAccess access, int contactId, CrossBoardVisibilityScope scope, CancellationToken token)
     {
-        return await dbContext.Contacts
+        var memberGroupIds = scope.CandidateGroupIds;
+
+        var query = dbContext.Contacts
             .IgnoreQueryFilters()
-            .Where(c => c.Id == contactId && memberGroupIds.Contains(c.GroupId))
+            .Where(c => c.Id == contactId && memberGroupIds.Contains(c.GroupId));
+
+        if (access == CrossBoardAccess.ContactVisible)
+        {
+            // A contact is shown when it is revealed, or the viewer created it, or the viewer is a
+            // Dungeon Master, Admin or SuperAdmin member of its board. The page also lets such a
+            // viewer hide unrevealed contacts behind a per-session toggle; the switch never reads
+            // session state, so it treats the toggle as on.
+            var viewerId = scope.ViewerId;
+            var tierGroupIds = scope.DungeonMasterTierGroupIds;
+            query = query.Where(c => c.IsRevealed || c.CreatedByUserId == viewerId || tierGroupIds.Contains(c.GroupId));
+        }
+
+        return await query
             .Select(c => (int?)c.GroupId)
             .FirstOrDefaultAsync(token);
     }
